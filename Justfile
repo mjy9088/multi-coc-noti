@@ -63,7 +63,7 @@ ui port="3000":
     export DATA_DIR="$PWD/data"
     echo "대시보드: http://localhost:{{port}}"
     echo "수집 API: http://localhost:8787"
-    echo "처음이면 대시보드의 알림 설정에서 계정과 게임 export JSON을 추가하세요."
+    echo "처음이면 대시보드의 Settings → Update Data에서 게임 export JSON을 추가하세요."
     mise exec -- node --env-file=docker/.env packages/collector/src/server.ts &
     collector_pid=$!
     mise exec -- node --env-file=docker/.env packages/notifier/src/notifier.ts &
