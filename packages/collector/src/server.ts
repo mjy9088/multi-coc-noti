@@ -82,7 +82,7 @@ async function refreshAccounts(): Promise<void> {
   for (const account of accounts) {
     if (!pollStates.has(account.id)) pollStates.set(account.id, { configured: Boolean(account.sourceUrl), lastAttemptAt: null, lastSuccessAt: null, lastError: null, accepted: 0 });
     else pollStates.get(account.id)!.configured = Boolean(account.sourceUrl);
-    const configured = Boolean(account.playerTag && (account.clashApiToken || process.env.CLASH_OF_CLANS_API_TOKEN));
+    const configured = Boolean(account.playerTag && process.env.CLASH_OF_CLANS_API_TOKEN);
     if (!officialStates.has(account.id)) officialStates.set(account.id, { configured, lastAttemptAt: null, lastSuccessAt: null, lastError: null });
     else officialStates.get(account.id)!.configured = configured;
   }
@@ -211,7 +211,9 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     const manualKeys = new Set(accountManual.map((upgrade) => `${upgrade.type}:${upgrade.name.toLowerCase()}`));
     const upgrades = [...latest.upgrades.filter((upgrade) => !manualKeys.has(`${upgrade.type}:${upgrade.name.toLowerCase()}`)), ...accountManual]
       .filter((upgrade) => isUpgradeActive(upgrade));
-    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, upgrades, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
+    const officialState = officialStates.get(account.id);
+    const officialApiStatus = !officialState?.configured ? "disabled" : !officialState.lastError && officialState.lastSuccessAt && Date.now() - new Date(officialState.lastSuccessAt).getTime() < interval * 2.5 ? "synced" : "delayed";
+    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, upgrades, officialApiStatus, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
   }));
   return { generatedAt: new Date().toISOString(), accounts: result };
 }
@@ -224,7 +226,6 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
     label, playerTag, apiKey: String(value.apiKey || existing?.apiKey || randomUUID()),
     color: String(value.color || existing?.color || "#4c9a79"),
     sourceUrl: String(value.sourceUrl ?? existing?.sourceUrl ?? ""),
-    clashApiToken: String(value.clashApiToken || existing?.clashApiToken || ""),
   };
 }
 
@@ -316,7 +317,7 @@ const server = createServer(async (request, response) => {
 
     if (url.pathname.startsWith("/api/admin/")) {
       if (!requireAdmin(request, response)) return;
-      if (request.method === "GET" && url.pathname === "/api/admin/accounts") return json(response, 200, { accounts: accounts.map(({ apiKey, clashApiToken, legacyIndex, ...account }) => ({ ...account, hasApiKey: Boolean(apiKey), hasClashApiToken: Boolean(clashApiToken) })) });
+      if (request.method === "GET" && url.pathname === "/api/admin/accounts") return json(response, 200, { accounts: accounts.map(({ apiKey, legacyIndex, ...account }) => ({ ...account, hasApiKey: Boolean(apiKey) })) });
       if (request.method === "POST" && url.pathname === "/api/admin/accounts") {
         const account = await createAccount(accountInput(await requestJson(request), null)); await refreshAccounts();
         await Promise.all([poll(account), refreshOfficialProfile(account)]);
@@ -329,6 +330,7 @@ const server = createServer(async (request, response) => {
         const account = await updateAccount(existing.id, accountInput(await requestJson(request), existing));
         if (!account) return json(response, 404, { error: "unknown account" });
         await refreshAccounts();
+        await Promise.all([poll(account), refreshOfficialProfile(account)]);
         return json(response, 200, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color } });
       }
       if (request.method === "DELETE" && accountPath) { await deleteAccount(accountPath[1]); await refreshAccounts(); return json(response, 200, { deleted: true }); }

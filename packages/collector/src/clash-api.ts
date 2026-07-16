@@ -3,10 +3,6 @@ import type { Account, VillageSnapshot } from "@multi-coc/shared";
 const DEFAULT_API_BASE = "https://api.clashofclans.com/v1";
 export type PlayerProfile = { name: string; tag: string; townHall: number; level: number };
 
-export function clashApiToken(account: Partial<Pick<Account, "clashApiToken">>, env: NodeJS.ProcessEnv = process.env): string {
-  return account.clashApiToken || env.CLASH_OF_CLANS_API_TOKEN || "";
-}
-
 export function mapPlayerProfile(player: Record<string, unknown>): PlayerProfile {
   return {
     name: String(player.name || ""),
@@ -16,8 +12,8 @@ export function mapPlayerProfile(player: Record<string, unknown>): PlayerProfile
   };
 }
 
-export async function fetchPlayerProfile(account: Pick<Account, "playerTag"> & Partial<Pick<Account, "clashApiToken">>, { env = process.env, fetchImpl = fetch }: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch } = {}): Promise<PlayerProfile | null> {
-  const token = clashApiToken(account, env);
+export async function fetchPlayerProfile(account: Pick<Account, "playerTag">, { env = process.env, fetchImpl = fetch }: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch } = {}): Promise<PlayerProfile | null> {
+  const token = env.CLASH_OF_CLANS_API_TOKEN || "";
   if (!token || !account.playerTag) return null;
   const apiBase = (env.CLASH_OF_CLANS_API_BASE || DEFAULT_API_BASE).replace(/\/$/, "");
   const response = await fetchImpl(`${apiBase}/players/${encodeURIComponent(account.playerTag)}`, {

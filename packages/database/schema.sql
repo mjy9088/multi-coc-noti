@@ -53,10 +53,12 @@ CREATE TABLE IF NOT EXISTS accounts (
   color text NOT NULL DEFAULT '#4c9a79',
   api_key text NOT NULL,
   source_url text NOT NULL DEFAULT '',
-  clash_api_token text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE accounts DROP COLUMN IF EXISTS source_api_token;
+ALTER TABLE accounts DROP COLUMN IF EXISTS clash_api_token;
 
 CREATE TABLE IF NOT EXISTS manual_upgrades (
   id bigserial PRIMARY KEY,

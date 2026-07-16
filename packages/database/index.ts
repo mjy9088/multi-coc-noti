@@ -34,7 +34,7 @@ export async function migrate() {
 
 const accountFromRow = (row: pg.QueryResultRow): Account => ({
   id: String(row.id), legacyIndex: row.legacy_index, label: row.label, playerTag: row.player_tag,
-  color: row.color, apiKey: row.api_key, sourceUrl: row.source_url, clashApiToken: row.clash_api_token,
+  color: row.color, apiKey: row.api_key, sourceUrl: row.source_url,
 });
 
 export async function listAccounts() {
@@ -44,18 +44,18 @@ export async function listAccounts() {
 
 export async function createAccount(value: AccountInput): Promise<Account> {
   const { rows } = await database().query(`
-    INSERT INTO accounts (label, player_tag, color, api_key, source_url, clash_api_token)
-    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || "", value.clashApiToken || ""]);
+    INSERT INTO accounts (label, player_tag, color, api_key, source_url)
+    VALUES ($1,$2,$3,$4,$5) RETURNING *
+  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || ""]);
   return accountFromRow(rows[0]);
 }
 
 export async function updateAccount(id: string, value: AccountInput): Promise<Account | null> {
   const { rows } = await database().query(`
     UPDATE accounts SET label=$2, player_tag=$3, color=$4, api_key=$5,
-      source_url=$6, clash_api_token=$7, updated_at=now()
+      source_url=$6, updated_at=now()
     WHERE id=$1 RETURNING *
-  `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || "", value.clashApiToken || ""]);
+  `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || ""]);
   return rows[0] ? accountFromRow(rows[0]) : null;
 }
 

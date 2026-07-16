@@ -25,7 +25,6 @@ export type Account = {
   color: string;
   apiKey: string;
   sourceUrl: string;
-  clashApiToken: string;
 };
 
 export type VillageSnapshot = {
@@ -37,6 +36,7 @@ export type VillageSnapshot = {
   color: string;
   dataSource: string;
   online: boolean;
+  officialApiStatus?: "disabled" | "synced" | "delayed";
   lastSeen: string;
   builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {

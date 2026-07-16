@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useI18n } from "./i18n";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
-type Account = { id: string; label: string; playerTag: string; color: string; sourceUrl: string; hasApiKey: boolean; hasClashApiToken: boolean };
+type Account = { id: string; label: string; playerTag: string; color: string; sourceUrl: string; hasApiKey: boolean };
 type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string };
 type ExportPreview = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
@@ -32,7 +32,7 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
   const [newLabel, setNewLabel] = useState("");
   const [upgrade, setUpgrade] = useState(blankUpgrade);
   const [editing, setEditing] = useState<Account | null>(null);
-  const [accountForm, setAccountForm] = useState({ label: "", color: "#4c9a79", sourceUrl: "", apiKey: "", clashApiToken: "" });
+  const [accountForm, setAccountForm] = useState({ label: "", color: "#4c9a79", sourceUrl: "", apiKey: "" });
 
   const request = useCallback(async (path: string, init: RequestInit = {}) => {
     const response = await fetch(`${apiBase}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init.headers } });
@@ -71,7 +71,7 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
 
   const chooseAccount = (item: Account) => {
     setEditing(item);
-    setAccountForm({ label: item.label, color: item.color, sourceUrl: item.sourceUrl, apiKey: "", clashApiToken: "" });
+    setAccountForm({ label: item.label, color: item.color, sourceUrl: item.sourceUrl, apiKey: "" });
   };
 
   if (!token) return <section className="admin-shell"><div className="admin-login"><p className="eyebrow">ADMIN</p><h1>{ko ? "관리자 인증" : "Admin authentication"}</h1><p>{ko ? "docker/.env의 ADMIN_TOKEN을 입력하세요. POSTGRES_PASSWORD는 DB 전용이라 로그인에 사용할 수 없습니다." : "Enter ADMIN_TOKEN from docker/.env. POSTGRES_PASSWORD is database-only and cannot sign in here."}</p>{error && <p className="admin-alert error">{error}</p>}<form onSubmit={(event) => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get("token") || "").trim(); setError(""); setMessage(""); localStorage.setItem("multi-coc-admin-token", value); setToken(value); }}><input name="token" type="password" required autoComplete="current-password" autoFocus /><button>{ko ? "로그인" : "Sign in"}</button></form></div></section>;
@@ -123,7 +123,6 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
         <label>{ko ? "표시 이름" : "Display name"}<input required value={accountForm.label} onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })} /></label><label>{ko ? "색상" : "Color"}<input type="color" value={accountForm.color} onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })} /></label>
         <label className="wide">{ko ? "상태 서버 URL (선택)" : "Source URL (optional)"}<input value={accountForm.sourceUrl} onChange={(e) => setAccountForm({ ...accountForm, sourceUrl: e.target.value })} /></label>
         <label className="wide">{ko ? "새 수집 API 키 (비우면 유지)" : "New ingest API key (leave blank to keep)"}<input type="password" value={accountForm.apiKey} onChange={(e) => setAccountForm({ ...accountForm, apiKey: e.target.value })} /></label>
-        <label className="wide">{ko ? "새 공식 API 토큰 (비우면 유지)" : "New official API token (leave blank to keep)"}<input type="password" value={accountForm.clashApiToken} onChange={(e) => setAccountForm({ ...accountForm, clashApiToken: e.target.value })} /></label>
         <button className="wide">{ko ? "설정 저장" : "Save settings"}</button></form><button className="danger standalone-danger" onClick={() => confirm(ko ? "마을과 관련 데이터를 삭제할까요?" : "Delete this village and its related data?") && run(async () => { await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" }); setEditing(null); }, ko ? "삭제했습니다." : "Deleted.")}>{ko ? "마을 삭제" : "Delete village"}</button></> : <div className="empty settings-empty">{ko ? "왼쪽에서 마을을 선택하세요." : "Choose a village on the left."}</div>}</article></div>}
   </section>;
 }

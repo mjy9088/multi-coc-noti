@@ -25,6 +25,7 @@ type Village = {
   color: string;
   dataSource?: "example" | "pull" | "push" | "unknown";
   online: boolean;
+  officialApiStatus?: "disabled" | "synced" | "delayed";
   lastSeen: string;
   builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {
@@ -32,7 +33,6 @@ type Village = {
     petHouse: { available: boolean } | null;
     builderBase: { builders: { free: number; total: number }; laboratory: { available: boolean; active?: number; total?: number } | null } | null;
   };
-  resources: { gold: number; elixir: number; darkElixir: number; capacity: number } | null;
   upgrades: Upgrade[];
 };
 
@@ -53,7 +53,6 @@ const demoData: DashboardData = {
       lastSeen: new Date(now - 2 * 60_000).toISOString(),
       builders: { free: 1, total: 6, regularTotal: 6 },
       upgradeSlots: { laboratory: { available: false }, petHouse: { available: true }, builderBase: { builders: { free: 1, total: 2 }, laboratory: { available: true } } },
-      resources: { gold: 17_400_000, elixir: 9_300_000, darkElixir: 281_000, capacity: 22_000_000 },
       upgrades: [
         { id: "u1", name: "Inferno Artillery", level: 2, nextLevel: 3, type: "building", finishAt: new Date(now + 2.7 * 3600_000).toISOString() },
         { id: "u2", name: "Archer Queen", level: 96, nextLevel: 97, type: "hero", finishAt: new Date(now + 1.35 * 86400_000).toISOString() },
@@ -70,7 +69,6 @@ const demoData: DashboardData = {
       online: true,
       lastSeen: new Date(now - 5 * 60_000).toISOString(),
       builders: { free: 0, total: 6 },
-      resources: { gold: 8_100_000, elixir: 14_700_000, darkElixir: 164_000, capacity: 20_000_000 },
       upgrades: [
         { id: "u4", name: "Monolith", level: 1, nextLevel: 2, type: "building", finishAt: new Date(now + 8.4 * 3600_000).toISOString() },
         { id: "u5", name: "Royal Champion", level: 37, nextLevel: 38, type: "hero", finishAt: new Date(now + 2.1 * 86400_000).toISOString() },
@@ -86,7 +84,6 @@ const demoData: DashboardData = {
       online: false,
       lastSeen: new Date(now - 41 * 60_000).toISOString(),
       builders: { free: 2, total: 5 },
-      resources: { gold: 7_900_000, elixir: 6_400_000, darkElixir: 71_000, capacity: 12_000_000 },
       upgrades: [
         { id: "u6", name: "Town Hall", level: 12, nextLevel: 13, type: "building", finishAt: new Date(now + 5.7 * 86400_000).toISOString() },
       ],
@@ -101,7 +98,7 @@ function Shield({ level, color }: { level: number; color: string }) {
 }
 
 export default function Home() {
-  const { locale, setLocale, messages: t, formatCompactNumber, formatDuration, formatQueueDate, formatRelative, lowerCase } = useI18n();
+  const { locale, setLocale, messages: t, formatDuration, formatQueueDate, formatRelative, lowerCase } = useI18n();
   const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
   const [activeId, setActiveId] = useState("all");
   const [clockNow, setClockNow] = useState(now);
@@ -150,21 +147,12 @@ export default function Home() {
     const needle = lowerCase(query.trim());
     return liveAccounts.filter((account) => {
       const matchesQuery = !needle || [account.name, account.tag, account.id].some((value) => lowerCase(value).includes(needle));
-      const matchesStatus = statusFilter === "all" || (statusFilter === "free" ? account.builders.free > 0 : !account.online);
+      const matchesStatus = statusFilter === "all" || (statusFilter === "free" ? account.builders.free > 0 : account.officialApiStatus === "delayed");
       return matchesQuery && matchesStatus;
     });
   }, [liveAccounts, lowerCase, query, statusFilter]);
   const accounts = activeId === "all" ? visibleAccounts : visibleAccounts.filter((a) => a.id === activeId);
   const allUpgrades = useMemo(() => accounts.flatMap((account) => account.upgrades.map((upgrade) => ({ account, upgrade }))).sort((a, b) => +new Date(a.upgrade.finishAt) - +new Date(b.upgrade.finishAt)), [accounts]);
-  const farmingPriority = useMemo(() => liveAccounts.flatMap((account) => {
-    if (!account.resources || account.resources.capacity <= 1) return [];
-    const capacity = account.resources.capacity;
-    const goldFill = Math.min(1, account.resources.gold / capacity);
-    const elixirFill = Math.min(1, account.resources.elixir / capacity);
-    const shortage = 1 - ((goldFill + elixirFill) / 2);
-    const freeBuilderRatio = account.builders.total ? account.builders.free / account.builders.total : 0;
-    return [{ account, goldFill, elixirFill, score: shortage * .75 + freeBuilderRatio * .25 }];
-  }).sort((a, b) => b.score - a.score), [liveAccounts]);
   const freeBuilders = liveAccounts.reduce((sum, a) => sum + a.builders.free, 0);
   const availabilityObservations = useMemo(() => observeAvailability(liveAccounts), [liveAccounts]);
   const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
@@ -181,7 +169,7 @@ export default function Home() {
       {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="hero-row">
-          <div><p className="eyebrow">{t.eyebrow}</p><h1>{t.title}</h1><p className="subcopy">{t.subtitle}</p></div>
+          <div><p className="eyebrow">{t.eyebrow}</p><h1>{t.title}</h1><p className="subcopy">{t.dashboardSubtitle}</p></div>
           <div className="summary-strip">
             <div><span>{t.accounts}</span><strong>{liveAccounts.length}</strong></div>
             <div><span>{t.builders}</span><strong className={freeBuilders ? "green" : ""}>{freeBuilders}</strong></div>
@@ -208,41 +196,15 @@ export default function Home() {
 
         <section className="village-grid">
           {accounts.map((account) => {
-            const goldPct = account.resources ? Math.min(100, account.resources.gold / account.resources.capacity * 100) : 0;
-            const elixirPct = account.resources ? Math.min(100, account.resources.elixir / account.resources.capacity * 100) : 0;
             const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
             const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
             return <article className="village-card" key={account.id} style={{ "--accent": account.color } as React.CSSProperties}>
-              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t.level} {account.level}</p></div><span className={account.online ? "status online" : "status"}>{account.online ? t.normal : t.delayed}</span></div>
+              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t.level} {account.level}</p></div><span className={`status ${account.officialApiStatus === "synced" ? "online" : account.officialApiStatus === "delayed" ? "" : "manual"}`}>{account.officialApiStatus === "synced" ? `${t.profileApi} · ${t.syncedState}` : account.officialApiStatus === "delayed" ? `${t.profileApi} · ${t.delayedState}` : t.manual}</span></div>
               <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
-              {account.resources ? <div className="resources">
-                <div><span><i className="gold-dot" />{t.gold} <b>{formatCompactNumber(account.resources.gold)}</b></span><em><i style={{ width: `${goldPct}%` }} /></em></div>
-                <div><span><i className="elixir-dot" />{t.elixir} <b>{formatCompactNumber(account.resources.elixir)}</b></span><em><i style={{ width: `${elixirPct}%` }} /></em></div>
-                <div className="dark-resource"><span><i className="dark-dot" />{t.dark}</span><b>{formatCompactNumber(account.resources.darkElixir)}</b></div>
-              </div> : <div className="resources resources-unknown"><strong>{t.resourceUnknown}</strong><span>{t.resourceHint}</span></div>}
               <div className="card-foot"><span>{t.inProgress} <b>{account.upgrades.length}</b></span><span>{t.updated} {formatRelative(account.lastSeen, clockNow)}</span></div>
             </article>;
           })}
           {!accounts.length && <div className="empty villages-empty">{t.noMatches}</div>}
-        </section>
-
-        <section className="priority-section">
-          <div className="section-title"><div><p className="eyebrow">GROWTH PLAN</p><h2>{t.farmTitle}</h2><p className="section-copy">{t.farmSubtitle}</p></div><span>{farmingPriority.length} {t.accounts}</span></div>
-          <div className="priority-list">
-            {farmingPriority.slice(0, 8).map(({ account, goldFill, elixirFill, score }, index) => {
-              const priority = score >= .55 ? t.farmNow : score >= .3 ? t.farmNext : t.farmSteady;
-              const resourceHint = goldFill <= elixirFill ? t.goldLow : t.elixirLow;
-              return <article className="priority-item" key={account.id}>
-                <div className="rank">{String(index + 1).padStart(2, "0")}</div>
-                <div className="priority-name"><span>{priority}</span><h3>{account.name}</h3><p>{resourceHint}{account.builders.free > 0 ? ` · ${t.builderReady} ${account.builders.free}` : ""}</p></div>
-                <div className="priority-resource"><span>{t.gold} <b>{Math.round(goldFill * 100)}%</b></span><em><i className="gold-fill" style={{ width: `${goldFill * 100}%` }} /></em></div>
-                <div className="priority-resource"><span>{t.elixir} <b>{Math.round(elixirFill * 100)}%</b></span><em><i className="elixir-fill" style={{ width: `${elixirFill * 100}%` }} /></em></div>
-                <div className="priority-score"><strong>{Math.round(score * 100)}</strong><span>{t.priority}</span></div>
-              </article>;
-            })}
-            {!farmingPriority.length && <div className="empty">{t.farmEmpty}</div>}
-          </div>
-          {!!farmingPriority.length && <p className="heuristic-note">{t.heuristic}</p>}
         </section>
 
         <section className="queue-section">

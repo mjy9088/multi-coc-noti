@@ -1,12 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clashApiToken, fetchPlayerProfile, mergeOfficialProfile } from "../src/clash-api.ts";
+import { fetchPlayerProfile, mergeOfficialProfile } from "../src/clash-api.ts";
 
 const account = { id: "account-uuid", playerTag: "#2ABC" };
-
-test("uses a per-account official API token before the shared token", () => {
-  assert.equal(clashApiToken({ ...account, clashApiToken: "account" }, { CLASH_OF_CLANS_API_TOKEN: "shared" }), "account");
-});
 
 test("fetches and maps an official player profile with an encoded tag", async () => {
   let request: { url: string; options?: RequestInit } | undefined;
