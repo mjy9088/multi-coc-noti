@@ -2,9 +2,9 @@
 .pnpm-store
 .git
 **/.next
+**/next-env.d.ts
 **/*.tsbuildinfo
-**/.env
-**/.env.local
+**/.env*
 data
 .local
 npm-debug.log*

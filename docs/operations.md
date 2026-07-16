@@ -6,7 +6,7 @@
 
 | 파일 | 사용 시점 |
 | --- | --- |
-| `docker/.env` | `just up`, `just ui`, `just db-up`과 Docker Compose |
+| `docker/.env` | `just up`, `just ui`, `just data up`과 Docker Compose |
 | `apps/dashboard/.env.local` | `just dashboard`로 Next.js만 실행 |
 | `packages/collector/.env` | `just collector` standalone 실행 |
 | `packages/notifier/.env` | `just notifier` standalone 실행 |
@@ -38,7 +38,6 @@
 | `NEXT_PUBLIC_API_BASE` | 현재 호스트의 `:8787` | 브라우저에서 호출할 Collector 주소 |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | 메타데이터의 공개 사이트 주소 |
 | `NEXT_PUBLIC_DEMO_MODE` | `false` | Collector 연결 실패 시 데모 fallback 사용 여부 |
-| `COLLECTOR_API_BASE` | `http://127.0.0.1:8787` | `scripts/ingest.ts`가 호출할 Collector 주소 |
 
 게임 설정에서 복사하는 마을별 API Token은 소유권 확인용이며 공식 Player API 조회 키가 아닙니다. 이 프로젝트는 공식 개발자 사이트에서 발급한 서버 키만 `CLASH_OF_CLANS_API_TOKEN`으로 받습니다.
 
@@ -97,19 +96,19 @@ just notifier
 
 ```bash
 # 모든 마을
-just history-export
+just data export
 
 # UUID, 플레이어 태그 또는 정확한 표시 이름으로 한 마을
-just history-export village='#GRG2VGRQ9'
+just data export --village '#GRG2VGRQ9'
 
 # 파일 또는 디렉터리를 현재 DB에 병합
-just history-import path=.local/village-history
+just data import --path .local/village-history
 
 # 빈 DB에 seed
-just history-seed
+just data seed
 
 # 개발 DB를 삭제하고 백업으로 다시 생성; just ui를 먼저 종료
-just db-reseed
+just data reseed
 ```
 
 백업에는 표시 이름, 플레이어 태그, 색상, 계정 태그, 자원 상태·준비 시간, snapshot/export가 포함됩니다. 수집 API 키와 Pull URL은 포함하지 않습니다. Import는 플레이어 태그로 기존 계정을 찾으며, 기존 계정의 현재 설정은 덮어쓰지 않습니다. 새 계정을 만들 때는 백업의 자원 설정을 복원합니다. 동일한 snapshot과 export를 건너뛰므로 반복 실행해도 히스토리가 중복되지 않습니다.

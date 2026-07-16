@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["packages/**/*.ts", "scripts/**/*.ts"],
+  "include": ["packages/**/*.ts"],
   "exclude": ["apps/dashboard", "node_modules"]
 }

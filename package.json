@@ -13,7 +13,7 @@
     "start": "pnpm --filter @multi-coc/dashboard start",
     "collector": "pnpm --filter @multi-coc/collector start",
     "notifier": "pnpm --filter @multi-coc/notifier start",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/dashboard/tsconfig.json",
+    "typecheck": "tsc --noEmit && pnpm --filter @multi-coc/dashboard typecheck",
     "test": "pnpm typecheck && pnpm --filter @multi-coc/upgrade-availability test && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build",
     "lint": "pnpm --filter @multi-coc/dashboard lint"
   },

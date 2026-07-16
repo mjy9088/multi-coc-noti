@@ -1,5 +1,8 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+# PostgreSQL 준비와 마을 데이터 백업·복원
+mod data
+
 # 사용 가능한 명령 보기
 default:
     @just --list --unsorted
@@ -92,45 +95,6 @@ dashboard port="3000":
 collector:
     mise exec -- pnpm collector
 
-# 실행 중인 collector에 Docker 설정으로 JSON/JSONL 스냅샷 전송
-ingest file="examples/snapshot.json":
-    mise exec -- node --env-file=docker/.env scripts/ingest.ts "{{file}}"
-
-# DB JSON 히스토리를 마을별 파일로 백업 (village는 UUID, 태그, 표시 이름)
-history-export dir=".local/village-history" village="":
-    docker compose --env-file docker/.env up -d --wait db
-    mise exec -- node --env-file=docker/.env scripts/village-history.ts export "{{dir}}" "{{village}}"
-
-# 마을별 히스토리 파일/디렉터리를 현재 DB에 중복 없이 병합
-history-import path=".local/village-history":
-    docker compose --env-file docker/.env up -d --wait db
-    mise exec -- node --env-file=docker/.env scripts/village-history.ts import "{{path}}"
-
-# 비어 있는 개발 DB를 준비하고 마을별 히스토리로 seed
-history-seed path=".local/village-history":
-    docker compose --env-file docker/.env up -d --wait db
-    mise exec -- node --env-file=docker/.env scripts/village-history.ts import "{{path}}"
-
-# 개발 DB를 완전히 다시 만든 뒤 마을별 히스토리로 seed (just ui는 먼저 종료)
-db-reseed path=".local/village-history":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -e "{{path}}" ]]; then
-      echo "히스토리 백업을 찾을 수 없습니다: {{path}}"
-      exit 1
-    fi
-    docker compose --env-file docker/.env up -d --wait db
-    mise exec -- node --env-file=docker/.env scripts/village-history.ts validate "{{path}}"
-    docker_collector="$(docker compose --env-file docker/.env ps -q collector)"
-    if [[ -z "$docker_collector" ]] && curl --max-time 1 --silent --fail http://127.0.0.1:8787/health >/dev/null 2>&1; then
-      echo "로컬 collector가 실행 중입니다. just ui를 종료한 뒤 다시 실행하세요."
-      exit 1
-    fi
-    docker compose --env-file docker/.env stop collector notifier >/dev/null
-    docker compose --env-file docker/.env exec -T db dropdb -U coc --force --if-exists multi_coc
-    docker compose --env-file docker/.env exec -T db createdb -U coc multi_coc
-    mise exec -- node --env-file=docker/.env scripts/village-history.ts import "{{path}}"
-
 # collector 상태 확인
 status:
     @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:8787/health
@@ -148,10 +112,6 @@ notifier:
 # Docker로 전체 서비스 실행
 up:
     docker compose --env-file docker/.env up --build -d
-
-# PostgreSQL만 준비
-db-up:
-    docker compose --env-file docker/.env up -d --wait db
 
 # Docker 서비스 종료
 down:

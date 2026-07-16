@@ -63,8 +63,8 @@ just down               # Docker 서비스 종료
 just logs collector     # 서비스 로그
 just status             # Collector 상태
 just sources            # 계정별 수집·공식 API 상태
-just history-export     # 모든 마을 히스토리 백업
-just history-import path=.local/village-history
+just data export        # 모든 마을 히스토리 백업
+just data import --path .local/village-history
 just check              # 테스트, lint, Compose 검증
 ```
 

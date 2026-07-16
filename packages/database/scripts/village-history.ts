@@ -2,8 +2,8 @@ import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:
 import path from "node:path";
 import {
   closeDatabase, exportVillageHistories, importVillageHistory, migrate,
-} from "../packages/database/index.ts";
-import type { VillageHistoryBundle } from "../packages/database/index.ts";
+} from "../index.ts";
+import type { VillageHistoryBundle } from "../index.ts";
 
 const [command, target = ".local/village-history", selector] = process.argv.slice(2);
 
