@@ -89,3 +89,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS accounts_legacy_index_unique_idx ON accounts (
 CREATE UNIQUE INDEX IF NOT EXISTS village_exports_account_exported_unique_idx ON village_exports (account_id, exported_at);
 CREATE INDEX IF NOT EXISTS village_exports_latest_idx ON village_exports (account_id, exported_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS accounts_unique_player_tag_idx ON accounts (upper(player_tag)) WHERE player_tag <> '';
+
+CREATE TABLE IF NOT EXISTS snapshot_logs (
+  id bigserial PRIMARY KEY,
+  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  captured_at timestamptz NOT NULL,
+  data_source text NOT NULL,
+  snapshot jsonb NOT NULL,
+  source jsonb NOT NULL,
+  recorded_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS snapshot_logs_account_captured_idx
+  ON snapshot_logs (account_id, captured_at DESC);
+
+CREATE TABLE IF NOT EXISTS event_logs (
+  id bigserial PRIMARY KEY,
+  event_id text NOT NULL UNIQUE,
+  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  event_type text NOT NULL,
+  occurred_at timestamptz NOT NULL,
+  payload jsonb NOT NULL,
+  recorded_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS event_logs_account_occurred_idx
+  ON event_logs (account_id, occurred_at DESC);

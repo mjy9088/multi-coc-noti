@@ -1,6 +1,6 @@
 import pg from "pg";
 import { readFile } from "node:fs/promises";
-import type { Account, Upgrade, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, SnapshotDocument, Upgrade, UpgradeType, VillageEvent, VillageSnapshot } from "@multi-coc/shared";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
@@ -9,7 +9,7 @@ type AccountInput = Omit<Account, "id" | "legacyIndex">;
 export type ManualUpgrade = Upgrade & { accountId: string; startedAt: string; status: string };
 type ManualUpgradeInput = Omit<ManualUpgrade, "id">;
 type ExportData = {
-  tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number };
+  tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
   upgradeSlots?: VillageSnapshot["upgradeSlots"];
   upgrades: Upgrade[]; unknownDataIds: number[]; raw: unknown;
 };
@@ -129,6 +129,13 @@ export async function listLatestVillageExports(): Promise<Array<{ accountId: str
 export async function saveVillageExport(accountId: string, parsed: ExportData): Promise<{ exportedAt: string; normalized: ExportData; raw: unknown } | null> {
   const latest = await latestVillageExport(accountId);
   if (latest && new Date(parsed.exportedAt) <= new Date(latest.exportedAt)) throw new Error("village export is not newer than the stored export");
+  const currentBuilderBase = parsed.upgradeSlots?.builderBase?.builders;
+  const previousBuilderBase = latest?.normalized.upgradeSlots?.builderBase?.builders;
+  if (currentBuilderBase && previousBuilderBase && previousBuilderBase.total > currentBuilderBase.total) {
+    const busy = currentBuilderBase.total - currentBuilderBase.free;
+    currentBuilderBase.total = previousBuilderBase.total;
+    currentBuilderBase.free = Math.max(0, currentBuilderBase.total - busy);
+  }
   await database().query(`
     INSERT INTO village_exports (account_id,player_tag,exported_at,raw,normalized)
     VALUES ($1,$2,$3,$4,$5)
@@ -137,6 +144,31 @@ export async function saveVillageExport(accountId: string, parsed: ExportData): 
     builders: parsed.builders, upgradeSlots: parsed.upgradeSlots, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
   }]);
   return latest;
+}
+
+export async function saveSnapshotLog(accountId: string, snapshot: VillageSnapshot, source: SnapshotDocument): Promise<void> {
+  await database().query(`
+    INSERT INTO snapshot_logs (account_id,captured_at,data_source,snapshot,source)
+    VALUES ($1,$2,$3,$4,$5)
+  `, [accountId, snapshot.lastSeen, snapshot.dataSource, snapshot, source]);
+}
+
+export async function saveEventLog(event: VillageEvent): Promise<void> {
+  await database().query(`
+    INSERT INTO event_logs (event_id,account_id,event_type,occurred_at,payload)
+    VALUES ($1,$2,$3,$4,$5)
+    ON CONFLICT (event_id) DO NOTHING
+  `, [event.id, event.accountId, event.type, event.occurredAt, event]);
+}
+
+export async function cleanupDatabaseLogs({ snapshotDays = 90, eventDays = 90, now = new Date() }: { snapshotDays?: number; eventDays?: number; now?: Date } = {}): Promise<{ snapshots: number; events: number }> {
+  const snapshots = snapshotDays > 0
+    ? await database().query("DELETE FROM snapshot_logs WHERE captured_at < $1::timestamptz - ($2 * interval '1 day')", [now, snapshotDays])
+    : null;
+  const events = eventDays > 0
+    ? await database().query("DELETE FROM event_logs WHERE occurred_at < $1::timestamptz - ($2 * interval '1 day')", [now, eventDays])
+    : null;
+  return { snapshots: snapshots?.rowCount || 0, events: events?.rowCount || 0 };
 }
 
 export async function closeDatabase(): Promise<void> {

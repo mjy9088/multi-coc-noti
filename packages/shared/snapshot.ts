@@ -38,13 +38,13 @@ export type VillageSnapshot = {
   dataSource: string;
   online: boolean;
   lastSeen: string;
-  builders: { free: number; total: number };
+  builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {
-    laboratory: { available: boolean } | null;
+    laboratory: { available: boolean; active?: number; total?: number } | null;
     petHouse: { available: boolean } | null;
     builderBase: {
       builders: { free: number; total: number };
-      laboratory: { available: boolean } | null;
+      laboratory: { available: boolean; active?: number; total?: number } | null;
     } | null;
   };
   resources: { gold: number; elixir: number; darkElixir: number; capacity: number } | null;
@@ -65,7 +65,7 @@ export type VillageEvent = {
 type RawUpgrade = Partial<Upgrade> & { type?: string };
 type RawVillage = {
   name?: string; tag?: string; townHall?: number; level?: number;
-  builders?: { total?: number; free?: number };
+  builders?: { total?: number; free?: number; regularTotal?: number };
   upgradeSlots?: VillageSnapshot["upgradeSlots"];
   resources?: { gold?: number; elixir?: number; darkElixir?: number; capacity?: number };
   upgrades?: RawUpgrade[];
@@ -126,7 +126,7 @@ export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color
     dataSource,
     online: true,
     lastSeen: iso(raw.capturedAt || raw.timestamp),
-    builders: { free: Math.max(0, free), total: Math.max(free, total) },
+    builders: { free: Math.max(0, free), total: Math.max(free, total), ...(village.builders?.regularTotal != null ? { regularTotal: Number(village.builders.regularTotal) } : {}) },
     ...(village.upgradeSlots ? { upgradeSlots: village.upgradeSlots } : {}),
     resources: village.resources ? {
       gold: Number(village.resources?.gold || 0),

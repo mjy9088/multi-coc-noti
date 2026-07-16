@@ -4,13 +4,13 @@ import { mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
-  clearLegacyIndex, completeDueManualUpgrades, createAccount, createManualUpgrade, deleteAccount, listAccounts,
-  listManualUpgrades, listLatestVillageExports, migrate, saveVillageExport, setManualUpgradeStatus,
+  cleanupDatabaseLogs, clearLegacyIndex, completeDueManualUpgrades, createAccount, createManualUpgrade, deleteAccount,
+  listAccounts, listManualUpgrades, listLatestVillageExports, migrate, saveEventLog, saveSnapshotLog, saveVillageExport, setManualUpgradeStatus,
   updateAccount, updateManualUpgrade,
 } from "@multi-coc/database";
 import type { ManualUpgrade } from "@multi-coc/database";
 import { completionEvents, dataDir, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
-import type { Account, SnapshotDocument, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, SnapshotDocument, UpgradeType, VillageEvent, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
 import { createRateLimiter } from "./rate-limit.ts";
@@ -113,10 +113,14 @@ async function ingest(account: Account, raw: SnapshotDocument, { dataSource = "p
   const previous = await readJson<VillageSnapshot>(path.join(dir, "latest.json"));
   const snapshot = normalizeSnapshot(account, raw, { dataSource });
   if (onlyNewer && previous && new Date(snapshot.lastSeen).getTime() <= new Date(previous.lastSeen).getTime()) return null;
-  await appendSnapshotRecord(root, account.id, snapshot, raw);
+  await Promise.all([appendSnapshotRecord(root, account.id, snapshot, raw), saveSnapshotLog(account.id, snapshot, raw)]);
   await writeJson(path.join(dir, "latest.json"), snapshot);
-  for (const event of completionEvents(previous, snapshot)) await appendEventRecord(root, event);
+  for (const event of completionEvents(previous, snapshot)) await recordEvent(event);
   return snapshot;
+}
+
+async function recordEvent(event: VillageEvent): Promise<void> {
+  await Promise.all([appendEventRecord(root, event), saveEventLog(event)]);
 }
 
 async function poll(account: Account): Promise<void> {
@@ -158,9 +162,49 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
       resources: null, upgrades: [],
     };
     if (villageExport && (!stored || new Date(villageExport.exportedAt) >= new Date(stored.lastSeen))) {
+      const knownHomeBuilderTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero")).length;
+      const activeHomeBuilderTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero") && isUpgradeActive(upgrade)).length;
+      const builders = {
+        total: Math.max(villageExport.builders.total, knownHomeBuilderTasks),
+        free: Math.max(0, Math.max(villageExport.builders.total, knownHomeBuilderTasks) - activeHomeBuilderTasks),
+        regularTotal: villageExport.builders.regularTotal ?? villageExport.builders.total,
+      };
+      const builderBase = villageExport.upgradeSlots?.builderBase;
+      const laboratory = villageExport.upgradeSlots?.laboratory;
+      const knownHomeResearch = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && upgrade.type === "research").length;
+      const activeHomeResearch = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && upgrade.type === "research" && isUpgradeActive(upgrade)).length;
+      const homeLaboratoryBusy = villageExport.upgrades.some((upgrade) => upgrade.base === "home" && upgrade.dataId === 1000007 && isUpgradeActive(upgrade));
+      const knownBuilderBaseTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type !== "research").length;
+      const activeBuilderBaseTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type !== "research" && isUpgradeActive(upgrade)).length;
+      const builderLaboratory = builderBase?.laboratory;
+      const knownBuilderResearch = villageExport.upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type === "research").length;
+      const activeBuilderResearch = villageExport.upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type === "research" && isUpgradeActive(upgrade)).length;
+      const builderLaboratoryBusy = villageExport.upgrades.some((upgrade) => upgrade.base === "builder" && upgrade.dataId === 1000046 && isUpgradeActive(upgrade));
+      const upgradeSlots = villageExport.upgradeSlots ? {
+        ...villageExport.upgradeSlots,
+        laboratory: laboratory ? {
+          ...laboratory,
+          available: activeHomeResearch === 0 && !homeLaboratoryBusy,
+          active: activeHomeResearch,
+          total: Math.max(laboratory.total || 1, knownHomeResearch),
+        } : null,
+        builderBase: builderBase ? {
+          ...builderBase,
+          builders: {
+            total: Math.max(builderBase.builders.total, knownBuilderBaseTasks),
+            free: Math.max(0, Math.max(builderBase.builders.total, knownBuilderBaseTasks) - activeBuilderBaseTasks),
+          },
+          laboratory: builderLaboratory ? {
+            ...builderLaboratory,
+            available: activeBuilderResearch === 0 && !builderLaboratoryBusy,
+            active: activeBuilderResearch,
+            total: Math.max(builderLaboratory.total || 1, knownBuilderResearch),
+          } : null,
+        } : null,
+      } : undefined;
       Object.assign(latest, {
         tag: villageExport.tag, townHall: villageExport.townHall || latest.townHall,
-        builders: villageExport.builders, upgradeSlots: villageExport.upgradeSlots, upgrades: villageExport.upgrades,
+        builders, upgradeSlots, upgrades: villageExport.upgrades,
         lastSeen: villageExport.exportedAt, dataSource: "game-export", online: true,
       });
     }
@@ -200,7 +244,7 @@ function upgradeInput(value: RequestValue, existing: Partial<ManualUpgrade> = {}
 async function emitManualCompletion(upgrade: ManualUpgrade): Promise<void> {
   const account = accounts.find((item) => item.id === upgrade.accountId);
   if (!account) return;
-  await appendEventRecord(root, {
+  await recordEvent({
     id: `${account.id}:manual:${upgrade.id}:${upgrade.finishAt}`, type: "upgrade.completed", accountId: account.id,
     accountName: account.label, occurredAt: new Date().toISOString(), title: `${account.label} 업그레이드 완료`,
     body: `${upgrade.name} 레벨 ${upgrade.nextLevel} 완료 예정 시각 도달`, data: { upgrade },
@@ -214,6 +258,7 @@ function previewVillageExport(value: RequestValue) {
     parsed,
     preview: {
       tag: parsed.tag, exportedAt: parsed.exportedAt, townHall: parsed.townHall, builders: parsed.builders,
+      upgradeSlots: parsed.upgradeSlots,
       upgrades: parsed.upgrades.map(({ id, name, type, level, nextLevel, finishAt }) => ({ id, name, type, level, nextLevel, finishAt })),
       unknownDataIds: parsed.unknownDataIds,
       account: account ? { id: account.id, label: account.label, color: account.color } : null,
@@ -239,7 +284,7 @@ async function importVillageExport(value: RequestValue) {
     const currentKeys = new Set(parsed.upgrades.map((upgrade) => `${upgrade.base}:${upgrade.type}:${upgrade.dataId}:${upgrade.level}`));
     for (const upgrade of previous.normalized.upgrades || []) {
       if (!currentKeys.has(`${upgrade.base}:${upgrade.type}:${upgrade.dataId}:${upgrade.level}`)) {
-        await appendEventRecord(root, {
+        await recordEvent({
           id: `${account.id}:export:${upgrade.id}:${parsed.exportedAt}`, type: "upgrade.completed", accountId: account.id,
           accountName: account.label, occurredAt: parsed.exportedAt, title: `${account.label} 업그레이드 변경 감지`,
           body: `${upgrade.name} 레벨 ${upgrade.nextLevel} 진행 목록에서 사라짐`, data: { upgrade },
@@ -335,6 +380,9 @@ await Promise.all(accounts.flatMap((account) => [refreshOfficialProfile(account)
 setInterval(() => accounts.forEach((account) => { refreshOfficialProfile(account); poll(account); }), interval).unref();
 await completeDue();
 setInterval(completeDue, Math.min(interval, 60_000)).unref();
-const clean = () => cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays, eventDays: eventRetentionDays }).catch((error: Error) => console.error(`[collector] retention: ${error.message}`));
+const clean = () => Promise.all([
+  cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays, eventDays: eventRetentionDays }),
+  cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays, eventDays: eventRetentionDays }),
+]).catch((error: Error) => console.error(`[collector] retention: ${error.message}`));
 await clean(); setInterval(clean, 6 * 60 * 60 * 1000).unref();
 server.listen(port, "0.0.0.0", () => console.log(`[collector] listening on :${port}`));

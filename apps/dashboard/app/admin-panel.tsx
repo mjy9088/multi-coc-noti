@@ -1,12 +1,18 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
 type Locale = "ko" | "en";
 type Account = { id: string; label: string; playerTag: string; color: string; sourceUrl: string; hasApiKey: boolean; hasClashApiToken: boolean };
 type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string };
 type ExportPreview = {
-  tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number };
+  tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
+  upgradeSlots?: {
+    laboratory: { available: boolean; active?: number; total?: number } | null;
+    petHouse: { available: boolean } | null;
+    builderBase: { builders: { total: number; free: number }; laboratory: { available: boolean; active?: number; total?: number } | null } | null;
+  };
   upgrades: Array<{ id: string; name: string; type: string; level: number; nextLevel: number; finishAt: string }>;
   unknownDataIds: number[]; account: { id: string; label: string; color: string } | null; isNew: boolean;
 };
@@ -89,7 +95,8 @@ export default function AdminPanel({ locale, apiBase, onChanged }: { locale: Loc
       </article>
 
       {preview && <article className="admin-card preview-card"><p className="step-label">02 · REVIEW</p><div className="preview-heading"><div><h2>{preview.account?.label || (ko ? "새 마을" : "New village")}</h2><p>{preview.tag} · TH {preview.townHall} · {new Date(preview.exportedAt).toLocaleString(locale)}</p></div><span className={preview.isNew ? "new-badge" : "match-badge"}>{preview.isNew ? (ko ? "신규" : "NEW") : (ko ? "등록됨" : "MATCHED")}</span></div>
-        <div className="preview-stats"><div><span>{ko ? "빌더" : "Builders"}</span><b>{preview.builders.free} / {preview.builders.total}</b></div><div><span>{ko ? "진행 중" : "In progress"}</span><b>{preview.upgrades.length}</b></div><div><span>{ko ? "알 수 없는 항목" : "Unknown items"}</span><b>{preview.unknownDataIds.length}</b></div></div>
+        <div className="preview-stats compact"><div><span>{ko ? "진행 중" : "In progress"}</span><b>{preview.upgrades.length}</b></div><div><span>{ko ? "알 수 없는 항목" : "Unknown items"}</span><b>{preview.unknownDataIds.length}</b></div></div>
+        <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} locale={locale} />
         {preview.isNew && <label className="new-label">{ko ? "표시 이름" : "Display name"}<input required autoFocus value={newLabel} onChange={(event) => setNewLabel(event.target.value)} placeholder={ko ? "예: 메인 마을" : "e.g. Main village"} /><small>{ko ? "처음 보는 태그입니다. 확인할 때 새 마을로 등록됩니다." : "This tag is new. It will be registered when you confirm."}</small></label>}
         <div className="preview-upgrades">{preview.upgrades.slice(0, 8).map((item) => <div key={item.id}><span><b>{item.name}</b><small>Lv. {item.level} → {item.nextLevel}</small></span><time>{new Date(item.finishAt).toLocaleString(locale)}</time></div>)}{preview.upgrades.length > 8 && <p>+ {preview.upgrades.length - 8}</p>}</div>
         <div className="confirm-row"><button className="secondary" onClick={() => setPreview(null)}>{ko ? "다시 붙여넣기" : "Paste again"}</button><button disabled={preview.isNew && !newLabel.trim()} onClick={async () => {

@@ -27,13 +27,13 @@ type RawVillageExport = { tag?: string; timestamp?: number; [section: string]: u
 export type ExportUpgrade = Upgrade & { dataId: number; base: "home" | "builder"; remainingSeconds: number; startedAt: null };
 export type ParsedVillageExport = {
   tag: string; exportedAt: string; timestamp: number; townHall: number;
-  builders: { total: number; free: number }; upgrades: ExportUpgrade[];
+  builders: { total: number; free: number; regularTotal: number }; upgrades: ExportUpgrade[];
   upgradeSlots: {
-    laboratory: { available: boolean } | null;
+    laboratory: { available: boolean; active: number; total: number } | null;
     petHouse: { available: boolean } | null;
     builderBase: {
       builders: { total: number; free: number };
-      laboratory: { available: boolean } | null;
+      laboratory: { available: boolean; active: number; total: number } | null;
     } | null;
   };
   unknownDataIds: number[]; raw: RawVillageExport;
@@ -86,30 +86,37 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
   const builderHuts = buildings.filter((entry) => Number(entry.data) === 1000015).reduce((sum, entry) => sum + Number(entry.cnt || 1), 0);
   const builderBuildings = (Array.isArray(document.buildings2) ? document.buildings2 : []) as ExportEntry[];
   const bobUnlocked = builderBuildings.some((entry) => Number(entry.data) === 1000065 && Number(entry.lvl) > 0);
-  const totalBuilders = builderHuts + (bobUnlocked ? 1 : 0);
+  const regularBuilders = builderHuts + (bobUnlocked ? 1 : 0);
   const busyBuilders = upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero")).length;
+  const totalBuilders = Math.max(regularBuilders, busyBuilders);
   const laboratory = buildings.find((entry) => Number(entry.data) === 1000007);
   const petHouse = buildings.find((entry) => Number(entry.data) === 1000068);
   const builderLaboratory = builderBuildings.find((entry) => Number(entry.data) === 1000046);
   const ottosOutpost = builderBuildings.find((entry) => Number(entry.data) === 1000078 && Number(entry.lvl) > 0);
   const builderBaseUnlocked = builderBuildings.length > 0;
-  const totalBuilderBaseBuilders = builderBaseUnlocked ? (ottosOutpost ? 2 : 1) : 0;
   const busyBuilderBaseBuilders = upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type !== "research").length;
+  const regularBuilderBaseBuilders = builderBaseUnlocked ? (ottosOutpost ? 2 : 1) : 0;
+  const totalBuilderBaseBuilders = Math.max(regularBuilderBaseBuilders, busyBuilderBaseBuilders);
   const slotAvailable = (building: ExportEntry | undefined, base: "home" | "builder", type: UpgradeType) => building
     ? { available: !(Number(building.timer) > 0) && !upgrades.some((upgrade) => upgrade.base === base && upgrade.type === type) }
     : null;
+  const laboratorySlot = (building: ExportEntry | undefined, base: "home" | "builder") => {
+    if (!building) return null;
+    const active = upgrades.filter((upgrade) => upgrade.base === base && upgrade.type === "research").length;
+    return { available: !(Number(building.timer) > 0) && active === 0, active, total: Math.max(1, active) };
+  };
   const townHall = buildings.find((entry) => Number(entry.data) === 1000001);
 
   return {
     tag, exportedAt: new Date(timestamp * 1000).toISOString(), timestamp,
     townHall: Number(townHall?.lvl || 0),
-    builders: { total: totalBuilders, free: Math.max(0, totalBuilders - busyBuilders) },
+    builders: { total: totalBuilders, free: Math.max(0, totalBuilders - busyBuilders), regularTotal: regularBuilders },
     upgradeSlots: {
-      laboratory: slotAvailable(laboratory, "home", "research"),
+      laboratory: laboratorySlot(laboratory, "home"),
       petHouse: slotAvailable(petHouse, "home", "pet"),
       builderBase: builderBaseUnlocked ? {
         builders: { total: totalBuilderBaseBuilders, free: Math.max(0, totalBuilderBaseBuilders - busyBuilderBaseBuilders) },
-        laboratory: slotAvailable(builderLaboratory, "builder", "research"),
+        laboratory: laboratorySlot(builderLaboratory, "builder"),
       } : null,
     },
     upgrades, unknownDataIds: [...unknownDataIds], raw: document,

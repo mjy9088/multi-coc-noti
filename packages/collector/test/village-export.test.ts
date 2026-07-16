@@ -23,10 +23,10 @@ test("parses active home and builder upgrades from an in-game export", () => {
     buildings2: [{ data: 1000065, lvl: 5 }, { data: 1000078, lvl: 1 }, { data: 1000046, lvl: 10 }, { data: 1000044, lvl: 10, timer: 900 }],
   }, { now });
   assert.equal(result.townHall, 17);
-  assert.deepEqual(result.builders, { total: 6, free: 4 });
+  assert.deepEqual(result.builders, { total: 6, free: 4, regularTotal: 6 });
   assert.deepEqual(result.upgradeSlots, {
-    laboratory: { available: false }, petHouse: { available: false },
-    builderBase: { builders: { total: 2, free: 1 }, laboratory: { available: true } },
+    laboratory: { available: false, active: 1, total: 1 }, petHouse: { available: false },
+    builderBase: { builders: { total: 2, free: 1 }, laboratory: { available: true, active: 0, total: 1 } },
   });
   assert.deepEqual(result.upgrades.map((upgrade) => upgrade.name), ["Cannon", "Archer Queen", "Dragon", "L.A.S.S.I", "Cannon"]);
   assert.equal(result.upgrades[0].finishAt, new Date((timestamp + 3600) * 1000).toISOString());
@@ -42,11 +42,35 @@ test("reports unlocked idle upgrade slots as available", () => {
     buildings2: [{ data: 1000034, lvl: 10 }, { data: 1000046, lvl: 10 }, { data: 1000078, lvl: 1 }],
   }, { now });
 
-  assert.deepEqual(result.builders, { total: 5, free: 5 });
+  assert.deepEqual(result.builders, { total: 5, free: 5, regularTotal: 5 });
   assert.deepEqual(result.upgradeSlots, {
-    laboratory: { available: true }, petHouse: { available: true },
-    builderBase: { builders: { total: 2, free: 2 }, laboratory: { available: true } },
+    laboratory: { available: true, active: 0, total: 1 }, petHouse: { available: true },
+    builderBase: { builders: { total: 2, free: 2 }, laboratory: { available: true, active: 0, total: 1 } },
   });
+});
+
+test("infers a Goblin Researcher slot from two concurrent Home Village research timers", () => {
+  const result = parseVillageExport({
+    tag: "#2P0J8LQ", timestamp,
+    buildings: [{ data: 1000001, lvl: 17 }, { data: 1000015, lvl: 6, cnt: 5 }, { data: 1000007, lvl: 15 }],
+    units: [{ data: 4000003, lvl: 9, timer: 600 }, { data: 4000095, lvl: 3, timer: 1200 }],
+  }, { now });
+
+  assert.deepEqual(result.upgradeSlots.laboratory, { available: false, active: 2, total: 2 });
+});
+
+test("infers the additional Builder Base builder from three concurrent worker upgrades", () => {
+  const result = parseVillageExport({
+    tag: "#2P0J8LQ", timestamp,
+    buildings: [{ data: 1000001, lvl: 17 }, { data: 1000015, lvl: 6, cnt: 5 }],
+    buildings2: [
+      { data: 1000034, lvl: 10 }, { data: 1000078, lvl: 9, timer: 600 },
+      { data: 1000043, lvl: 9, timer: 1200 },
+    ],
+    heroes2: [{ data: 28000005, lvl: 26, timer: 1800 }],
+  }, { now });
+
+  assert.deepEqual(result.upgradeSlots.builderBase?.builders, { total: 3, free: 0 });
 });
 
 test("does not expose locked slots and treats facilities under upgrade as busy", () => {
@@ -57,7 +81,7 @@ test("does not expose locked slots and treats facilities under upgrade as busy",
   }, { now });
 
   assert.deepEqual(result.upgradeSlots, {
-    laboratory: { available: false }, petHouse: null,
+    laboratory: { available: false, active: 0, total: 1 }, petHouse: null,
     builderBase: { builders: { total: 1, free: 1 }, laboratory: null },
   });
 });

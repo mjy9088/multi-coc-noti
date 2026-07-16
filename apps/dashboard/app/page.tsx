@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { applyDisplayOptions, defaultDisplayOptions, observeAvailability } from "@multi-coc/upgrade-availability";
+import type { DisplayOptions } from "@multi-coc/upgrade-availability";
 import AdminPanel from "./admin-panel";
+import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
 type Upgrade = {
   id: string;
@@ -22,11 +25,11 @@ type Village = {
   dataSource?: "example" | "pull" | "push" | "unknown";
   online: boolean;
   lastSeen: string;
-  builders: { free: number; total: number };
+  builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {
-    laboratory: { available: boolean } | null;
+    laboratory: { available: boolean; active?: number; total?: number } | null;
     petHouse: { available: boolean } | null;
-    builderBase: { builders: { free: number; total: number }; laboratory: { available: boolean } | null } | null;
+    builderBase: { builders: { free: number; total: number }; laboratory: { available: boolean; active?: number; total?: number } | null } | null;
   };
   resources: { gold: number; elixir: number; darkElixir: number; capacity: number } | null;
   upgrades: Upgrade[];
@@ -37,9 +40,9 @@ type Locale = "ko" | "en";
 
 const messages = {
   ko: {
-    dashboard: "대시보드", history: "히스토리", settings: "알림 설정", demo: "데모 데이터", synced: "마지막 동기화", eyebrow: "VILLAGE OVERVIEW", title: "오늘의 마을 현황", subtitle: "모든 계정의 빌더와 연구 진행 상황을 한곳에서 확인하세요.", accounts: "운영 계정", builders: "대기 빌더", earliest: "가장 빠른 완료", none: "없음", all: "전체 계정", normal: "정상", delayed: "지연", builder: "빌더", waiting: "명 대기 중", inProgress: "진행 중", updated: "업데이트", queue: "완료 예정 업그레이드", soonest: "빠른 순서", soon: "곧 완료", remaining: "남은 시간", underMinute: "1분 미만", empty: "진행 중인 업그레이드가 없습니다.", dataStatus: "JSONL 수집 상태", awaiting: "연결 대기 중", bark: "Bark 알림", enabled: "활성", building: "건물", hero: "영웅", pet: "펫", research: "연구소", level: "레벨", gold: "골드", elixir: "엘릭서", dark: "다크 엘릭서", day: "일", hour: "시간", minute: "분", ago: "전", justNow: "방금", search: "계정 이름·태그 검색", statusAll: "모든 상태", freeOnly: "대기 빌더 있음", delayedOnly: "동기화 지연", noMatches: "조건에 맞는 계정이 없습니다.", resourceUnknown: "자원 정보 없음", resourceHint: "게임 export에는 현재 보유 자원이 없습니다. 상태 서버 데이터가 연결되면 표시됩니다.", farmEmpty: "자원 데이터를 제공한 마을이 없어 우선순위를 계산하지 않았습니다.", farmTitle: "파밍 우선순위", farmSubtitle: "자원 부족률과 대기 빌더를 기준으로 지금 돌볼 마을을 정렬했습니다.", heuristic: "계획 중인 업그레이드 비용이 연결되기 전까지 골드·엘릭서 부족률 75%, 대기 빌더 비율 25%로 계산합니다.", farmNow: "지금 파밍", farmNext: "다음 순서", farmSteady: "여유", goldLow: "골드 우선", elixirLow: "엘릭서 우선", builderReady: "빌더 대기", fillRate: "보유율", available: "업그레이드 가능", busy: "진행 중", petHouse: "펫", builderBaseBuilder: "장인기지 장인", builderBaseLab: "장인기지 연구소" },
+    dashboard: "대시보드", history: "히스토리", settings: "알림 설정", demo: "데모 데이터", synced: "마지막 동기화", eyebrow: "VILLAGE OVERVIEW", title: "오늘의 마을 현황", subtitle: "모든 계정의 빌더와 연구 진행 상황을 한곳에서 확인하세요.", accounts: "운영 계정", builders: "대기 빌더", earliest: "가장 빠른 완료", none: "없음", all: "전체 계정", normal: "정상", delayed: "지연", builder: "빌더", waiting: "명 대기 중", inProgress: "진행 중", updated: "업데이트", queue: "완료 예정 업그레이드", soonest: "빠른 순서", soon: "곧 완료", remaining: "남은 시간", underMinute: "1분 미만", empty: "진행 중인 업그레이드가 없습니다.", dataStatus: "JSONL 수집 상태", awaiting: "연결 대기 중", bark: "Bark 알림", enabled: "활성", building: "건물", hero: "영웅", pet: "펫", research: "연구소", level: "레벨", gold: "골드", elixir: "엘릭서", dark: "다크 엘릭서", day: "일", hour: "시간", minute: "분", ago: "전", justNow: "방금", search: "계정 이름·태그 검색", statusAll: "모든 상태", freeOnly: "대기 빌더 있음", delayedOnly: "동기화 지연", noMatches: "조건에 맞는 계정이 없습니다.", resourceUnknown: "자원 정보 없음", resourceHint: "게임 export에는 현재 보유 자원이 없습니다. 상태 서버 데이터가 연결되면 표시됩니다.", farmEmpty: "자원 데이터를 제공한 마을이 없어 우선순위를 계산하지 않았습니다.", farmTitle: "파밍 우선순위", farmSubtitle: "자원 부족률과 대기 빌더를 기준으로 지금 돌볼 마을을 정렬했습니다.", heuristic: "계획 중인 업그레이드 비용이 연결되기 전까지 골드·엘릭서 부족률 75%, 대기 빌더 비율 25%로 계산합니다.", farmNow: "지금 파밍", farmNext: "다음 순서", farmSteady: "여유", goldLow: "골드 우선", elixirLow: "엘릭서 우선", builderReady: "빌더 대기", fillRate: "보유율", available: "업그레이드 가능", busy: "진행 중", petHouse: "펫", builderBaseBuilder: "장인기지 장인", builderBaseLab: "장인기지 연구소", upgradeAvailability: "업그레이드 가능 상태", researching: "연구 중", goblinResearcher: "고블린 연구원 포함", goblinResearcherReady: "고블린 연구원 사용 가능", goblinBuilderReady: "고블린 장인 사용 가능", goblinBuilderActive: "고블린 장인 포함", displayOptions: "표시 옵션", inferGoblinResearcher: "고블린 연구원 여유 슬롯 추정", inferGoblinBuilder: "고블린 장인 여유 슬롯 추정" },
   en: {
-    dashboard: "Dashboard", history: "History", settings: "Alerts", demo: "Demo data", synced: "Last sync", eyebrow: "VILLAGE OVERVIEW", title: "Village status today", subtitle: "Track builders, research, and resources across every account.", accounts: "Accounts", builders: "Free builders", earliest: "Next completion", none: "None", all: "All accounts", normal: "Live", delayed: "Delayed", builder: "Builders", waiting: " available", inProgress: "In progress", updated: "Updated", queue: "Upcoming completions", soonest: "Soonest first", soon: "Finishing soon", remaining: "Time left", underMinute: "Under 1m", empty: "No upgrades are currently running.", dataStatus: "JSONL collector", awaiting: "Awaiting connection", bark: "Bark alerts", enabled: "On", building: "Building", hero: "Hero", pet: "Pet", research: "Laboratory", level: "Level", gold: "Gold", elixir: "Elixir", dark: "Dark Elixir", day: "d", hour: "h", minute: "m", ago: "ago", justNow: "Just now", search: "Search name or tag", statusAll: "All statuses", freeOnly: "Builder available", delayedOnly: "Sync delayed", noMatches: "No accounts match these filters.", resourceUnknown: "Resources unavailable", resourceHint: "Game exports do not include current resources. They appear after a status source is connected.", farmEmpty: "Farming priority is unavailable because no village has resource data.", farmTitle: "Farming priority", farmSubtitle: "Villages are ranked by resource shortage and available builders.", heuristic: "Until planned upgrade costs are connected, the score uses 75% gold/elixir shortage and 25% free-builder ratio.", farmNow: "Farm now", farmNext: "Up next", farmSteady: "Steady", goldLow: "Prioritize gold", elixirLow: "Prioritize elixir", builderReady: "Builder ready", fillRate: "Filled", available: "Upgrade available", busy: "In progress", petHouse: "Pet", builderBaseBuilder: "Builder Base builders", builderBaseLab: "Builder Base lab" },
+    dashboard: "Dashboard", history: "History", settings: "Alerts", demo: "Demo data", synced: "Last sync", eyebrow: "VILLAGE OVERVIEW", title: "Village status today", subtitle: "Track builders, research, and resources across every account.", accounts: "Accounts", builders: "Free builders", earliest: "Next completion", none: "None", all: "All accounts", normal: "Live", delayed: "Delayed", builder: "Builders", waiting: " available", inProgress: "In progress", updated: "Updated", queue: "Upcoming completions", soonest: "Soonest first", soon: "Finishing soon", remaining: "Time left", underMinute: "Under 1m", empty: "No upgrades are currently running.", dataStatus: "JSONL collector", awaiting: "Awaiting connection", bark: "Bark alerts", enabled: "On", building: "Building", hero: "Hero", pet: "Pet", research: "Laboratory", level: "Level", gold: "Gold", elixir: "Elixir", dark: "Dark Elixir", day: "d", hour: "h", minute: "m", ago: "ago", justNow: "Just now", search: "Search name or tag", statusAll: "All statuses", freeOnly: "Builder available", delayedOnly: "Sync delayed", noMatches: "No accounts match these filters.", resourceUnknown: "Resources unavailable", resourceHint: "Game exports do not include current resources. They appear after a status source is connected.", farmEmpty: "Farming priority is unavailable because no village has resource data.", farmTitle: "Farming priority", farmSubtitle: "Villages are ranked by resource shortage and available builders.", heuristic: "Until planned upgrade costs are connected, the score uses 75% gold/elixir shortage and 25% free-builder ratio.", farmNow: "Farm now", farmNext: "Up next", farmSteady: "Steady", goldLow: "Prioritize gold", elixirLow: "Prioritize elixir", builderReady: "Builder ready", fillRate: "Filled", available: "Upgrade available", busy: "In progress", petHouse: "Pet", builderBaseBuilder: "Builder Base builders", builderBaseLab: "Builder Base lab", upgradeAvailability: "Upgrade availability", researching: "researching", goblinResearcher: "includes Goblin Researcher", goblinResearcherReady: "Goblin Researcher available", goblinBuilderReady: "Goblin Builder available", goblinBuilderActive: "includes Goblin Builder", displayOptions: "Display options", inferGoblinResearcher: "Infer Goblin Researcher availability", inferGoblinBuilder: "Infer Goblin Builder availability" },
 } as const;
 
 const now = Date.now();
@@ -55,7 +58,7 @@ const demoData: DashboardData = {
       color: "#e9a23b",
       online: true,
       lastSeen: new Date(now - 2 * 60_000).toISOString(),
-      builders: { free: 1, total: 6 },
+      builders: { free: 1, total: 6, regularTotal: 6 },
       upgradeSlots: { laboratory: { available: false }, petHouse: { available: true }, builderBase: { builders: { free: 1, total: 2 }, laboratory: { available: true } } },
       resources: { gold: 17_400_000, elixir: 9_300_000, darkElixir: 281_000, capacity: 22_000_000 },
       upgrades: [
@@ -116,7 +119,6 @@ const relative = (date: string, locale: Locale, reference: number) => {
   if (mins < 1) return t.justNow;
   return locale === "ko" ? (mins < 60 ? `${mins}${t.minute} ${t.ago}` : `${Math.floor(mins / 60)}${t.hour} ${t.ago}`) : (mins < 60 ? `${mins}${t.minute} ${t.ago}` : `${Math.floor(mins / 60)}${t.hour} ${t.ago}`);
 };
-
 function Shield({ level, color }: { level: number; color: string }) {
   return <div className="shield" style={{ "--shield": color } as React.CSSProperties}><span>TH</span>{level}</div>;
 }
@@ -129,6 +131,7 @@ export default function Home() {
   const [locale, setLocale] = useState<Locale>("ko");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "free" | "delayed">("all");
+  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [view, setView] = useState<"dashboard" | "settings">("dashboard");
   const [refreshKey, setRefreshKey] = useState(0);
   const apiBase = typeof window === "undefined" ? "" : process.env.NEXT_PUBLIC_API_BASE || `${location.protocol}//${location.hostname}:8787`;
@@ -145,10 +148,28 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("multi-village-display-options");
+    if (!saved) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const parsed = JSON.parse(saved) as Partial<DisplayOptions>;
+        setDisplayOptions((current) => ({ ...current, ...parsed }));
+      } catch { /* Ignore invalid browser state. */ }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const changeLocale = (next: Locale) => {
     setLocale(next);
     localStorage.setItem("multi-village-locale", next);
     document.documentElement.lang = next;
+  };
+
+  const changeDisplayOption = (key: keyof DisplayOptions, value: boolean) => {
+    const next = { ...displayOptions, [key]: value };
+    setDisplayOptions(next);
+    localStorage.setItem("multi-village-display-options", JSON.stringify(next));
   };
 
   useEffect(() => {
@@ -187,6 +208,7 @@ export default function Home() {
     return [{ account, goldFill, elixirFill, score: shortage * .75 + freeBuilderRatio * .25 }];
   }).sort((a, b) => b.score - a.score), [liveAccounts]);
   const freeBuilders = liveAccounts.reduce((sum, a) => sum + a.builders.free, 0);
+  const availabilityObservations = useMemo(() => observeAvailability(liveAccounts), [liveAccounts]);
   const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
   const next = liveAccounts.flatMap((a) => a.upgrades.map((u) => ({ ...u, account: a.name }))).sort((a, b) => +new Date(a.finishAt) - +new Date(b.finishAt))[0];
 
@@ -215,6 +237,10 @@ export default function Home() {
             <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveId("all"); }} aria-label={t.statusAll}>
               <option value="all">{t.statusAll}</option><option value="free">{t.freeOnly}</option><option value="delayed">{t.delayedOnly}</option>
             </select>
+            <details className="display-options"><summary>{t.displayOptions}</summary><div>
+              <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t.inferGoblinResearcher}</label>
+              <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t.inferGoblinBuilder}</label>
+            </div></details>
           </div>
           <div className="account-tabs" role="tablist">
             <button className={activeId === "all" ? "active" : ""} onClick={() => setActiveId("all")}>{t.all} <b>{visibleAccounts.length}</b></button>
@@ -226,15 +252,11 @@ export default function Home() {
           {accounts.map((account) => {
             const goldPct = account.resources ? Math.min(100, account.resources.gold / account.resources.capacity * 100) : 0;
             const elixirPct = account.resources ? Math.min(100, account.resources.elixir / account.resources.capacity * 100) : 0;
+            const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
+            const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
             return <article className="village-card" key={account.id} style={{ "--accent": account.color } as React.CSSProperties}>
               <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t.level} {account.level}</p></div><span className={account.online ? "status online" : "status"}>{account.online ? t.normal : t.delayed}</span></div>
-              <div className="builder-line"><div className="hammer">◆</div><div><span>{t.builder}</span><strong>{account.builders.free}{t.waiting}</strong></div><div className="builder-dots" aria-label={`${account.builders.free} free builders`}>{Array.from({ length: account.builders.total }, (_, i) => <i className={i < account.builders.total - account.builders.free ? "busy" : ""} key={i} />)}</div></div>
-              {account.upgradeSlots && <div className="upgrade-slots">
-                {account.upgradeSlots.laboratory && <div className={account.upgradeSlots.laboratory.available ? "ready" : ""}><span>{t.research}</span><strong>{account.upgradeSlots.laboratory.available ? t.available : t.busy}</strong></div>}
-                {account.upgradeSlots.petHouse && <div className={account.upgradeSlots.petHouse.available ? "ready" : ""}><span>{t.petHouse}</span><strong>{account.upgradeSlots.petHouse.available ? t.available : t.busy}</strong></div>}
-                {account.upgradeSlots.builderBase && <div className={account.upgradeSlots.builderBase.builders.free > 0 ? "ready" : ""}><span>{t.builderBaseBuilder}</span><strong>{account.upgradeSlots.builderBase.builders.free > 0 ? `${t.available} ${account.upgradeSlots.builderBase.builders.free}` : t.busy}</strong></div>}
-                {account.upgradeSlots.builderBase?.laboratory && <div className={account.upgradeSlots.builderBase.laboratory.available ? "ready" : ""}><span>{t.builderBaseLab}</span><strong>{account.upgradeSlots.builderBase.laboratory.available ? t.available : t.busy}</strong></div>}
-              </div>}
+              <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} locale={locale} />
               {account.resources ? <div className="resources">
                 <div><span><i className="gold-dot" />{t.gold} <b>{fmtNumber(account.resources.gold)}</b></span><em><i style={{ width: `${goldPct}%` }} /></em></div>
                 <div><span><i className="elixir-dot" />{t.elixir} <b>{fmtNumber(account.resources.elixir)}</b></span><em><i style={{ width: `${elixirPct}%` }} /></em></div>
