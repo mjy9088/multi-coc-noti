@@ -1,0 +1,25 @@
+{
+  "name": "multi-coc-noti",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @multi-coc/dashboard dev",
+    "build": "pnpm --filter @multi-coc/dashboard build",
+    "start": "pnpm --filter @multi-coc/dashboard start",
+    "collector": "pnpm --filter @multi-coc/collector start",
+    "notifier": "pnpm --filter @multi-coc/notifier start",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/dashboard/tsconfig.json",
+    "test": "pnpm typecheck && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build",
+    "lint": "pnpm --filter @multi-coc/dashboard lint"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.20.0",
+    "typescript": "5.9.3"
+  }
+}

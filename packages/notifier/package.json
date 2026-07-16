@@ -1,0 +1,13 @@
+{
+  "name": "@multi-coc/notifier",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/notifier.ts",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@multi-coc/shared": "workspace:*"
+  }
+}

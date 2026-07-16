@@ -1,0 +1,10 @@
+**/node_modules
+.pnpm-store
+.git
+**/.next
+**/*.tsbuildinfo
+**/.env
+**/.env.local
+data
+.local
+npm-debug.log*
