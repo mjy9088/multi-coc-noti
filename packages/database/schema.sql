@@ -165,6 +165,17 @@ CREATE TABLE IF NOT EXISTS snapshot_logs (
   recorded_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Older versions allowed the same collected document to be inserted more than
+-- once. Keep the first copy so history imports can use a stable conflict key.
+DELETE FROM snapshot_logs newer
+USING snapshot_logs older
+WHERE newer.account_id = older.account_id
+  AND newer.captured_at = older.captured_at
+  AND newer.data_source = older.data_source
+  AND newer.id > older.id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS snapshot_logs_account_capture_source_unique_idx
+  ON snapshot_logs (account_id, captured_at, data_source);
 CREATE INDEX IF NOT EXISTS snapshot_logs_account_captured_idx
   ON snapshot_logs (account_id, captured_at DESC);
 

@@ -86,9 +86,38 @@ Collector에 전역 `CLASH_OF_CLANS_API_TOKEN`을 설정하면 공식 Player API
 - `SNAPSHOT_RETENTION_DAYS=90`: 스냅샷 보존 기간. `0`이면 자동 삭제하지 않습니다.
 - `INGEST_RATE_LIMIT_PER_MINUTE=120`: 계정·접속 IP 조합별 분당 수집 제한입니다.
 
-스냅샷 원문과 정규화 결과는 PostgreSQL의 `snapshot_logs`에도 함께 기록하고, 게임 export 원문은 `village_exports.raw`에 보존합니다. 업그레이드와 Bark 예약·발송 상태는 각각 `tracked_upgrades`, `upgrade_notifications`에 저장합니다. 스냅샷 JSONL은 파일 기반 히스토리를 위해 계속 작성하지만 Notifier는 파일을 읽지 않습니다.
+스냅샷 원문과 정규화 결과는 PostgreSQL의 `snapshot_logs`에도 함께 기록하고, 게임 export 원문은 `village_exports.raw`에 보존합니다. 업그레이드와 Bark 예약·발송 상태는 각각 `tracked_upgrades`, `upgrade_notifications`에 저장합니다. 대시보드 최신 상태와 히스토리 API는 DB를 기준으로 하며, 스냅샷 JSONL은 독립 보존본으로 계속 작성하지만 Notifier는 파일을 읽지 않습니다.
 
-정리는 시작 시 한 번, 이후 6시간마다 실행됩니다. `SNAPSHOT_RETENTION_DAYS`는 JSONL과 DB 로그에 동일하게 적용됩니다. 최신 상태는 별도 `latest.json`에 유지되므로 오래된 로그를 정리해도 현재 대시보드는 유지됩니다.
+정리는 시작 시 한 번, 이후 6시간마다 실행됩니다. `SNAPSHOT_RETENTION_DAYS`는 JSONL과 DB 로그에 동일하게 적용됩니다. 최신 상태는 DB와 별도 `latest.json`에 함께 유지됩니다.
+
+## 마을별 히스토리 백업과 복원
+
+PostgreSQL에 저장된 `snapshot_logs`와 `village_exports`의 원본·정규화 JSON을 마을별 파일로 내보낼 수 있습니다. 백업에는 표시 이름, 플레이어 태그, 색상과 업그레이드별 알림 시점도 포함하지만 수집 API 키와 source URL은 포함하지 않습니다. 기본 경로인 `.local/village-history`는 Git에서 제외됩니다.
+
+```bash
+# 모든 마을을 태그별 JSON 파일로 백업
+just history-export
+
+# UUID, 플레이어 태그 또는 정확한 표시 이름으로 한 마을만 백업
+just history-export village='#GRG2VGRQ9'
+
+# 파일 하나 또는 디렉터리 전체를 현재 DB에 병합
+just history-import path=.local/village-history
+```
+
+Import는 계정을 플레이어 태그로 찾고 기존 계정과 기존 업그레이드 알림 설정은 덮어쓰지 않습니다. 스냅샷은 `capturedAt + dataSource`, 게임 export는 `exportedAt`이 이미 있으면 건너뜁니다. Import가 끝나면 최신 JSON으로 추적 업그레이드와 미래 Bark 예약을 다시 만들며, 새로 복원된 업그레이드에는 백업된 알림 시점을 적용합니다. 같은 백업을 반복해서 import해도 JSON 히스토리가 늘어나지 않습니다.
+
+빈 개발 DB에 seed할 때는 다음 명령을 사용합니다.
+
+```bash
+just history-seed
+```
+
+개발 DB 자체를 삭제하고 같은 백업으로 즉시 다시 만들려면 먼저 `just ui`를 종료한 뒤 아래 명령을 실행합니다. 이 명령은 백업 파일 형식을 검증한 후에만 `multi_coc` DB를 삭제하며 Docker의 snapshot JSONL 볼륨은 건드리지 않습니다.
+
+```bash
+just db-reseed
+```
 
 ## 알림 서버만 분리하기
 

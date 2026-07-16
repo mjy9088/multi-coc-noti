@@ -5,7 +5,7 @@ import path from "node:path";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
   cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
-  listAccounts, listTrackedUpgrades, listLatestVillageExports, migrate, saveSnapshotLog, saveVillageExport,
+  listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateTrackedUpgrade,
 } from "@multi-coc/database";
 import { dataDir, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
@@ -13,7 +13,7 @@ import type { Account, SnapshotDocument, VillageSnapshot } from "@multi-coc/shar
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
 import { createRateLimiter } from "./rate-limit.ts";
-import { appendSnapshotRecord, cleanupRetention, readSnapshotHistory } from "./storage.ts";
+import { appendSnapshotRecord, cleanupRetention } from "./storage.ts";
 import { normalizePlayerTag, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
@@ -146,8 +146,11 @@ async function refreshOfficialProfile(account: Account): Promise<void> {
 async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[] }> {
   const tracked = await listTrackedUpgrades({ activeOnly: true });
   const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
+  const databaseSnapshots = new Map((await listLatestSnapshotLogs()).map((item) => [item.accountId, item.snapshot]));
   const result = await Promise.all(accounts.map(async (account) => {
-    const stored = await readJson<VillageSnapshot>(path.join(root, "accounts", account.id, "latest.json"));
+    const fileSnapshot = await readJson<VillageSnapshot>(path.join(root, "accounts", account.id, "latest.json"));
+    const databaseSnapshot = databaseSnapshots.get(account.id);
+    const stored = databaseSnapshot && (!fileSnapshot || new Date(databaseSnapshot.lastSeen) > new Date(fileSnapshot.lastSeen)) ? databaseSnapshot : fileSnapshot;
     const villageExport = exports.get(account.id)?.normalized;
     const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
     const latest: VillageSnapshot = stored || {
@@ -276,7 +279,7 @@ const server = createServer(async (request, response) => {
       const account = accounts.find((item) => item.id === url.searchParams.get("account"));
       if (!account) return json(response, 404, { error: "unknown account" });
       const limit = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("limit") || 100)) || 100));
-      const records = await readSnapshotHistory(root, account.id, limit);
+      const records = await listSnapshotHistoryLogs(account.id, limit);
       return json(response, 200, { account: { id: account.id, name: account.label }, snapshots: records.map((record) => record.snapshot || normalizeSnapshot(account, record.source || {})) });
     }
 
