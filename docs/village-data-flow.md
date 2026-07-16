@@ -6,6 +6,9 @@
 
 ## 기본 흐름
 
+<!-- contract: DATA-SNAPSHOT-001 -->
+<!-- contract: DATA-FORMAT-001 -->
+
 1. 사용자가 상단 `Quick Paste`, Update Data의 클립보드 버튼 또는 입력창으로 게임의 데이터 내보내기 JSON을 붙여넣는다.
 2. 클라이언트가 완성된 JSON 문서를 감지하면 짧은 debounce 후 미리보기 API를 호출한다. 입력이 바뀌면 이전 응답은 폐기한다.
 3. 서버가 JSON과 플레이어 태그, export 시각, 타이머 범위를 검증한다.
@@ -33,6 +36,9 @@ flowchart LR
 
 ## 서버 검증
 
+<!-- contract: IMPORT-TAG-001 -->
+<!-- contract: IMPORT-VALIDATION-001 -->
+
 - 플레이어 태그가 Supercell 문자 규칙을 만족해야 한다.
 - 기존 마을은 export의 플레이어 태그와 정확히 일치해야 한다.
 - export 시각은 현재보다 10분 이상 미래일 수 없고 30일보다 오래될 수 없다.
@@ -43,6 +49,12 @@ flowchart LR
 서버는 `timestamp + timer`로 완료 시각을 계산하고 `clash-of-clans-data` 이름 매핑을 이용해 건물·영웅·펫·연구와 장인기지 항목을 정규화한다.
 
 ## 업그레이드 가능 상태
+
+<!-- contract: IMPORT-PARSE-001 -->
+<!-- contract: IMPORT-SLOT-001 -->
+<!-- contract: IMPORT-SLOT-002 -->
+<!-- contract: IMPORT-SLOT-003 -->
+<!-- contract: IMPORT-SLOT-004 -->
 
 게임 export를 반영한 마을은 대시보드 카드의 업그레이드 가능 상태 영역에 다음 작업 슬롯을 함께 표시한다.
 

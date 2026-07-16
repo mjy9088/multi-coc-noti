@@ -4,7 +4,7 @@ import { fetchPlayerProfile, mergeOfficialProfile } from "../src/clash-api.ts";
 
 const account = { id: "account-uuid", playerTag: "#2ABC" };
 
-test("fetches and maps an official player profile with an encoded tag", async () => {
+test("[API-PROFILE-001] fetches and maps an official player profile with an encoded tag", async () => {
   let request: { url: string; options?: RequestInit } | undefined;
   const profile = await fetchPlayerProfile(account, {
     env: { CLASH_OF_CLANS_API_TOKEN: "token", CLASH_OF_CLANS_API_BASE: "https://api.example/v1/" },
@@ -19,7 +19,7 @@ test("fetches and maps an official player profile with an encoded tag", async ()
   assert.deepEqual(profile, { name: "Real Village", tag: "#2ABC", townHall: 17, level: 241 });
 });
 
-test("never makes an example snapshot look official", () => {
+test("[API-PROFILE-002] preserves the example origin when merging an official profile", () => {
   const example = { name: "Example", dataSource: "example" };
   assert.equal(mergeOfficialProfile(example, { name: "Real" }), example);
   assert.equal(mergeOfficialProfile({ name: "Old", dataSource: "pull" }, { name: "Real" }).name, "Real");

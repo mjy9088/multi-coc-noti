@@ -15,6 +15,8 @@
 
 ### 주요 환경 변수
 
+<!-- contract: OPS-RATE-001 -->
+
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | 없음 | 관리자 API와 설정 화면 로그인에 필요한 비밀값 |
@@ -63,6 +65,8 @@ just notifier
 
 ## 데이터 수집 경로
 
+<!-- contract: API-PROFILE-001 -->
+
 | 경로 | 식별·인증 | 용도 |
 | --- | --- | --- |
 | 게임 export | JSON의 플레이어 태그 + 관리자 인증 | 일상적인 업그레이드·슬롯 갱신 |
@@ -73,6 +77,9 @@ just notifier
 게임 export와 snapshot에서 감지한 업그레이드는 `tracked_upgrades`에 합쳐집니다. 같은 마을·항목·다음 레벨의 중복 타이머는 취소 처리하고, 더 이상 관측되지 않은 활성 항목은 완료 시각에 따라 완료 또는 취소 처리합니다.
 
 ## 데이터 저장과 보존
+
+<!-- contract: OPS-HISTORY-001 -->
+<!-- contract: OPS-RETENTION-001 -->
 
 계정, 태그 그룹 순서, export, 스냅샷, 업그레이드와 알림 상태는 PostgreSQL에 저장합니다.
 
@@ -114,6 +121,9 @@ just data reseed
 백업에는 표시 이름, 플레이어 태그, 색상, 계정 태그, 자원 상태·준비 시간, snapshot/export가 포함됩니다. 수집 API 키와 Pull URL은 포함하지 않습니다. Import는 플레이어 태그로 기존 계정을 찾으며, 기존 계정의 현재 설정은 덮어쓰지 않습니다. 새 계정을 만들 때는 백업의 자원 설정을 복원합니다. 동일한 snapshot과 export를 건너뛰므로 반복 실행해도 히스토리가 중복되지 않습니다.
 
 ## Notifier 분리 배포
+
+<!-- contract: ALERT-DELIVERY-001 -->
+<!-- contract: ALERT-DELIVERY-002 -->
 
 Collector가 먼저 DB 마이그레이션을 실행해야 합니다. 별도 알림 서버의 Notifier는 수집 서버와 같은 PostgreSQL에 연결합니다.
 

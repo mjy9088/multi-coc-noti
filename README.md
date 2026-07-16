@@ -40,6 +40,7 @@ just up
 - [마을 데이터 업데이트 흐름](docs/village-data-flow.md): export 검증, 식별자, 업그레이드 슬롯 계산과 안전장치
 - [자원 상태 기반 알림 정책](docs/resource-notification-policy.md): 자원 상태, 준비 시간, 알림 시점과 중복 방지 동작
 - [운영 가이드](docs/operations.md): 환경 변수, 실행 명령, 데이터 보존, 백업·복원, 분리 배포와 API
+- [테스트 계약과 문서 연결](docs/testing.md): 회귀 테스트의 목적, 근거 문서, 자동화 공백과 변경 기준
 
 ## 구성
 
@@ -78,6 +79,7 @@ pnpm --filter @multi-coc/dashboard lint
 
 ## 개발 원칙
 
+- 기능이나 회귀 테스트를 변경하기 전에 [테스트 계약과 문서 연결](docs/testing.md)과 [저장소 작업 규칙](AGENTS.md)을 확인합니다.
 - 계정, 그룹 순서와 알림 설정은 env가 아니라 PostgreSQL에 저장합니다.
 - 비밀값은 `docker/.env` 또는 패키지별 `.env`에만 두며 `NEXT_PUBLIC_*`에는 넣지 않습니다.
 - 플레이어 태그는 게임 데이터 매칭에, UUID는 내부 DB 관계와 API 경로에 사용합니다.

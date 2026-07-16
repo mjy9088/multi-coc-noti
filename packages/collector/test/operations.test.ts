@@ -6,7 +6,7 @@ import path from "node:path";
 import { createRateLimiter } from "../src/rate-limit.ts";
 import { appendSnapshotRecord, cleanupRetention, readSnapshotHistory } from "../src/storage.ts";
 
-test("rate limiter resets after its window", () => {
+test("[OPS-RATE-001] rate limiter resets after its window", () => {
   let timestamp = 1_000;
   const consume = createRateLimiter({ limit: 2, windowMs: 1_000, now: () => timestamp });
   assert.equal(consume("1:local").allowed, true);
@@ -16,7 +16,7 @@ test("rate limiter resets after its window", () => {
   assert.equal(consume("1:local").allowed, true);
 });
 
-test("rotates snapshot JSONL by UTC date and reads newest history first", async (context) => {
+test("[OPS-HISTORY-001] rotates snapshot JSONL by UTC date and reads newest history first", async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), "multi-coc-storage-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   const older = { id: "1", name: "Main", lastSeen: "2026-07-15T23:50:00Z", builders: { free: 0, total: 6 }, resources: {}, upgrades: [] };
@@ -27,7 +27,7 @@ test("rotates snapshot JSONL by UTC date and reads newest history first", async 
   assert.deepEqual(history.map((record) => record.capturedAt), [newer.lastSeen, older.lastSeen]);
 });
 
-test("removes only dated files outside retention", async (context) => {
+test("[OPS-RETENTION-001] removes only dated files outside retention", async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), "multi-coc-retention-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   await appendSnapshotRecord(root, "1", { id: "1", lastSeen: "2026-01-01T00:00:00Z" }, {});

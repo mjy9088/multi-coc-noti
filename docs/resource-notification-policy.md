@@ -54,6 +54,8 @@ DB에는 다음 네 상태를 서로 구분해 저장한다.
 
 ## 알림 스케줄
 
+<!-- contract: ALERT-PLAN-001 -->
+
 각 활성 업그레이드는 마을의 현재 자원 상태로 다음 예약을 만든다.
 
 ### 자원 많이 남음
@@ -158,6 +160,8 @@ notification_kind: completion | one_minute | resource_preparation
 - 히스토리 백업은 마을 자원 상태와 준비 시간을 포함하도록 확장
 
 ## Bark 문구
+
+<!-- contract: ALERT-COPY-001 -->
 
 한국어 예시:
 

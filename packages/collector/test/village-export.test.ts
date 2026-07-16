@@ -5,12 +5,12 @@ import { normalizePlayerTag, parseVillageExport } from "../src/village-export.ts
 const now = Date.parse("2026-07-17T01:00:00Z");
 const timestamp = Math.floor(now / 1000) - 60;
 
-test("normalizes player tags and rejects invalid characters", () => {
+test("[IMPORT-TAG-001] normalizes player tags and rejects invalid characters", () => {
   assert.equal(normalizePlayerTag(" 2p0j8lq "), "#2P0J8LQ");
   assert.throws(() => normalizePlayerTag("#ABC123"), /invalid player tag/);
 });
 
-test("parses active home and builder upgrades from an in-game export", () => {
+test("[IMPORT-PARSE-001] parses active home and builder upgrades from an in-game export", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,
     buildings: [
@@ -32,7 +32,7 @@ test("parses active home and builder upgrades from an in-game export", () => {
   assert.equal(result.upgrades[0].finishAt, new Date((timestamp + 3600) * 1000).toISOString());
 });
 
-test("reports unlocked idle upgrade slots as available", () => {
+test("[IMPORT-SLOT-001] reports unlocked idle upgrade slots as available", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,
     buildings: [
@@ -49,7 +49,7 @@ test("reports unlocked idle upgrade slots as available", () => {
   });
 });
 
-test("infers a Goblin Researcher slot from two concurrent Home Village research timers", () => {
+test("[IMPORT-SLOT-002] infers a Goblin Researcher slot from concurrent research timers", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,
     buildings: [{ data: 1000001, lvl: 17 }, { data: 1000015, lvl: 6, cnt: 5 }, { data: 1000007, lvl: 15 }],
@@ -59,7 +59,7 @@ test("infers a Goblin Researcher slot from two concurrent Home Village research 
   assert.deepEqual(result.upgradeSlots.laboratory, { available: false, active: 2, total: 2 });
 });
 
-test("infers the additional Builder Base builder from three concurrent worker upgrades", () => {
+test("[IMPORT-SLOT-003] infers the additional Builder Base builder from concurrent worker upgrades", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,
     buildings: [{ data: 1000001, lvl: 17 }, { data: 1000015, lvl: 6, cnt: 5 }],
@@ -73,7 +73,7 @@ test("infers the additional Builder Base builder from three concurrent worker up
   assert.deepEqual(result.upgradeSlots.builderBase?.builders, { total: 3, free: 0 });
 });
 
-test("does not expose locked slots and treats facilities under upgrade as busy", () => {
+test("[IMPORT-SLOT-004] hides locked slots and treats facilities under upgrade as busy", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,
     buildings: [{ data: 1000001, lvl: 10 }, { data: 1000015, lvl: 5, cnt: 5 }, { data: 1000007, lvl: 9, timer: 600 }],
@@ -86,7 +86,7 @@ test("does not expose locked slots and treats facilities under upgrade as busy",
   });
 });
 
-test("rejects stale, future, and suspicious export values", () => {
+test("[IMPORT-VALIDATION-001] rejects stale, future, and suspicious export values", () => {
   assert.throws(() => parseVillageExport({ tag: "#2P0J8LQ", timestamp: Math.floor(now / 1000) - 31 * 86400 }, { now }), /older than 30 days/);
   assert.throws(() => parseVillageExport({ tag: "#2P0J8LQ", timestamp: Math.floor(now / 1000) + 700 }, { now }), /future/);
   assert.throws(() => parseVillageExport({ tag: "#2P0J8LQ", timestamp, buildings: [{ data: 1000008, lvl: 2, timer: 181 * 86400 }] }, { now }), /invalid timer/);

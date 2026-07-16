@@ -14,12 +14,12 @@ const due: DueNotification = {
   finishAt: "2026-07-17T10:00:00Z",
 };
 
-test("formats reminder and completion notifications", () => {
+test("[ALERT-COPY-001] formats reminder and completion notifications", () => {
   assert.match(localizeNotification(due, "ko").title, /자원을 미리 준비하세요/);
   assert.match(localizeNotification({ ...due, kind: "completion", minutesBefore: 0 }, "en").title, /complete/);
 });
 
-test("plans notifications from the village resource policy", () => {
+test("[ALERT-PLAN-001] plans notifications from the village resource policy", () => {
   const now = new Date("2026-07-17T09:30:00Z");
   const finish = "2026-07-17T10:00:00Z";
   assert.deepEqual(planResourceNotifications("abundant", 60, finish, now).map((item) => item.kind), ["completion"]);
@@ -30,7 +30,7 @@ test("plans notifications from the village resource policy", () => {
   assert.deepEqual(planResourceNotifications("unanswered", null, finish, now).map((item) => item.kind), ["completion"]);
 });
 
-test("claims DB notifications and records successful Bark delivery", async (context) => {
+test("[ALERT-DELIVERY-001] delivers claimed notifications and records Bark success", async (context) => {
   const requests: Array<{ url: string | undefined; body: { title: string; body: string } }> = [];
   const server = createServer(async (request, response) => {
     const chunks: Buffer[] = [];
@@ -56,7 +56,7 @@ test("claims DB notifications and records successful Bark delivery", async (cont
   assert.equal(requests[0].url, "/test-device"); assert.match(requests[0].body.body, /60 minute/);
 });
 
-test("returns failed Bark deliveries to the DB queue", async () => {
+test("[ALERT-DELIVERY-002] returns failed Bark deliveries to the DB queue", async () => {
   const failed: string[] = [];
   const config: NotifierConfig = { intervalMs: 10_000, barkBase: "https://example.invalid", deviceKey: "test", locale: "ko", group: "Test" };
   const result = await runOnce(config, {
