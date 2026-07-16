@@ -38,14 +38,23 @@ CREATE TABLE IF NOT EXISTS accounts (
   label text NOT NULL,
   player_tag text NOT NULL DEFAULT '',
   color text NOT NULL DEFAULT '#4c9a79',
+  tags text[] NOT NULL DEFAULT ARRAY[]::text[],
   api_key text NOT NULL,
   source_url text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT ARRAY[]::text[];
+
 ALTER TABLE accounts DROP COLUMN IF EXISTS source_api_token;
 ALTER TABLE accounts DROP COLUMN IF EXISTS clash_api_token;
+
+CREATE TABLE IF NOT EXISTS dashboard_settings (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  group_order text[] NOT NULL DEFAULT ARRAY[]::text[],
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS tracked_upgrades (
   id bigserial PRIMARY KEY,

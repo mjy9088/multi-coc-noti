@@ -25,7 +25,7 @@ export type VillageHistoryBundle = {
   format: "multi-coc-village-history";
   version: 1;
   exportedAt: string;
-  account: { id: string; label: string; playerTag: string; color: string };
+  account: { id: string; label: string; playerTag: string; color: string; tags?: string[] };
   snapshots: Array<{ capturedAt: string; dataSource: string; snapshot: VillageSnapshot; source: SnapshotDocument }>;
   villageExports: Array<{ playerTag: string; exportedAt: string; raw: unknown; normalized: ExportData }>;
   upgradeSettings: Array<{ source: UpgradeSource; sourceKey: string; notificationOffsets: number[] }>;
@@ -55,7 +55,7 @@ export async function migrate() {
 
 const accountFromRow = (row: pg.QueryResultRow): Account => ({
   id: String(row.id), legacyIndex: row.legacy_index, label: row.label, playerTag: row.player_tag,
-  color: row.color, apiKey: row.api_key, sourceUrl: row.source_url,
+  color: row.color, tags: (row.tags as string[] || []).map(String), apiKey: row.api_key, sourceUrl: row.source_url,
 });
 
 export async function listAccounts() {
@@ -65,24 +65,38 @@ export async function listAccounts() {
 
 export async function createAccount(value: AccountInput): Promise<Account> {
   const { rows } = await database().query(`
-    INSERT INTO accounts (label, player_tag, color, api_key, source_url)
-    VALUES ($1,$2,$3,$4,$5) RETURNING *
-  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || ""]);
+    INSERT INTO accounts (label, player_tag, color, tags, api_key, source_url)
+    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
+  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || ""]);
   return accountFromRow(rows[0]);
 }
 
 export async function updateAccount(id: string, value: AccountInput): Promise<Account | null> {
   const { rows } = await database().query(`
-    UPDATE accounts SET label=$2, player_tag=$3, color=$4, api_key=$5,
-      source_url=$6, updated_at=now()
+    UPDATE accounts SET label=$2, player_tag=$3, color=$4, tags=$5, api_key=$6,
+      source_url=$7, updated_at=now()
     WHERE id=$1 RETURNING *
-  `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.apiKey, value.sourceUrl || ""]);
+  `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || ""]);
   return rows[0] ? accountFromRow(rows[0]) : null;
 }
 
 export async function deleteAccount(id: string): Promise<boolean> {
   const result = await database().query("DELETE FROM accounts WHERE id=$1", [id]);
   return (result.rowCount || 0) > 0;
+}
+
+export async function getDashboardSettings(): Promise<{ groupOrder: string[] }> {
+  const { rows } = await database().query("SELECT group_order FROM dashboard_settings WHERE singleton=true");
+  return { groupOrder: (rows[0]?.group_order as string[] || []).map(String) };
+}
+
+export async function updateDashboardSettings(groupOrder: string[]): Promise<{ groupOrder: string[] }> {
+  const { rows } = await database().query(`
+    INSERT INTO dashboard_settings (singleton,group_order) VALUES (true,$1)
+    ON CONFLICT (singleton) DO UPDATE SET group_order=EXCLUDED.group_order,updated_at=now()
+    RETURNING group_order
+  `, [groupOrder]);
+  return { groupOrder: (rows[0].group_order as string[] || []).map(String) };
 }
 
 export async function clearLegacyIndex(id: string): Promise<void> {
@@ -297,7 +311,7 @@ export async function exportVillageHistories(selector?: string): Promise<Village
     ]);
     bundles.push({
       format: "multi-coc-village-history", version: 1, exportedAt: new Date().toISOString(),
-      account: { id: String(row.id), label: row.label, playerTag: row.player_tag, color: row.color },
+      account: { id: String(row.id), label: row.label, playerTag: row.player_tag, color: row.color, tags: (row.tags as string[] || []).map(String) },
       snapshots: snapshots.rows.map((item) => ({ capturedAt: new Date(item.captured_at).toISOString(), dataSource: item.data_source, snapshot: item.snapshot as VillageSnapshot, source: item.source as SnapshotDocument })),
       villageExports: exports.rows.map((item) => ({ playerTag: item.player_tag, exportedAt: new Date(item.exported_at).toISOString(), raw: item.raw as unknown, normalized: item.normalized as ExportData })),
       upgradeSettings: settings.rows.map((item) => ({ source: item.source as UpgradeSource, sourceKey: item.source_key, notificationOffsets: normalizeOffsets(item.notification_offsets as number[]) })),
@@ -321,9 +335,9 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       const idTaken = validOriginalId && (await client.query("SELECT 1 FROM accounts WHERE id::text=$1", [bundle.account.id])).rowCount;
       const id = validOriginalId && !idTaken ? bundle.account.id : randomUUID();
       const result = await client.query(`
-        INSERT INTO accounts (id,label,player_tag,color,api_key,source_url)
-        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", randomUUID(), ""]);
+        INSERT INTO accounts (id,label,player_tag,color,tags,api_key,source_url)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", bundle.account.tags || [], randomUUID(), ""]);
       accountRow = result.rows[0];
       created = true;
     }

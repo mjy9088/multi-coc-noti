@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
+import { isUpgradeActive, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
 
 const account = { id: "main", label: "Main", color: "#123456" };
 
@@ -28,4 +28,9 @@ test("parses pretty JSON as one document and NDJSON line by line", () => {
   assert.equal(parseSnapshotDocuments('{"id":1}\n{"id":2}\n', "application/x-ndjson").length, 2);
   assert.equal(parseSnapshotDocuments('[{"id":1},{"id":2}]', "application/json").length, 2);
   assert.equal(parseSnapshotDocuments('{"id":1}\n{"id":2}\n', "text/plain").length, 2);
+});
+
+test("normalizes comma-separated account tags case-insensitively", () => {
+  assert.deepEqual(normalizeAccountTags(" Main, #war, main,  Mini "), ["Main", "war", "Mini"]);
+  assert.deepEqual(normalizeAccountTags(undefined, ["Existing"]), ["Existing"]);
 });

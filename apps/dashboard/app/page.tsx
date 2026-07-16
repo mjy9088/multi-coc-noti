@@ -25,6 +25,7 @@ type Village = {
   townHall: number;
   level: number;
   color: string;
+  tags?: string[];
   dataSource?: "example" | "pull" | "push" | "unknown";
   online: boolean;
   officialApiStatus?: "disabled" | "synced" | "delayed";
@@ -38,11 +39,12 @@ type Village = {
   upgrades: Upgrade[];
 };
 
-type DashboardData = { generatedAt: string; accounts: Village[] };
+type DashboardData = { generatedAt: string; accounts: Village[]; groupOrder?: string[] };
 
 const now = Date.now();
 const demoData: DashboardData = {
   generatedAt: new Date(now - 2 * 60_000).toISOString(),
+  groupOrder: ["War", "Main", "Mini"],
   accounts: [
     {
       id: "main",
@@ -51,6 +53,7 @@ const demoData: DashboardData = {
       townHall: 17,
       level: 241,
       color: "#e9a23b",
+      tags: ["Main", "War"],
       online: true,
       lastSeen: new Date(now - 2 * 60_000).toISOString(),
       builders: { free: 1, total: 6, regularTotal: 6 },
@@ -68,6 +71,7 @@ const demoData: DashboardData = {
       townHall: 15,
       level: 187,
       color: "#4ea58c",
+      tags: ["War"],
       online: true,
       lastSeen: new Date(now - 5 * 60_000).toISOString(),
       builders: { free: 0, total: 6 },
@@ -83,6 +87,7 @@ const demoData: DashboardData = {
       townHall: 12,
       level: 119,
       color: "#718ccc",
+      tags: ["Mini"],
       online: false,
       lastSeen: new Date(now - 41 * 60_000).toISOString(),
       builders: { free: 2, total: 5 },
@@ -103,13 +108,18 @@ export default function Home() {
   const t = useTranslations("Dashboard");
   const { formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
   const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
-  const [activeId, setActiveId] = useState("all");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(now);
   const [demo, setDemo] = useState(demoEnabled);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "free" | "delayed">("all");
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
+  const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
   const [view, setView] = useState<"dashboard" | "settings">("dashboard");
+  const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
+  const [manageVillageId, setManageVillageId] = useState<string | null>(null);
+  const [quickPasteRequest, setQuickPasteRequest] = useState<{ id: number; text: string; clipboardError: boolean } | null>(null);
+  const [quickPasteLoading, setQuickPasteLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const apiBase = typeof window === "undefined" ? "" : process.env.NEXT_PUBLIC_API_BASE || `${location.protocol}//${location.hostname}:8787`;
   useEffect(() => {
@@ -121,6 +131,11 @@ export default function Home() {
         setDisplayOptions((current) => ({ ...current, ...parsed }));
       } catch { /* Ignore invalid browser state. */ }
     }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPrioritizeAvailable(localStorage.getItem("multi-village-prioritize-available") === "true"), 0);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -142,22 +157,87 @@ export default function Home() {
     return () => { window.clearInterval(refresh); window.clearInterval(clock); };
   }, [refreshKey]);
 
+  useEffect(() => {
+    if (view !== "dashboard") return;
+    const updateSection = () => {
+      const queue = document.getElementById("upgrade-queue");
+      setDashboardSection(queue && queue.getBoundingClientRect().top <= 150 ? "queue" : "villages");
+    };
+    updateSection();
+    window.addEventListener("scroll", updateSection, { passive: true });
+    return () => window.removeEventListener("scroll", updateSection);
+  }, [view]);
+
+  const scrollToDashboardSection = (section: "villages" | "queue") => {
+    setDashboardSection(section);
+    document.getElementById(section === "villages" ? "village-list" : "upgrade-queue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const openVillageSettings = (accountId: string) => {
+    setManageVillageId(accountId);
+    setView("settings");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const quickPaste = async () => {
+    setQuickPasteLoading(true);
+    let text = ""; let clipboardError = false;
+    try {
+      text = await navigator.clipboard.readText();
+      if (!text.trim()) throw new Error("empty clipboard");
+    } catch {
+      clipboardError = true;
+    }
+    setQuickPasteRequest((current) => ({ id: (current?.id || 0) + 1, text, clipboardError }));
+    setManageVillageId(null);
+    setView("settings");
+    setQuickPasteLoading(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const liveAccounts = useMemo(() => data.accounts.map((account) => ({
     ...account,
     upgrades: account.upgrades.filter((upgrade) => new Date(upgrade.finishAt).getTime() > clockNow),
   })), [clockNow, data.accounts]);
+  const availabilityObservations = useMemo(() => observeAvailability(liveAccounts), [liveAccounts]);
   const visibleAccounts = useMemo(() => {
     const needle = lowerCase(query.trim());
     return liveAccounts.filter((account) => {
-      const matchesQuery = !needle || [account.name, account.tag, account.id].some((value) => lowerCase(value).includes(needle));
+      const matchesQuery = !needle || [account.name, account.tag, account.id, ...(account.tags || [])].some((value) => lowerCase(value).includes(needle));
       const matchesStatus = statusFilter === "all" || (statusFilter === "free" ? account.builders.free > 0 : account.officialApiStatus === "delayed");
       return matchesQuery && matchesStatus;
     });
   }, [liveAccounts, lowerCase, query, statusFilter]);
-  const accounts = activeId === "all" ? visibleAccounts : visibleAccounts.filter((a) => a.id === activeId);
+  const tagOptions = useMemo(() => {
+    const options = new Map<string, { label: string; count: number }>();
+    for (const account of visibleAccounts) for (const tag of account.tags || []) {
+      const key = lowerCase(tag);
+      const option = options.get(key);
+      options.set(key, { label: option?.label || tag, count: (option?.count || 0) + 1 });
+    }
+    const order = new Map((data.groupOrder || []).map((tag, index) => [lowerCase(tag), index]));
+    return [...options.entries()].map(([key, value]) => ({ key, ...value })).sort((a, b) => {
+      const aOrder = order.get(a.key) ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = order.get(b.key) ?? Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder || a.label.localeCompare(b.label);
+    });
+  }, [data.groupOrder, lowerCase, visibleAccounts]);
+  const selectedTag = activeTag !== null && tagOptions.some((tag) => tag.key === activeTag) ? activeTag : null;
+  const accounts = useMemo(() => {
+    const filtered = selectedTag === null ? visibleAccounts : visibleAccounts.filter((account) => (account.tags || []).some((tag) => lowerCase(tag) === selectedTag));
+    if (!prioritizeAvailable) return filtered;
+    const canStartUpgrade = (account: Village) => {
+      const displayed = applyDisplayOptions(account, availabilityObservations, displayOptions);
+      return displayed.builders.free > 0 || Boolean(displayed.laboratory?.available)
+        || Boolean(account.upgradeSlots?.petHouse?.available)
+        || Boolean(account.upgradeSlots?.builderBase?.builders.free)
+        || Boolean(account.upgradeSlots?.builderBase?.laboratory?.available);
+    };
+    return filtered.map((account, index) => ({ account, index, available: canStartUpgrade(account) }))
+      .sort((a, b) => Number(b.available) - Number(a.available) || a.index - b.index).map(({ account }) => account);
+  }, [availabilityObservations, displayOptions, lowerCase, prioritizeAvailable, selectedTag, visibleAccounts]);
   const allUpgrades = useMemo(() => accounts.flatMap((account) => account.upgrades.map((upgrade) => ({ account, upgrade }))).sort((a, b) => +new Date(a.upgrade.finishAt) - +new Date(b.upgrade.finishAt)), [accounts]);
   const freeBuilders = liveAccounts.reduce((sum, a) => sum + a.builders.free, 0);
-  const availabilityObservations = useMemo(() => observeAvailability(liveAccounts), [liveAccounts]);
   const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
   const next = liveAccounts.flatMap((a) => a.upgrades.map((u) => ({ ...u, account: a.name }))).sort((a, b) => +new Date(a.finishAt) - +new Date(b.finishAt))[0];
 
@@ -165,11 +245,11 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brand"><div className="brand-mark">M</div><div><strong>MULTI VILLAGE</strong><span>COMMAND CENTER</span></div></div>
-        <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => setView("settings")}>{t("settings")}</button></nav>
+        <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => { setManageVillageId(null); setView("settings"); }}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
         <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t("demo") : includesExample ? t("exampleIncluded") : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}<LocaleSwitcher /></div>
       </header>
 
-      {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} />}
+      {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="hero-row">
           <div><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
@@ -180,37 +260,46 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="account-controls">
+        <div className="dashboard-section-tabs section-tabs" role="navigation" aria-label={t("dashboardSections")}>
+          <button className={dashboardSection === "villages" ? "active" : ""} onClick={() => scrollToDashboardSection("villages")}>{t("villages")}</button>
+          <button className={dashboardSection === "queue" ? "active" : ""} onClick={() => scrollToDashboardSection("queue")}>{t("queueTab")}</button>
+        </div>
+
+        <section id="village-list" className="dashboard-scroll-section">
+          <div className="account-controls">
           <div className="account-tools">
-            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId("all"); }} placeholder={t("search")} aria-label={t("search")} />
-            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveId("all"); }} aria-label={t("statusAll")}>
+            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveTag(null); }} placeholder={t("search")} aria-label={t("search")} />
+            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveTag(null); }} aria-label={t("statusAll")}>
               <option value="all">{t("statusAll")}</option><option value="free">{t("freeOnly")}</option><option value="delayed">{t("delayedOnly")}</option>
             </select>
             <details className="display-options"><summary>{t("displayOptions")}</summary><div>
               <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t("inferGoblinResearcher")}</label>
               <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t("inferGoblinBuilder")}</label>
+              <label><input type="checkbox" checked={prioritizeAvailable} onChange={(event) => { setPrioritizeAvailable(event.target.checked); localStorage.setItem("multi-village-prioritize-available", String(event.target.checked)); }} />{t("prioritizeAvailable")}</label>
             </div></details>
           </div>
           <div className="account-tabs" role="tablist">
-            <button className={activeId === "all" ? "active" : ""} onClick={() => setActiveId("all")}>{t("all")} <b>{visibleAccounts.length}</b></button>
-            {visibleAccounts.map((a) => <button key={a.id} className={activeId === a.id ? "active" : ""} onClick={() => setActiveId(a.id)}><i style={{ background: a.color }} />{a.name}</button>)}
+            <button className={selectedTag === null ? "active" : ""} onClick={() => setActiveTag(null)}>{t("all")} <b>{visibleAccounts.length}</b></button>
+            {tagOptions.map((tag) => <button key={tag.key} className={selectedTag === tag.key ? "active" : ""} onClick={() => setActiveTag(tag.key)}><span className="tag-hash">#</span>{tag.label} <b>{tag.count}</b></button>)}
           </div>
-        </div>
+          </div>
 
-        <section className="village-grid">
+          <div className="village-grid">
           {accounts.map((account) => {
             const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
             const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
-            return <article className="village-card" key={account.id} style={{ "--accent": account.color } as React.CSSProperties}>
+            return <article className="village-card village-card-link" key={account.id} style={{ "--accent": account.color } as React.CSSProperties} role="button" tabIndex={0} aria-label={t("manageVillage", { name: account.name })} onClick={() => openVillageSettings(account.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openVillageSettings(account.id); } }}>
               <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t("level")} {account.level}</p></div><span className={`status ${account.officialApiStatus === "synced" ? "online" : account.officialApiStatus === "delayed" ? "" : "game-data"}`}>{account.officialApiStatus === "synced" ? `${t("profileApi")} · ${t("syncedState")}` : account.officialApiStatus === "delayed" ? `${t("profileApi")} · ${t("delayedState")}` : t("gameData")}</span></div>
+              {!!account.tags?.length && <div className="account-tag-list">{account.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>}
               <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
               <div className="card-foot"><span>{t("inProgress")} <b>{account.upgrades.length}</b></span><span>{t("updated")} {formatRelative(account.lastSeen, clockNow)}</span></div>
             </article>;
           })}
           {!accounts.length && <div className="empty villages-empty">{t("noMatches")}</div>}
+          </div>
         </section>
 
-        <section className="queue-section">
+        <section className="queue-section dashboard-scroll-section" id="upgrade-queue">
           <div className="section-title"><div><p className="eyebrow">UPGRADE QUEUE</p><h2>{t("queue")}</h2></div><span>{t("soonest")}</span></div>
           <div className="queue">
             {allUpgrades.map(({ account, upgrade }, index) => {

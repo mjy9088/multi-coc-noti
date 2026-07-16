@@ -5,10 +5,10 @@ import path from "node:path";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
   cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
-  listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
-  syncTrackedUpgrades, updateAccount, updateTrackedUpgrade,
+  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
+  syncTrackedUpgrades, updateAccount, updateDashboardSettings, updateTrackedUpgrade,
 } from "@multi-coc/database";
-import { dataDir, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
+import { dataDir, isUpgradeActive, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
 import type { Account, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
@@ -143,7 +143,7 @@ async function refreshOfficialProfile(account: Account): Promise<void> {
   } catch (error) { state.lastError = (error as Error).message; console.error(`[collector] ${account.id} official API: ${(error as Error).message}`); }
 }
 
-async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[] }> {
+async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[]; groupOrder: string[] }> {
   const tracked = await listTrackedUpgrades({ activeOnly: true });
   const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
   const databaseSnapshots = new Map((await listLatestSnapshotLogs()).map((item) => [item.accountId, item.snapshot]));
@@ -155,6 +155,7 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
     const latest: VillageSnapshot = stored || {
       id: account.id, name: account.label, tag: account.playerTag, townHall: 0, level: 0, color: account.color,
+      tags: account.tags,
       dataSource: "unavailable", online: false, lastSeen: new Date().toISOString(), builders: { free: 0, total: 0 },
       resources: null, upgrades: [],
     };
@@ -208,9 +209,10 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     const upgrades = accountUpgrades.filter((upgrade) => isUpgradeActive(upgrade));
     const officialState = officialStates.get(account.id);
     const officialApiStatus = !officialState?.configured ? "disabled" : !officialState.lastError && officialState.lastSuccessAt && Date.now() - new Date(officialState.lastSuccessAt).getTime() < interval * 2.5 ? "synced" : "delayed";
-    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, upgrades, officialApiStatus, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
+    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, tags: account.tags, upgrades, officialApiStatus, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
   }));
-  return { generatedAt: new Date().toISOString(), accounts: result };
+  const { groupOrder } = await getDashboardSettings();
+  return { generatedAt: new Date().toISOString(), accounts: result, groupOrder };
 }
 
 function accountInput(value: RequestValue, existing: Account | null): Omit<Account, "id" | "legacyIndex"> {
@@ -219,7 +221,7 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
   const playerTag = normalizePlayerTag(value.playerTag || existing?.playerTag);
   return {
     label, playerTag, apiKey: String(value.apiKey || existing?.apiKey || randomUUID()),
-    color: String(value.color || existing?.color || "#4c9a79"),
+    color: String(value.color || existing?.color || "#4c9a79"), tags: normalizeAccountTags(value.tags, existing?.tags),
     sourceUrl: String(value.sourceUrl ?? existing?.sourceUrl ?? ""),
   };
 }
@@ -286,10 +288,16 @@ const server = createServer(async (request, response) => {
     if (url.pathname.startsWith("/api/admin/")) {
       if (!requireAdmin(request, response)) return;
       if (request.method === "GET" && url.pathname === "/api/admin/accounts") return json(response, 200, { accounts: accounts.map(({ apiKey, legacyIndex, ...account }) => ({ ...account, hasApiKey: Boolean(apiKey) })) });
+      if (request.method === "GET" && url.pathname === "/api/admin/dashboard-settings") return json(response, 200, await getDashboardSettings());
+      if (request.method === "PATCH" && url.pathname === "/api/admin/dashboard-settings") {
+        const value = await requestJson(request);
+        if (Object.keys(value).some((key) => key !== "groupOrder")) throw new Error("only groupOrder can be changed");
+        return json(response, 200, await updateDashboardSettings(normalizeAccountTags(value.groupOrder)));
+      }
       if (request.method === "POST" && url.pathname === "/api/admin/accounts") {
         const account = await createAccount(accountInput(await requestJson(request), null)); await refreshAccounts();
         await Promise.all([poll(account), refreshOfficialProfile(account)]);
-        return json(response, 201, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color } });
+        return json(response, 201, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color, tags: account.tags } });
       }
       const accountPath = url.pathname.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})$/i);
       if (request.method === "PATCH" && accountPath) {
@@ -299,7 +307,7 @@ const server = createServer(async (request, response) => {
         if (!account) return json(response, 404, { error: "unknown account" });
         await refreshAccounts();
         await Promise.all([poll(account), refreshOfficialProfile(account)]);
-        return json(response, 200, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color } });
+        return json(response, 200, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color, tags: account.tags } });
       }
       if (request.method === "DELETE" && accountPath) { await deleteAccount(accountPath[1]); await refreshAccounts(); return json(response, 200, { deleted: true }); }
       if (request.method === "GET" && url.pathname === "/api/admin/upgrades") return json(response, 200, { upgrades: await listTrackedUpgrades() });

@@ -23,6 +23,7 @@ export type Account = {
   label: string;
   playerTag: string;
   color: string;
+  tags: string[];
   apiKey: string;
   sourceUrl: string;
 };
@@ -34,6 +35,7 @@ export type VillageSnapshot = {
   townHall: number;
   level: number;
   color: string;
+  tags?: string[];
   dataSource: string;
   online: boolean;
   officialApiStatus?: "disabled" | "synced" | "delayed";
@@ -50,6 +52,21 @@ export type VillageSnapshot = {
   resources: { gold: number; elixir: number; darkElixir: number; capacity: number } | null;
   upgrades: Upgrade[];
 };
+
+export function normalizeAccountTags(value: unknown, fallback: string[] = []): string[] {
+  if (value == null) return [...fallback];
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const tags: string[] = [];
+  const seen = new Set<string>();
+  for (const item of values) {
+    const tag = String(item).trim().replace(/^#+/, "").trim().slice(0, 40);
+    const key = tag.toLocaleLowerCase();
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    tags.push(tag);
+  }
+  return tags.slice(0, 20);
+}
 
 type RawUpgrade = Partial<Upgrade> & { type?: string };
 type RawVillage = {
@@ -100,7 +117,7 @@ const iso = (value?: string | number | null, fallback = new Date().toISOString()
   return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
 };
 
-export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color"> & Partial<Pick<Account, "playerTag">>, raw: SnapshotDocument, { dataSource = "unknown" } = {}): VillageSnapshot {
+export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color"> & Partial<Pick<Account, "playerTag" | "tags">>, raw: SnapshotDocument, { dataSource = "unknown" } = {}): VillageSnapshot {
   const village = raw.village || raw;
   const upgrades = Array.isArray(village.upgrades) ? village.upgrades : [];
   const total = Number(village.builders?.total ?? 0);
@@ -112,6 +129,7 @@ export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color
     townHall: Number(village.townHall || 0),
     level: Number(village.level || 0),
     color: account.color || "#4c9a79",
+    tags: account.tags || [],
     dataSource,
     online: true,
     lastSeen: iso(raw.capturedAt || raw.timestamp),
