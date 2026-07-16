@@ -28,6 +28,14 @@ export type ExportUpgrade = Upgrade & { dataId: number; base: "home" | "builder"
 export type ParsedVillageExport = {
   tag: string; exportedAt: string; timestamp: number; townHall: number;
   builders: { total: number; free: number }; upgrades: ExportUpgrade[];
+  upgradeSlots: {
+    laboratory: { available: boolean } | null;
+    petHouse: { available: boolean } | null;
+    builderBase: {
+      builders: { total: number; free: number };
+      laboratory: { available: boolean } | null;
+    } | null;
+  };
   unknownDataIds: number[]; raw: RawVillageExport;
 };
 
@@ -79,13 +87,31 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
   const builderBuildings = (Array.isArray(document.buildings2) ? document.buildings2 : []) as ExportEntry[];
   const bobUnlocked = builderBuildings.some((entry) => Number(entry.data) === 1000065 && Number(entry.lvl) > 0);
   const totalBuilders = builderHuts + (bobUnlocked ? 1 : 0);
-  const busyBuilders = upgrades.filter((upgrade) => upgrade.base === "home" && upgrade.type !== "research").length;
+  const busyBuilders = upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero")).length;
+  const laboratory = buildings.find((entry) => Number(entry.data) === 1000007);
+  const petHouse = buildings.find((entry) => Number(entry.data) === 1000068);
+  const builderLaboratory = builderBuildings.find((entry) => Number(entry.data) === 1000046);
+  const ottosOutpost = builderBuildings.find((entry) => Number(entry.data) === 1000078 && Number(entry.lvl) > 0);
+  const builderBaseUnlocked = builderBuildings.length > 0;
+  const totalBuilderBaseBuilders = builderBaseUnlocked ? (ottosOutpost ? 2 : 1) : 0;
+  const busyBuilderBaseBuilders = upgrades.filter((upgrade) => upgrade.base === "builder" && upgrade.type !== "research").length;
+  const slotAvailable = (building: ExportEntry | undefined, base: "home" | "builder", type: UpgradeType) => building
+    ? { available: !(Number(building.timer) > 0) && !upgrades.some((upgrade) => upgrade.base === base && upgrade.type === type) }
+    : null;
   const townHall = buildings.find((entry) => Number(entry.data) === 1000001);
 
   return {
     tag, exportedAt: new Date(timestamp * 1000).toISOString(), timestamp,
     townHall: Number(townHall?.lvl || 0),
     builders: { total: totalBuilders, free: Math.max(0, totalBuilders - busyBuilders) },
+    upgradeSlots: {
+      laboratory: slotAvailable(laboratory, "home", "research"),
+      petHouse: slotAvailable(petHouse, "home", "pet"),
+      builderBase: builderBaseUnlocked ? {
+        builders: { total: totalBuilderBaseBuilders, free: Math.max(0, totalBuilderBaseBuilders - busyBuilderBaseBuilders) },
+        laboratory: slotAvailable(builderLaboratory, "builder", "research"),
+      } : null,
+    },
     upgrades, unknownDataIds: [...unknownDataIds], raw: document,
   };
 }

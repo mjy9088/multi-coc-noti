@@ -160,7 +160,7 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     if (villageExport && (!stored || new Date(villageExport.exportedAt) >= new Date(stored.lastSeen))) {
       Object.assign(latest, {
         tag: villageExport.tag, townHall: villageExport.townHall || latest.townHall,
-        builders: villageExport.builders, upgrades: villageExport.upgrades,
+        builders: villageExport.builders, upgradeSlots: villageExport.upgradeSlots, upgrades: villageExport.upgrades,
         lastSeen: villageExport.exportedAt, dataSource: "game-export", online: true,
       });
     }

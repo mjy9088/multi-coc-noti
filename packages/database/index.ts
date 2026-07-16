@@ -1,6 +1,6 @@
 import pg from "pg";
 import { readFile } from "node:fs/promises";
-import type { Account, Upgrade, UpgradeType } from "@multi-coc/shared";
+import type { Account, Upgrade, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
@@ -10,6 +10,7 @@ export type ManualUpgrade = Upgrade & { accountId: string; startedAt: string; st
 type ManualUpgradeInput = Omit<ManualUpgrade, "id">;
 type ExportData = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number };
+  upgradeSlots?: VillageSnapshot["upgradeSlots"];
   upgrades: Upgrade[]; unknownDataIds: number[]; raw: unknown;
 };
 
@@ -133,7 +134,7 @@ export async function saveVillageExport(accountId: string, parsed: ExportData): 
     VALUES ($1,$2,$3,$4,$5)
   `, [accountId, parsed.tag, parsed.exportedAt, parsed.raw, {
     tag: parsed.tag, exportedAt: parsed.exportedAt, townHall: parsed.townHall,
-    builders: parsed.builders, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
+    builders: parsed.builders, upgradeSlots: parsed.upgradeSlots, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
   }]);
   return latest;
 }
