@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { applyDisplayOptions, defaultDisplayOptions, observeAvailability } from "@multi-coc/upgrade-availability";
 import type { DisplayOptions } from "@multi-coc/upgrade-availability";
+import { useTranslations } from "next-intl";
 import AdminPanel from "./admin-panel";
-import { locales, useI18n } from "./i18n";
+import LocaleSwitcher from "./locale-switcher";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
+import { useDashboardFormat } from "./use-dashboard-format";
 
 type Upgrade = {
   id: string;
@@ -98,7 +100,8 @@ function Shield({ level, color }: { level: number; color: string }) {
 }
 
 export default function Home() {
-  const { locale, setLocale, messages: t, formatDuration, formatQueueDate, formatRelative, lowerCase } = useI18n();
+  const t = useTranslations("Dashboard");
+  const { formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
   const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
   const [activeId, setActiveId] = useState("all");
   const [clockNow, setClockNow] = useState(now);
@@ -162,34 +165,34 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brand"><div className="brand-mark">M</div><div><strong>MULTI VILLAGE</strong><span>COMMAND CENTER</span></div></div>
-        <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t.dashboard}</button><button disabled title={t.history}>{t.history}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => setView("settings")}>{t.settings}</button></nav>
-        <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t.demo : includesExample ? t.exampleIncluded : `${t.synced} ${formatRelative(data.generatedAt, clockNow)}`}<div className="locale-toggle" aria-label="Language">{locales.map((option) => <button type="button" key={option} className={locale === option ? "selected" : ""} aria-pressed={locale === option} onClick={() => setLocale(option)} lang={option}>{option === "ko-KR" ? "한국어" : "English"}</button>)}</div></div>
+        <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => setView("settings")}>{t("settings")}</button></nav>
+        <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t("demo") : includesExample ? t("exampleIncluded") : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}<LocaleSwitcher /></div>
       </header>
 
       {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="hero-row">
-          <div><p className="eyebrow">{t.eyebrow}</p><h1>{t.title}</h1><p className="subcopy">{t.dashboardSubtitle}</p></div>
+          <div><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
           <div className="summary-strip">
-            <div><span>{t.accounts}</span><strong>{liveAccounts.length}</strong></div>
-            <div><span>{t.builders}</span><strong className={freeBuilders ? "green" : ""}>{freeBuilders}</strong></div>
-            <div><span>{t.earliest}</span><strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t.none}</strong></div>
+            <div><span>{t("accounts")}</span><strong>{liveAccounts.length}</strong></div>
+            <div><span>{t("builders")}</span><strong className={freeBuilders ? "green" : ""}>{freeBuilders}</strong></div>
+            <div><span>{t("earliest")}</span><strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t("none")}</strong></div>
           </div>
         </section>
 
         <div className="account-controls">
           <div className="account-tools">
-            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId("all"); }} placeholder={t.search} aria-label={t.search} />
-            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveId("all"); }} aria-label={t.statusAll}>
-              <option value="all">{t.statusAll}</option><option value="free">{t.freeOnly}</option><option value="delayed">{t.delayedOnly}</option>
+            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId("all"); }} placeholder={t("search")} aria-label={t("search")} />
+            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveId("all"); }} aria-label={t("statusAll")}>
+              <option value="all">{t("statusAll")}</option><option value="free">{t("freeOnly")}</option><option value="delayed">{t("delayedOnly")}</option>
             </select>
-            <details className="display-options"><summary>{t.displayOptions}</summary><div>
-              <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t.inferGoblinResearcher}</label>
-              <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t.inferGoblinBuilder}</label>
+            <details className="display-options"><summary>{t("displayOptions")}</summary><div>
+              <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t("inferGoblinResearcher")}</label>
+              <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t("inferGoblinBuilder")}</label>
             </div></details>
           </div>
           <div className="account-tabs" role="tablist">
-            <button className={activeId === "all" ? "active" : ""} onClick={() => setActiveId("all")}>{t.all} <b>{visibleAccounts.length}</b></button>
+            <button className={activeId === "all" ? "active" : ""} onClick={() => setActiveId("all")}>{t("all")} <b>{visibleAccounts.length}</b></button>
             {visibleAccounts.map((a) => <button key={a.id} className={activeId === a.id ? "active" : ""} onClick={() => setActiveId(a.id)}><i style={{ background: a.color }} />{a.name}</button>)}
           </div>
         </div>
@@ -199,33 +202,33 @@ export default function Home() {
             const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
             const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
             return <article className="village-card" key={account.id} style={{ "--accent": account.color } as React.CSSProperties}>
-              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t.level} {account.level}</p></div><span className={`status ${account.officialApiStatus === "synced" ? "online" : account.officialApiStatus === "delayed" ? "" : "manual"}`}>{account.officialApiStatus === "synced" ? `${t.profileApi} · ${t.syncedState}` : account.officialApiStatus === "delayed" ? `${t.profileApi} · ${t.delayedState}` : t.manual}</span></div>
+              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t("level")} {account.level}</p></div><span className={`status ${account.officialApiStatus === "synced" ? "online" : account.officialApiStatus === "delayed" ? "" : "manual"}`}>{account.officialApiStatus === "synced" ? `${t("profileApi")} · ${t("syncedState")}` : account.officialApiStatus === "delayed" ? `${t("profileApi")} · ${t("delayedState")}` : t("manual")}</span></div>
               <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
-              <div className="card-foot"><span>{t.inProgress} <b>{account.upgrades.length}</b></span><span>{t.updated} {formatRelative(account.lastSeen, clockNow)}</span></div>
+              <div className="card-foot"><span>{t("inProgress")} <b>{account.upgrades.length}</b></span><span>{t("updated")} {formatRelative(account.lastSeen, clockNow)}</span></div>
             </article>;
           })}
-          {!accounts.length && <div className="empty villages-empty">{t.noMatches}</div>}
+          {!accounts.length && <div className="empty villages-empty">{t("noMatches")}</div>}
         </section>
 
         <section className="queue-section">
-          <div className="section-title"><div><p className="eyebrow">UPGRADE QUEUE</p><h2>{t.queue}</h2></div><span>{t.soonest}</span></div>
+          <div className="section-title"><div><p className="eyebrow">UPGRADE QUEUE</p><h2>{t("queue")}</h2></div><span>{t("soonest")}</span></div>
           <div className="queue">
             {allUpgrades.map(({ account, upgrade }, index) => {
               const duration = Math.max(1, new Date(upgrade.finishAt).getTime() - clockNow);
               const urgency = duration < 6 * 3600_000;
-              const labels = { building: t.building, hero: t.hero, pet: t.pet, research: t.research };
+              const labels = { building: t("building"), hero: t("hero"), pet: t("pet"), research: t("research") };
               return <article className={urgency ? "upgrade urgent" : "upgrade"} key={`${account.id}-${upgrade.id}`}>
                 <div className={`upgrade-icon ${upgrade.type}`}>{upgrade.type === "research" ? "⌁" : upgrade.type === "hero" ? "♛" : "◆"}</div>
-                <div className="upgrade-info"><span>{account.name} · {labels[upgrade.type]}</span><h3>{upgrade.name}</h3><p>{t.level} {upgrade.level} → <b>{upgrade.nextLevel || upgrade.level + 1}</b></p></div>
-                <div className="timeline"><div><span>{urgency ? t.soon : t.remaining}</span><strong>{formatDuration(upgrade.finishAt, clockNow)}</strong></div><em><i style={{ width: `${Math.max(12, 88 - index * 13)}%` }} /></em></div>
+                <div className="upgrade-info"><span>{account.name} · {labels[upgrade.type]}</span><h3>{upgrade.name}</h3><p>{t("level")} {upgrade.level} → <b>{upgrade.nextLevel || upgrade.level + 1}</b></p></div>
+                <div className="timeline"><div><span>{urgency ? t("soon") : t("remaining")}</span><strong>{formatDuration(upgrade.finishAt, clockNow)}</strong></div><em><i style={{ width: `${Math.max(12, 88 - index * 13)}%` }} /></em></div>
                 <time>{formatQueueDate(upgrade.finishAt)}</time>
               </article>;
             })}
-            {!allUpgrades.length && <div className="empty">{t.empty}</div>}
+            {!allUpgrades.length && <div className="empty">{t("empty")}</div>}
           </div>
         </section>
       </div>
-      <footer><span>{t.dataStatus} · {demo ? t.awaiting : includesExample ? t.example : t.normal}</span><span>{t.bark} <b>{t.enabled}</b></span></footer>
+      <footer><span>{t("dataStatus")} · {demo ? t("awaiting") : includesExample ? t("example") : t("normal")}</span><span>{t("bark")} <b>{t("enabled")}</b></span></footer>
     </main>
   );
 }

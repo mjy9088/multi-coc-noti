@@ -12,6 +12,7 @@
   "dependencies": {
     "@multi-coc/upgrade-availability": "workspace:*",
     "next": "16.2.6",
+    "next-intl": "4.13.2",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

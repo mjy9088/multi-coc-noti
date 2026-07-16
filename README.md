@@ -114,7 +114,9 @@ docker run -d --name coc-notifier --restart unless-stopped \
 
 대시보드는 우측 상단에서 한국어와 영어를 즉시 전환합니다. 내부 locale은 BCP 47 태그인 `ko-KR`과 `en-US`로 통일하며, 선택은 쿠키에 저장해 서버의 첫 렌더부터 화면 언어와 `<html lang>`이 일치합니다. 예전 localStorage의 `ko`/`en` 값은 최초 접속 시 자동 이전됩니다.
 
-대시보드 공용 번역, locale 상태와 `Intl` 기반 날짜·상대시간·기간·숫자 포맷은 `apps/dashboard/app/i18n.tsx`에서 관리하고, 지원 locale과 쿠키 규칙은 서버에서도 안전하게 읽을 수 있는 `i18n-config.ts`에 둡니다. 새 화면에서 locale을 직접 비교하거나 `toLocaleString`을 따로 호출하지 말고 `useI18n()`의 메시지와 포맷 함수를 사용합니다. 계정 이름과 업그레이드 이름 같은 원본 데이터는 번역하지 않습니다.
+대시보드는 `next-intl`로 번역과 locale별 날짜·상대시간·기간 포맷을 처리합니다. 번역은 `apps/dashboard/messages/<locale>.json`에 화면별 namespace로 보관하고, 지원 locale·표시 이름·쿠키 규칙은 `apps/dashboard/app/i18n-config.ts`에서 관리합니다. 컴포넌트에서는 `useTranslations()`와 `useFormatter()`를 사용하며 locale을 직접 비교해 문자열을 고르거나 `toLocaleString()`을 따로 호출하지 않습니다. 계정 이름과 업그레이드 이름 같은 원본 데이터는 번역하지 않습니다.
+
+언어를 추가하려면 `i18n-config.ts`의 `locales`와 `localeLabels`에 locale을 등록하고 기존 파일과 같은 키를 가진 `messages/<locale>.json`을 추가합니다. `global.d.ts`가 영어 메시지 구조를 기준으로 번역 키 자동 완성과 타입 검사를 제공합니다.
 
 Bark 문구는 Docker에서는 `docker/.env`, standalone에서는 `packages/notifier/.env`의 `NOTIFICATION_LOCALE=ko` 또는 `en`으로 알림 서버마다 독립 설정할 수 있습니다.
 
