@@ -8,7 +8,7 @@
 - 계정 태그 기반 그룹 보기와 서버에 저장되는 그룹 순서
 - 업그레이드를 시작할 수 있는 마을 우선 표시
 - 게임 export JSON 자동 검토, 클립보드 붙여넣기와 전역 `Quick Paste`
-- 마을별 알림 시점 설정과 PostgreSQL 기반 Bark 발송·재시도
+- 마을별 자원 상태·준비 시간에 따른 PostgreSQL 기반 Bark 알림·재시도
 - 모바일 고정 섹션 탭, 하단 Import 동작 영역과 마을 설정 바로가기
 - 한국어·영어 UI, 마을별 히스토리 백업과 복원
 
@@ -38,6 +38,7 @@ just up
 
 - [대시보드와 설정 사용법](docs/dashboard-guide.md): 태그 그룹, 표시 옵션, Quick Paste, 알림과 모바일 사용 흐름
 - [마을 데이터 업데이트 흐름](docs/village-data-flow.md): export 검증, 식별자, 업그레이드 슬롯 계산과 안전장치
+- [자원 상태 기반 알림 정책](docs/resource-notification-policy.md): 자원 상태, 준비 시간, 알림 시점과 중복 방지 동작
 - [운영 가이드](docs/operations.md): 환경 변수, 실행 명령, 데이터 보존, 백업·복원, 분리 배포와 API
 
 ## 구성

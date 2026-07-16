@@ -24,18 +24,23 @@ export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierCo
 }
 
 export function localizeNotification(notification: DueNotification, locale: "ko" | "en"): { title: string; body: string } {
-  const complete = notification.minutesBefore === 0;
+  const complete = notification.kind === "completion";
+  const resource = notification.kind === "resource_preparation";
   if (locale === "en") return {
-    title: complete ? `${notification.accountName} upgrade complete` : `${notification.accountName} upgrade reminder`,
+    title: complete ? `${notification.accountName} upgrade complete` : resource ? `${notification.accountName}: prepare resources` : `${notification.accountName} upgrade reminder`,
     body: complete
       ? `${notification.upgradeName} level ${notification.nextLevel} is complete.`
-      : `${notification.upgradeName} level ${notification.nextLevel} completes in ${notification.minutesBefore} minute(s).`,
+      : resource
+        ? `Prepare resources now. ${notification.upgradeName} level ${notification.nextLevel} completes in about ${notification.minutesRemaining} minute(s).`
+        : `${notification.upgradeName} level ${notification.nextLevel} completes in 1 minute.`,
   };
   return {
-    title: complete ? `${notification.accountName} 업그레이드 완료` : `${notification.accountName} 업그레이드 알림`,
+    title: complete ? `${notification.accountName} 업그레이드 완료` : resource ? `${notification.accountName} 자원을 미리 준비하세요!` : `${notification.accountName} 업그레이드 알림`,
     body: complete
       ? `${notification.upgradeName} 레벨 ${notification.nextLevel} 완료`
-      : `${notification.upgradeName} 레벨 ${notification.nextLevel} 완료 ${notification.minutesBefore}분 전`,
+      : resource
+        ? `${notification.upgradeName} 레벨 ${notification.nextLevel} 완료까지 약 ${notification.minutesRemaining}분 남았습니다.`
+        : `${notification.upgradeName} 레벨 ${notification.nextLevel} 완료 1분 전`,
   };
 }
 
@@ -46,7 +51,7 @@ export async function sendBark(notification: DueNotification, config: NotifierCo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       title: localized.title, body: localized.body, group: config.group, icon: config.icon,
-      sound: notification.minutesBefore === 0 ? "minuet" : "bell", level: "active",
+      sound: notification.kind === "completion" ? "minuet" : "bell", level: "active",
     }),
   });
   if (!response.ok) throw new Error(`Bark HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);

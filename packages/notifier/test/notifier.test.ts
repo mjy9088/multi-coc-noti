@@ -5,16 +5,29 @@ import type { AddressInfo } from "node:net";
 import { localizeNotification, runOnce } from "../src/notifier.ts";
 import type { NotifierConfig } from "../src/notifier.ts";
 import type { DueNotification } from "@multi-coc/database";
+import { planResourceNotifications } from "@multi-coc/database";
 
 const due: DueNotification = {
-  id: "notification-1", upgradeId: "upgrade-1", minutesBefore: 60,
+  id: "notification-1", upgradeId: "upgrade-1", kind: "resource_preparation", minutesBefore: 60,
+  preparationMinutes: 60, minutesRemaining: 60,
   accountName: "Main", upgradeName: "Archer Queen", nextLevel: 97,
   finishAt: "2026-07-17T10:00:00Z",
 };
 
 test("formats reminder and completion notifications", () => {
-  assert.match(localizeNotification(due, "ko").body, /60분 전/);
-  assert.match(localizeNotification({ ...due, minutesBefore: 0 }, "en").title, /complete/);
+  assert.match(localizeNotification(due, "ko").title, /자원을 미리 준비하세요/);
+  assert.match(localizeNotification({ ...due, kind: "completion", minutesBefore: 0 }, "en").title, /complete/);
+});
+
+test("plans notifications from the village resource policy", () => {
+  const now = new Date("2026-07-17T09:30:00Z");
+  const finish = "2026-07-17T10:00:00Z";
+  assert.deepEqual(planResourceNotifications("abundant", 60, finish, now).map((item) => item.kind), ["completion"]);
+  assert.deepEqual(planResourceNotifications("sufficient", 60, finish, now).map((item) => item.kind), ["one_minute"]);
+  const insufficient = planResourceNotifications("insufficient", 60, finish, now);
+  assert.deepEqual(insufficient.map((item) => item.kind), ["resource_preparation", "completion"]);
+  assert.equal(insufficient[0].scheduledAt.toISOString(), now.toISOString());
+  assert.deepEqual(planResourceNotifications("unanswered", null, finish, now).map((item) => item.kind), ["completion"]);
 });
 
 test("claims DB notifications and records successful Bark delivery", async (context) => {

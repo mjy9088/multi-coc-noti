@@ -1,20 +1,22 @@
 import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import type { Account, SnapshotDocument, Upgrade, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, ResourceStatus, SnapshotDocument, Upgrade, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
 
-type AccountInput = Omit<Account, "id" | "legacyIndex">;
+type AccountInput = Omit<Account, "id" | "legacyIndex" | "resourceStatus" | "resourceStatusUpdatedAt" | "resourcePreparationMinutes"> &
+  Partial<Pick<Account, "resourceStatus" | "resourcePreparationMinutes">>;
 export type UpgradeSource = "export" | "snapshot";
+export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "legacy";
 export type TrackedUpgrade = Upgrade & {
   accountId: string; startedAt: string; status: string; source: UpgradeSource;
   sourceKey: string; notificationOffsets: number[];
 };
 export type DueNotification = {
-  id: string; upgradeId: string; minutesBefore: number; accountName: string;
-  upgradeName: string; nextLevel: number; finishAt: string;
+  id: string; upgradeId: string; kind: NotificationKind; minutesBefore: number; preparationMinutes: number | null;
+  minutesRemaining: number; accountName: string; upgradeName: string; nextLevel: number; finishAt: string;
 };
 type ExportData = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
@@ -25,7 +27,7 @@ export type VillageHistoryBundle = {
   format: "multi-coc-village-history";
   version: 1;
   exportedAt: string;
-  account: { id: string; label: string; playerTag: string; color: string; tags?: string[] };
+  account: { id: string; label: string; playerTag: string; color: string; tags?: string[]; resourceStatus?: ResourceStatus; resourceStatusUpdatedAt?: string; resourcePreparationMinutes?: number | null };
   snapshots: Array<{ capturedAt: string; dataSource: string; snapshot: VillageSnapshot; source: SnapshotDocument }>;
   villageExports: Array<{ playerTag: string; exportedAt: string; raw: unknown; normalized: ExportData }>;
   upgradeSettings: Array<{ source: UpgradeSource; sourceKey: string; notificationOffsets: number[] }>;
@@ -55,7 +57,10 @@ export async function migrate() {
 
 const accountFromRow = (row: pg.QueryResultRow): Account => ({
   id: String(row.id), legacyIndex: row.legacy_index, label: row.label, playerTag: row.player_tag,
-  color: row.color, tags: (row.tags as string[] || []).map(String), apiKey: row.api_key, sourceUrl: row.source_url,
+  color: row.color, tags: (row.tags as string[] || []).map(String), resourceStatus: row.resource_status as ResourceStatus,
+  resourceStatusUpdatedAt: new Date(row.resource_status_updated_at).toISOString(),
+  resourcePreparationMinutes: row.resource_preparation_minutes == null ? null : Number(row.resource_preparation_minutes),
+  apiKey: row.api_key, sourceUrl: row.source_url,
 });
 
 export async function listAccounts() {
@@ -65,19 +70,47 @@ export async function listAccounts() {
 
 export async function createAccount(value: AccountInput): Promise<Account> {
   const { rows } = await database().query(`
-    INSERT INTO accounts (label, player_tag, color, tags, api_key, source_url)
-    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || ""]);
+    INSERT INTO accounts (label, player_tag, color, tags, api_key, source_url, resource_status, resource_preparation_minutes)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || "",
+    value.resourceStatus || "unanswered", value.resourcePreparationMinutes === undefined ? 60 : value.resourcePreparationMinutes]);
   return accountFromRow(rows[0]);
 }
 
 export async function updateAccount(id: string, value: AccountInput): Promise<Account | null> {
-  const { rows } = await database().query(`
-    UPDATE accounts SET label=$2, player_tag=$3, color=$4, tags=$5, api_key=$6,
-      source_url=$7, updated_at=now()
-    WHERE id=$1 RETURNING *
-  `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || ""]);
-  return rows[0] ? accountFromRow(rows[0]) : null;
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    const previous = (await client.query("SELECT resource_status,resource_preparation_minutes FROM accounts WHERE id=$1 FOR UPDATE", [id])).rows[0];
+    const { rows } = await client.query(`
+      UPDATE accounts SET label=$2, player_tag=$3, color=$4, tags=$5, api_key=$6,
+        source_url=$7, resource_status=COALESCE($8,resource_status),
+        resource_status_updated_at=CASE WHEN $8::text IS NULL OR $8=resource_status THEN resource_status_updated_at ELSE now() END,
+        resource_preparation_minutes=CASE WHEN $10 THEN $9 ELSE resource_preparation_minutes END, updated_at=now()
+      WHERE id=$1 RETURNING *
+    `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || "",
+      value.resourceStatus ?? null, value.resourcePreparationMinutes ?? null, value.resourcePreparationMinutes !== undefined]);
+    if (!rows[0]) { await client.query("ROLLBACK"); return null; }
+    const policyChanged = previous && (previous.resource_status !== rows[0].resource_status
+      || previous.resource_preparation_minutes !== rows[0].resource_preparation_minutes);
+    if (policyChanged) await rescheduleAccountNotifications(client, id);
+    await client.query("COMMIT");
+    return accountFromRow(rows[0]);
+  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+}
+
+export async function updateAccountResourceStatus(id: string, resourceStatus: ResourceStatus): Promise<Account | null> {
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(`UPDATE accounts
+      SET resource_status=$2,resource_status_updated_at=now(),updated_at=now()
+      WHERE id=$1 RETURNING *`, [id, resourceStatus]);
+    if (!rows[0]) { await client.query("ROLLBACK"); return null; }
+    await rescheduleAccountNotifications(client, id);
+    await client.query("COMMIT");
+    return accountFromRow(rows[0]);
+  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 
 export async function deleteAccount(id: string): Promise<boolean> {
@@ -121,38 +154,42 @@ function normalizeOffsets(offsets: number[] | undefined): number[] {
   return [...new Set((offsets || [60, 1, 0]).map(Number).filter((value) => Number.isInteger(value) && value >= 0 && value <= 525_600))].sort((a, b) => b - a);
 }
 
-async function replaceNotifications(client: pg.PoolClient, upgradeId: string, finishAt: string, offsets: number[], now = new Date()): Promise<void> {
-  await client.query("DELETE FROM upgrade_notifications WHERE upgrade_id=$1 AND status <> 'sent'", [upgradeId]);
-  for (const offset of offsets) {
-    const scheduledAt = new Date(new Date(finishAt).getTime() - offset * 60_000);
-    if (scheduledAt <= now && offset !== 0) continue;
-    await client.query(`
-      INSERT INTO upgrade_notifications (upgrade_id,minutes_before,scheduled_at,next_attempt_at)
-      VALUES ($1,$2,$3,$3) ON CONFLICT (upgrade_id,minutes_before) DO NOTHING
-    `, [upgradeId, offset, scheduledAt]);
+export type PlannedNotification = { kind: Exclude<NotificationKind, "legacy">; minutesBefore: number; preparationMinutes: number | null; scheduledAt: Date };
+
+export function planResourceNotifications(status: ResourceStatus, preparationMinutes: number | null, finishAt: string | Date, now = new Date()): PlannedNotification[] {
+  const finish = new Date(finishAt);
+  if (status === "abundant") return [{ kind: "completion", minutesBefore: 0, preparationMinutes: null, scheduledAt: finish }];
+  if (status === "sufficient") {
+    const scheduledAt = new Date(finish.getTime() - 60_000);
+    return scheduledAt > now ? [{ kind: "one_minute", minutesBefore: 1, preparationMinutes: null, scheduledAt }] : [];
   }
+  const result: PlannedNotification[] = [{ kind: "completion", minutesBefore: 0, preparationMinutes: null, scheduledAt: finish }];
+  if (preparationMinutes != null) result.unshift({
+    kind: "resource_preparation", minutesBefore: preparationMinutes, preparationMinutes,
+    scheduledAt: new Date(Math.max(now.getTime(), finish.getTime() - preparationMinutes * 60_000)),
+  });
+  return result;
 }
 
-export async function updateTrackedUpgrade(id: string, value: Partial<Omit<TrackedUpgrade, "id" | "accountId" | "source" | "sourceKey">>): Promise<TrackedUpgrade | null> {
-  const client = await database().connect();
-  try {
-    await client.query("BEGIN");
-    const offsets = value.notificationOffsets ? normalizeOffsets(value.notificationOffsets) : null;
-    const { rows } = await client.query(`
-    UPDATE tracked_upgrades SET
-      name=COALESCE($2,name), type=COALESCE($3,type), current_level=COALESCE($4,current_level),
-      next_level=COALESCE($5,next_level), started_at=COALESCE($6,started_at),
-      finish_at=COALESCE($7,finish_at), status=COALESCE($8,status),
-      notification_offsets=COALESCE($9,notification_offsets), updated_at=now()
-    WHERE id=$1 RETURNING *
-  `, [id, value.name ?? null, value.type ?? null, value.level ?? null, value.nextLevel ?? null,
-    value.startedAt ?? null, value.finishAt ?? null, value.status ?? null, offsets]);
-    if (!rows[0]) { await client.query("ROLLBACK"); return null; }
-    if (value.finishAt || offsets) await replaceNotifications(client, id, new Date(rows[0].finish_at).toISOString(), offsets || rows[0].notification_offsets);
-    if (value.status && value.status !== "active") await client.query("DELETE FROM upgrade_notifications WHERE upgrade_id=$1 AND status <> 'sent'", [id]);
-    await client.query("COMMIT");
-    return upgradeFromRow(rows[0]);
-  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+async function rescheduleAccountNotifications(client: pg.PoolClient, accountId: string, now = new Date()): Promise<void> {
+  const account = (await client.query("SELECT resource_status,resource_preparation_minutes FROM accounts WHERE id=$1", [accountId])).rows[0];
+  if (!account) return;
+  await client.query(`
+    DELETE FROM upgrade_notifications n USING tracked_upgrades u
+    WHERE n.upgrade_id=u.id AND u.account_id=$1 AND n.status<>'sent'
+      AND (u.status<>'completed' OR n.notification_kind<>'completion')
+  `, [accountId]);
+  const upgrades = await client.query("SELECT id,finish_at FROM tracked_upgrades WHERE account_id=$1 AND status='active'", [accountId]);
+  for (const upgrade of upgrades.rows) {
+    for (const notification of planResourceNotifications(account.resource_status as ResourceStatus,
+      account.resource_preparation_minutes == null ? null : Number(account.resource_preparation_minutes), upgrade.finish_at, now)) {
+      await client.query(`
+        INSERT INTO upgrade_notifications (upgrade_id,minutes_before,notification_kind,preparation_minutes,scheduled_at,next_attempt_at)
+        VALUES ($1,$2,$3,$4,$5,$5)
+        ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING
+      `, [upgrade.id, notification.minutesBefore, notification.kind, notification.preparationMinutes, notification.scheduledAt]);
+    }
+  }
 }
 
 export async function completeDueTrackedUpgrades(now = new Date()): Promise<TrackedUpgrade[]> {
@@ -169,10 +206,11 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
   try {
     if (ownsTransaction) await client.query("BEGIN");
     const keys: string[] = [];
+    let trackerChanged = false;
     for (const upgrade of upgrades) {
       const sourceKey = upgrade.id;
       keys.push(sourceKey);
-      const existing = await client.query("SELECT id,finish_at FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, source, sourceKey]);
+      const existing = (await client.query("SELECT finish_at,status FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, source, sourceKey])).rows[0];
       const { rows } = await client.query(`
         INSERT INTO tracked_upgrades (account_id,source,source_key,name,type,current_level,next_level,started_at,finish_at,status,last_seen_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10)
@@ -182,20 +220,23 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
         RETURNING *
       `, [accountId, source, sourceKey, upgrade.name, upgrade.type, upgrade.level, upgrade.nextLevel,
         upgrade.startedAt || observedAt, upgrade.finishAt, observedAt]);
-      const finishChanged = existing.rows[0] && new Date(existing.rows[0].finish_at).getTime() !== new Date(upgrade.finishAt).getTime();
-      if (!existing.rows[0] || finishChanged) await replaceNotifications(client, String(rows[0].id), upgrade.finishAt, rows[0].notification_offsets, new Date(observedAt));
+      if (!existing || existing.status !== "active" || new Date(existing.finish_at).getTime() !== new Date(upgrade.finishAt).getTime()) trackerChanged = true;
       const duplicates = await client.query(`
         UPDATE tracked_upgrades SET status='cancelled',updated_at=now()
         WHERE account_id=$1 AND id<>$2 AND status='active' AND type=$3 AND lower(name)=lower($4) AND next_level=$5
         RETURNING id
       `, [accountId, rows[0].id, upgrade.type, upgrade.name, upgrade.nextLevel]);
+      if (duplicates.rowCount) trackerChanged = true;
       for (const row of duplicates.rows) await client.query("DELETE FROM upgrade_notifications WHERE upgrade_id=$1 AND status <> 'sent'", [row.id]);
     }
     const result = await client.query(`
       UPDATE tracked_upgrades SET status=CASE WHEN finish_at <= $4 THEN 'completed' ELSE 'cancelled' END,updated_at=now()
-      WHERE account_id=$1 AND source=$2 AND status='active' AND NOT (source_key = ANY($3::text[])) RETURNING id
+      WHERE account_id=$1 AND source=$2 AND status='active' AND NOT (source_key = ANY($3::text[])) RETURNING id,status
     `, [accountId, source, keys, observedAt]);
-    for (const row of result.rows) await client.query("DELETE FROM upgrade_notifications WHERE upgrade_id=$1 AND status <> 'sent'", [row.id]);
+    if (result.rowCount) trackerChanged = true;
+    for (const row of result.rows) await client.query(`DELETE FROM upgrade_notifications
+      WHERE upgrade_id=$1 AND status<>'sent' AND ($2<>'completed' OR notification_kind<>'completion')`, [row.id, row.status]);
+    if (trackerChanged) await rescheduleAccountNotifications(client, accountId);
     if (ownsTransaction) await client.query("COMMIT");
   } catch (error) { if (ownsTransaction) await client.query("ROLLBACK"); throw error; } finally { if (ownsTransaction) client.release(); }
 }
@@ -203,32 +244,70 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
 export async function claimDueNotifications(limit = 20, now = new Date()): Promise<DueNotification[]> {
   await database().query(`
     UPDATE upgrade_notifications SET status='skipped',locked_at=NULL,last_error='reminder window missed',updated_at=now()
-    WHERE minutes_before > 0 AND status IN ('pending','processing') AND scheduled_at < $1::timestamptz - interval '2 minutes'
+    WHERE notification_kind='one_minute' AND status IN ('pending','processing') AND scheduled_at < $1::timestamptz - interval '2 minutes'
   `, [now]);
-  const { rows } = await database().query(`
-    WITH due AS (
-      SELECT n.id FROM upgrade_notifications n
-      JOIN tracked_upgrades u ON u.id=n.upgrade_id
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    const candidates = await client.query(`
+      SELECT n.id,n.upgrade_id,n.notification_kind,n.minutes_before,n.preparation_minutes,
+        a.id AS account_id,a.label AS account_name,u.name AS upgrade_name,u.next_level,u.finish_at
+      FROM upgrade_notifications n
+      JOIN tracked_upgrades u ON u.id=n.upgrade_id JOIN accounts a ON a.id=u.account_id
       WHERE u.status IN ('active','completed') AND n.scheduled_at <= $1 AND n.next_attempt_at <= $1
         AND (n.status='pending' OR (n.status='processing' AND n.locked_at < $1 - interval '5 minutes'))
       ORDER BY n.scheduled_at FOR UPDATE OF n SKIP LOCKED LIMIT $2
-    )
-    UPDATE upgrade_notifications n SET status='processing',locked_at=$1,attempts=n.attempts+1,updated_at=now()
-    FROM due, tracked_upgrades u, accounts a
-    WHERE n.id=due.id AND u.id=n.upgrade_id AND a.id=u.account_id
-    RETURNING n.id,n.upgrade_id,n.minutes_before,a.label AS account_name,u.name AS upgrade_name,u.next_level,u.finish_at
-  `, [now, limit]);
-  return rows.map((row) => ({ id: String(row.id), upgradeId: String(row.upgrade_id), minutesBefore: row.minutes_before,
-    accountName: row.account_name, upgradeName: row.upgrade_name, nextLevel: row.next_level, finishAt: new Date(row.finish_at).toISOString() }));
+    `, [now, limit]);
+    const claimed: pg.QueryResultRow[] = [];
+    for (const row of candidates.rows) {
+      if (row.notification_kind === "resource_preparation") {
+        const suppression = await client.query(`
+          INSERT INTO resource_reminder_suppressions (account_id,notification_id,suppress_until,preparation_minutes)
+          VALUES ($1,$2,$3::timestamptz + ($4 * interval '1 minute'),$4)
+          ON CONFLICT (account_id) DO UPDATE SET notification_id=EXCLUDED.notification_id,
+            suppress_until=EXCLUDED.suppress_until,preparation_minutes=EXCLUDED.preparation_minutes,updated_at=now()
+          WHERE resource_reminder_suppressions.suppress_until <= $3 OR resource_reminder_suppressions.notification_id=$2
+          RETURNING notification_id
+        `, [row.account_id, row.id, now, row.preparation_minutes]);
+        if (!suppression.rowCount) {
+          await client.query("UPDATE upgrade_notifications SET status='skipped',last_error='resource reminder suppressed',updated_at=now() WHERE id=$1", [row.id]);
+          continue;
+        }
+      }
+      await client.query("UPDATE upgrade_notifications SET status='processing',locked_at=$2,attempts=attempts+1,updated_at=now() WHERE id=$1", [row.id, now]);
+      claimed.push(row);
+    }
+    await client.query("COMMIT");
+    return claimed.map((row) => ({
+      id: String(row.id), upgradeId: String(row.upgrade_id), kind: row.notification_kind as NotificationKind,
+      minutesBefore: Number(row.minutes_before), preparationMinutes: row.preparation_minutes == null ? null : Number(row.preparation_minutes),
+      minutesRemaining: Math.max(0, Math.ceil((new Date(row.finish_at).getTime() - now.getTime()) / 60_000)),
+      accountName: row.account_name, upgradeName: row.upgrade_name, nextLevel: row.next_level, finishAt: new Date(row.finish_at).toISOString(),
+    }));
+  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 
 export async function markNotificationSent(id: string, now = new Date()): Promise<void> {
-  await database().query("UPDATE upgrade_notifications SET status='sent',sent_at=$2,locked_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1", [id, now]);
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("UPDATE upgrade_notifications SET status='sent',sent_at=$2,locked_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1", [id, now]);
+    await client.query(`UPDATE resource_reminder_suppressions
+      SET suppress_until=$2::timestamptz + (preparation_minutes * interval '1 minute'),updated_at=now()
+      WHERE notification_id=$1`, [id, now]);
+    await client.query("COMMIT");
+  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 
 export async function markNotificationFailed(id: string, error: string, now = new Date()): Promise<void> {
-  await database().query(`UPDATE upgrade_notifications SET status='pending',locked_at=NULL,last_error=$2,
-    next_attempt_at=$3 + LEAST(attempts * interval '30 seconds', interval '15 minutes'),updated_at=now() WHERE id=$1`, [id, error.slice(0, 500), now]);
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM resource_reminder_suppressions WHERE notification_id=$1", [id]);
+    await client.query(`UPDATE upgrade_notifications SET status='pending',locked_at=NULL,last_error=$2,
+      next_attempt_at=$3 + LEAST(attempts * interval '30 seconds', interval '15 minutes'),updated_at=now() WHERE id=$1`, [id, error.slice(0, 500), now]);
+    await client.query("COMMIT");
+  } catch (failure) { await client.query("ROLLBACK"); throw failure; } finally { client.release(); }
 }
 
 export async function latestVillageExport(accountId: string): Promise<{ exportedAt: string; normalized: ExportData; raw: unknown } | null> {
@@ -244,7 +323,7 @@ export async function listLatestVillageExports(): Promise<Array<{ accountId: str
   return rows.map((row: pg.QueryResultRow) => ({ accountId: String(row.account_id), exportedAt: new Date(row.exported_at).toISOString(), normalized: row.normalized as ExportData }));
 }
 
-export async function saveVillageExport(accountId: string, parsed: ExportData): Promise<{ exportedAt: string; normalized: ExportData; raw: unknown } | null> {
+export async function saveVillageExport(accountId: string, parsed: ExportData, options: { resourceStatus?: ResourceStatus } = {}): Promise<{ exportedAt: string; normalized: ExportData; raw: unknown } | null> {
   const client = await database().connect();
   try {
     await client.query("BEGIN");
@@ -266,7 +345,13 @@ export async function saveVillageExport(accountId: string, parsed: ExportData): 
       tag: parsed.tag, exportedAt: parsed.exportedAt, townHall: parsed.townHall,
       builders: parsed.builders, upgradeSlots: parsed.upgradeSlots, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
     }]);
+    const account = parsed.upgrades.length > 0
+      ? (await client.query("SELECT resource_status FROM accounts WHERE id=$1 FOR UPDATE", [accountId])).rows[0]
+      : null;
+    const nextResourceStatus = options.resourceStatus || "unanswered";
+    if (account) await client.query(`UPDATE accounts SET resource_status=$2,resource_status_updated_at=now(),updated_at=now() WHERE id=$1`, [accountId, nextResourceStatus]);
     await syncTrackedUpgrades(accountId, "export", parsed.upgrades, parsed.exportedAt, client);
+    if (account && account.resource_status !== nextResourceStatus) await rescheduleAccountNotifications(client, accountId);
     await client.query("COMMIT");
     return latest;
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
@@ -311,7 +396,12 @@ export async function exportVillageHistories(selector?: string): Promise<Village
     ]);
     bundles.push({
       format: "multi-coc-village-history", version: 1, exportedAt: new Date().toISOString(),
-      account: { id: String(row.id), label: row.label, playerTag: row.player_tag, color: row.color, tags: (row.tags as string[] || []).map(String) },
+      account: {
+        id: String(row.id), label: row.label, playerTag: row.player_tag, color: row.color, tags: (row.tags as string[] || []).map(String),
+        resourceStatus: row.resource_status as ResourceStatus,
+        resourceStatusUpdatedAt: new Date(row.resource_status_updated_at).toISOString(),
+        resourcePreparationMinutes: row.resource_preparation_minutes == null ? null : Number(row.resource_preparation_minutes),
+      },
       snapshots: snapshots.rows.map((item) => ({ capturedAt: new Date(item.captured_at).toISOString(), dataSource: item.data_source, snapshot: item.snapshot as VillageSnapshot, source: item.source as SnapshotDocument })),
       villageExports: exports.rows.map((item) => ({ playerTag: item.player_tag, exportedAt: new Date(item.exported_at).toISOString(), raw: item.raw as unknown, normalized: item.normalized as ExportData })),
       upgradeSettings: settings.rows.map((item) => ({ source: item.source as UpgradeSource, sourceKey: item.source_key, notificationOffsets: normalizeOffsets(item.notification_offsets as number[]) })),
@@ -335,9 +425,11 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       const idTaken = validOriginalId && (await client.query("SELECT 1 FROM accounts WHERE id::text=$1", [bundle.account.id])).rowCount;
       const id = validOriginalId && !idTaken ? bundle.account.id : randomUUID();
       const result = await client.query(`
-        INSERT INTO accounts (id,label,player_tag,color,tags,api_key,source_url)
-        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
-      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", bundle.account.tags || [], randomUUID(), ""]);
+        INSERT INTO accounts (id,label,player_tag,color,tags,api_key,source_url,resource_status,resource_status_updated_at,resource_preparation_minutes)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", bundle.account.tags || [], randomUUID(), "",
+        bundle.account.resourceStatus || "unanswered", bundle.account.resourceStatusUpdatedAt || new Date().toISOString(),
+        bundle.account.resourcePreparationMinutes === undefined ? 60 : bundle.account.resourcePreparationMinutes]);
       accountRow = result.rows[0];
       created = true;
     }
@@ -369,17 +461,18 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
     for (const setting of bundle.upgradeSettings || []) {
       if (existingUpgradeKeys.has(`${setting.source}:${setting.sourceKey}`)) continue;
       const offsets = normalizeOffsets(setting.notificationOffsets);
-      const result = await client.query(`
+      await client.query(`
         UPDATE tracked_upgrades SET notification_offsets=$4,updated_at=now()
-        WHERE account_id=$1 AND source=$2 AND source_key=$3 RETURNING id,finish_at,status
+        WHERE account_id=$1 AND source=$2 AND source_key=$3
       `, [accountId, setting.source, setting.sourceKey, offsets]);
-      if (result.rows[0]?.status === "active") await replaceNotifications(client, String(result.rows[0].id), new Date(result.rows[0].finish_at).toISOString(), offsets);
     }
     await client.query(`
       DELETE FROM upgrade_notifications n USING tracked_upgrades u
-      WHERE n.upgrade_id=u.id AND u.account_id=$1 AND n.status<>'sent' AND n.scheduled_at<=now()
+      WHERE n.upgrade_id=u.id AND u.account_id=$1 AND n.status<>'sent'
+        AND n.notification_kind='one_minute' AND n.scheduled_at<=now()
     `, [accountId]);
     await client.query("UPDATE tracked_upgrades SET status='completed',updated_at=now() WHERE account_id=$1 AND status='active' AND finish_at<=now()", [accountId]);
+    await rescheduleAccountNotifications(client, accountId);
     await client.query("COMMIT");
     return { accountId, label: accountRow.label, created, snapshots: snapshotCount, villageExports: exportCount };
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }

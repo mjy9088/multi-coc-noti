@@ -112,7 +112,7 @@ just history-seed
 just db-reseed
 ```
 
-백업에는 표시 이름, 플레이어 태그, 색상, 계정 태그, snapshot/export와 업그레이드별 알림 시점이 포함됩니다. 수집 API 키와 Pull URL은 포함하지 않습니다. Import는 플레이어 태그로 기존 계정을 찾고 기존 계정 설정과 기존 업그레이드 알림 시점을 덮어쓰지 않습니다. 동일한 snapshot과 export를 건너뛰므로 반복 실행해도 히스토리가 중복되지 않습니다.
+백업에는 표시 이름, 플레이어 태그, 색상, 계정 태그, 자원 상태·준비 시간, snapshot/export가 포함됩니다. 수집 API 키와 Pull URL은 포함하지 않습니다. Import는 플레이어 태그로 기존 계정을 찾으며, 기존 계정의 현재 설정은 덮어쓰지 않습니다. 새 계정을 만들 때는 백업의 자원 설정을 복원합니다. 동일한 snapshot과 export를 건너뛰므로 반복 실행해도 히스토리가 중복되지 않습니다.
 
 ## Notifier 분리 배포
 
@@ -145,9 +145,9 @@ Notifier는 발송 대상을 원자적으로 선점합니다. 성공은 `sent`, 
 | --- | --- | --- |
 | GET/POST | `/api/admin/accounts` | 계정 목록·생성 |
 | PATCH/DELETE | `/api/admin/accounts/<uuid>` | 계정 수정·삭제 |
+| PATCH | `/api/admin/accounts/<uuid>/resource-status` | Import 후 자원 상태 응답 저장 |
 | GET/PATCH | `/api/admin/dashboard-settings` | 그룹 순서 조회·변경 |
 | GET | `/api/admin/upgrades` | 추적 업그레이드 목록 |
-| PATCH | `/api/admin/upgrades/<id>` | 알림 시점 변경 |
 | POST | `/api/admin/village-export/preview` | export 검증과 미리보기 |
 | POST | `/api/admin/village-export` | 확인한 export 반영과 선택적 신규 마을 생성 |
 

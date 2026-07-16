@@ -6,10 +6,10 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
   cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
   getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
-  syncTrackedUpgrades, updateAccount, updateDashboardSettings, updateTrackedUpgrade,
+  syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
 } from "@multi-coc/database";
 import { dataDir, isUpgradeActive, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
-import type { Account, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, ResourceStatus, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
 import { createRateLimiter } from "./rate-limit.ts";
@@ -219,19 +219,19 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
   const label = String(value.label || "").trim();
   if (!label) throw new Error("label is required");
   const playerTag = normalizePlayerTag(value.playerTag || existing?.playerTag);
+  const resourceStatus = value.resourceStatus == null ? existing?.resourceStatus || "unanswered" : String(value.resourceStatus);
+  if (!["abundant", "sufficient", "insufficient", "unanswered"].includes(resourceStatus)) throw new Error("invalid resource status");
+  const preparationValue = value.resourcePreparationMinutes === undefined ? existing?.resourcePreparationMinutes ?? 60 : value.resourcePreparationMinutes;
+  const resourcePreparationMinutes = preparationValue === null ? null : Number(preparationValue);
+  if (resourcePreparationMinutes != null && (!Number.isInteger(resourcePreparationMinutes) || resourcePreparationMinutes < 1 || resourcePreparationMinutes > 525_600)) {
+    throw new Error("resource preparation time must be whole minutes from 1 to 525600, or disabled");
+  }
   return {
     label, playerTag, apiKey: String(value.apiKey || existing?.apiKey || randomUUID()),
     color: String(value.color || existing?.color || "#4c9a79"), tags: normalizeAccountTags(value.tags, existing?.tags),
-    sourceUrl: String(value.sourceUrl ?? existing?.sourceUrl ?? ""),
+    sourceUrl: String(value.sourceUrl ?? existing?.sourceUrl ?? ""), resourceStatus: resourceStatus as ResourceStatus,
+    resourceStatusUpdatedAt: existing?.resourceStatusUpdatedAt || new Date().toISOString(), resourcePreparationMinutes,
   };
-}
-
-function notificationOffsets(value: unknown, fallback = [60, 1, 0]): number[] {
-  if (value == null) return fallback;
-  if (!Array.isArray(value)) throw new Error("notificationOffsets must be an array");
-  const offsets = [...new Set(value.map(Number))];
-  if (offsets.some((offset) => !Number.isInteger(offset) || offset < 0 || offset > 525_600)) throw new Error("notification offsets must be whole minutes from 0 to 525600");
-  return offsets.sort((a, b) => b - a);
 }
 
 function previewVillageExport(value: RequestValue) {
@@ -262,7 +262,8 @@ async function importVillageExport(value: RequestValue) {
     await refreshAccounts();
   }
   if (!account) throw new Error("failed to create village account");
-  await saveVillageExport(account.id, parsed);
+  await saveVillageExport(account.id, parsed, { resourceStatus: "unanswered" });
+  await refreshAccounts();
   return { account: { id: account.id, label: account.label }, created, exportedAt: parsed.exportedAt, upgrades: parsed.upgrades.length, builders: parsed.builders, unknownDataIds: parsed.unknownDataIds };
 }
 
@@ -300,6 +301,17 @@ const server = createServer(async (request, response) => {
         return json(response, 201, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color, tags: account.tags } });
       }
       const accountPath = url.pathname.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})$/i);
+      const resourceStatusPath = url.pathname.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})\/resource-status$/i);
+      if (request.method === "PATCH" && resourceStatusPath) {
+        const value = await requestJson(request);
+        if (Object.keys(value).some((key) => key !== "resourceStatus")) throw new Error("only resourceStatus can be changed");
+        const status = String(value.resourceStatus || "");
+        if (!["abundant", "sufficient", "insufficient", "unanswered"].includes(status)) throw new Error("invalid resource status");
+        const account = await updateAccountResourceStatus(resourceStatusPath[1], status as ResourceStatus);
+        if (!account) return json(response, 404, { error: "unknown account" });
+        await refreshAccounts();
+        return json(response, 200, { account: { id: account.id, resourceStatus: account.resourceStatus, resourceStatusUpdatedAt: account.resourceStatusUpdatedAt } });
+      }
       if (request.method === "PATCH" && accountPath) {
         const existing = accounts.find((item) => item.id === accountPath[1]);
         if (!existing) return json(response, 404, { error: "unknown account" });
@@ -316,15 +328,6 @@ const server = createServer(async (request, response) => {
         return json(response, 200, preview);
       }
       if (request.method === "POST" && url.pathname === "/api/admin/village-export") return json(response, 201, await importVillageExport(await requestJson(request)));
-      const upgradePatch = request.method === "PATCH" && url.pathname.match(/^\/api\/admin\/upgrades\/(\d+)$/);
-      if (upgradePatch) {
-        const current = (await listTrackedUpgrades()).find((item) => item.id === upgradePatch[1]);
-        if (!current) return json(response, 404, { error: "unknown upgrade" });
-        const value = await requestJson(request);
-        if (Object.keys(value).some((key) => key !== "notificationOffsets")) throw new Error("only notificationOffsets can be changed");
-        const upgrade = await updateTrackedUpgrade(upgradePatch[1], { notificationOffsets: notificationOffsets(value.notificationOffsets, current.notificationOffsets) });
-        return json(response, 200, { upgrade });
-      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/ingest") {

@@ -13,6 +13,8 @@
 5. 화면에서 마을, 타운홀, export 시각, 빌더, 감지된 업그레이드와 남은 시간을 미리 확인한다.
 6. 기존 마을이면 Import 버튼으로 포커스를 옮기고, 사용자가 확인하면 데이터를 반영한다.
 
+진행 중인 업그레이드가 있는 export는 Import 즉시 `unanswered` 상태로 먼저 반영한 뒤 마을 단위 자원 상태를 묻는다. 선택한 응답은 별도로 저장하며, 응답하지 않아도 이미 반영된 export와 `unanswered` 상태를 유지한다. 상세 동작은 [자원 상태 기반 업그레이드 알림 정책](resource-notification-policy.md)에 정의한다.
+
 처음 보는 플레이어 태그라면 미리보기에서 새 마을임을 분명히 표시한다. 이때만 표시 이름(label)을 입력받으며, `마을 추가하고 반영`을 확인해야 계정과 export가 함께 저장된다. 잘못 붙여넣은 JSON이 새 계정을 자동 생성해서는 안 된다.
 
 ```mermaid
@@ -57,7 +59,7 @@ flowchart LR
 설정 화면은 다음 탭으로 구성한다.
 
 1. `Update Data`: 기본으로 열린 JSON 붙여넣기와 미리보기
-2. `Upgrades & alerts`: 자동 감지된 업그레이드와 Bark 알림 시점
+2. `Upgrades & alerts`: 자동 감지된 업그레이드와 현재 적용되는 Bark 알림 정책
 3. `Manage villages`: label·색상·계정 그룹 태그 변경, 외부 상태 서버, 수집 API 키와 삭제
 4. `Group order`: 대시보드 태그 그룹 순서
 

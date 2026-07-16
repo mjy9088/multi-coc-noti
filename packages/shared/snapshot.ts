@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 
 export type UpgradeType = "building" | "hero" | "pet" | "research";
+export type ResourceStatus = "abundant" | "sufficient" | "insufficient" | "unanswered";
 
 export type Upgrade = {
   id: string;
@@ -24,6 +25,9 @@ export type Account = {
   playerTag: string;
   color: string;
   tags: string[];
+  resourceStatus: ResourceStatus;
+  resourceStatusUpdatedAt: string;
+  resourcePreparationMinutes: number | null;
   apiKey: string;
   sourceUrl: string;
 };
