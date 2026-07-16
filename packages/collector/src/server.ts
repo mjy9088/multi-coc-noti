@@ -4,24 +4,22 @@ import { mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
-  cleanupDatabaseLogs, clearLegacyIndex, completeDueManualUpgrades, createAccount, createManualUpgrade, deleteAccount,
-  listAccounts, listManualUpgrades, listLatestVillageExports, migrate, saveEventLog, saveSnapshotLog, saveVillageExport, setManualUpgradeStatus,
-  updateAccount, updateManualUpgrade,
+  cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
+  listAccounts, listTrackedUpgrades, listLatestVillageExports, migrate, saveSnapshotLog, saveVillageExport,
+  syncTrackedUpgrades, updateAccount, updateTrackedUpgrade,
 } from "@multi-coc/database";
-import type { ManualUpgrade } from "@multi-coc/database";
-import { completionEvents, dataDir, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
-import type { Account, SnapshotDocument, UpgradeType, VillageEvent, VillageSnapshot } from "@multi-coc/shared";
+import { dataDir, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
+import type { Account, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
 import { createRateLimiter } from "./rate-limit.ts";
-import { appendEventRecord, appendSnapshotRecord, cleanupRetention, readSnapshotHistory } from "./storage.ts";
+import { appendSnapshotRecord, cleanupRetention, readSnapshotHistory } from "./storage.ts";
 import { normalizePlayerTag, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
 const interval = Number(process.env.POLL_INTERVAL_SECONDS || 300) * 1000;
 const ingestLimit = Number(process.env.INGEST_RATE_LIMIT_PER_MINUTE || 120);
 const snapshotRetentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS || 90);
-const eventRetentionDays = Number(process.env.EVENT_RETENTION_DAYS || 90);
 const adminToken = process.env.ADMIN_TOKEN || "";
 const root = dataDir();
 type PollState = { configured: boolean; lastAttemptAt: string | null; lastSuccessAt: string | null; lastError: string | null; accepted: number };
@@ -115,12 +113,8 @@ async function ingest(account: Account, raw: SnapshotDocument, { dataSource = "p
   if (onlyNewer && previous && new Date(snapshot.lastSeen).getTime() <= new Date(previous.lastSeen).getTime()) return null;
   await Promise.all([appendSnapshotRecord(root, account.id, snapshot, raw), saveSnapshotLog(account.id, snapshot, raw)]);
   await writeJson(path.join(dir, "latest.json"), snapshot);
-  for (const event of completionEvents(previous, snapshot)) await recordEvent(event);
+  await syncTrackedUpgrades(account.id, "snapshot", snapshot.upgrades, snapshot.lastSeen);
   return snapshot;
-}
-
-async function recordEvent(event: VillageEvent): Promise<void> {
-  await Promise.all([appendEventRecord(root, event), saveEventLog(event)]);
 }
 
 async function poll(account: Account): Promise<void> {
@@ -150,15 +144,15 @@ async function refreshOfficialProfile(account: Account): Promise<void> {
 }
 
 async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[] }> {
-  const manual = await listManualUpgrades({ activeOnly: true });
+  const tracked = await listTrackedUpgrades({ activeOnly: true });
   const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
   const result = await Promise.all(accounts.map(async (account) => {
     const stored = await readJson<VillageSnapshot>(path.join(root, "accounts", account.id, "latest.json"));
     const villageExport = exports.get(account.id)?.normalized;
-    const accountManual = manual.filter((upgrade) => upgrade.accountId === account.id).map((upgrade) => ({ ...upgrade, id: `manual:${upgrade.id}` }));
+    const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
     const latest: VillageSnapshot = stored || {
       id: account.id, name: account.label, tag: account.playerTag, townHall: 0, level: 0, color: account.color,
-      dataSource: "manual", online: false, lastSeen: new Date().toISOString(), builders: { free: 0, total: 0 },
+      dataSource: "unavailable", online: false, lastSeen: new Date().toISOString(), builders: { free: 0, total: 0 },
       resources: null, upgrades: [],
     };
     if (villageExport && (!stored || new Date(villageExport.exportedAt) >= new Date(stored.lastSeen))) {
@@ -208,9 +202,7 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
         lastSeen: villageExport.exportedAt, dataSource: "game-export", online: true,
       });
     }
-    const manualKeys = new Set(accountManual.map((upgrade) => `${upgrade.type}:${upgrade.name.toLowerCase()}`));
-    const upgrades = [...latest.upgrades.filter((upgrade) => !manualKeys.has(`${upgrade.type}:${upgrade.name.toLowerCase()}`)), ...accountManual]
-      .filter((upgrade) => isUpgradeActive(upgrade));
+    const upgrades = accountUpgrades.filter((upgrade) => isUpgradeActive(upgrade));
     const officialState = officialStates.get(account.id);
     const officialApiStatus = !officialState?.configured ? "disabled" : !officialState.lastError && officialState.lastSuccessAt && Date.now() - new Date(officialState.lastSuccessAt).getTime() < interval * 2.5 ? "synced" : "delayed";
     return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, upgrades, officialApiStatus, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
@@ -229,27 +221,12 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
   };
 }
 
-function upgradeInput(value: RequestValue, existing: Partial<ManualUpgrade> = {}): Omit<ManualUpgrade, "id"> {
-  const accountId = String(value.accountId ?? existing.accountId ?? "");
-  const name = String(value.name ?? existing.name ?? "").trim();
-  const type = String(value.type ?? existing.type ?? "building") as UpgradeType;
-  if (!accounts.some((account) => account.id === accountId)) throw new Error("unknown account");
-  if (!name) throw new Error("upgrade name is required");
-  if (!["building", "hero", "pet", "research"].includes(type)) throw new Error("invalid upgrade type");
-  const startedAt = String(value.startedAt || existing.startedAt || new Date().toISOString());
-  const finishAt = value.remainingMinutes != null ? new Date(Date.now() + Number(value.remainingMinutes) * 60_000).toISOString() : String(value.finishAt || existing.finishAt || "");
-  if (!finishAt || Number.isNaN(new Date(finishAt).getTime())) throw new Error("finishAt or remainingMinutes is required");
-  return { accountId, name, type, level: Number(value.level ?? existing.level ?? 0), nextLevel: Number(value.nextLevel ?? existing.nextLevel ?? Number(value.level ?? 0) + 1), startedAt, finishAt, status: String(value.status ?? existing.status ?? "active") };
-}
-
-async function emitManualCompletion(upgrade: ManualUpgrade): Promise<void> {
-  const account = accounts.find((item) => item.id === upgrade.accountId);
-  if (!account) return;
-  await recordEvent({
-    id: `${account.id}:manual:${upgrade.id}:${upgrade.finishAt}`, type: "upgrade.completed", accountId: account.id,
-    accountName: account.label, occurredAt: new Date().toISOString(), title: `${account.label} 업그레이드 완료`,
-    body: `${upgrade.name} 레벨 ${upgrade.nextLevel} 완료 예정 시각 도달`, data: { upgrade },
-  });
+function notificationOffsets(value: unknown, fallback = [60, 1, 0]): number[] {
+  if (value == null) return fallback;
+  if (!Array.isArray(value)) throw new Error("notificationOffsets must be an array");
+  const offsets = [...new Set(value.map(Number))];
+  if (offsets.some((offset) => !Number.isInteger(offset) || offset < 0 || offset > 525_600)) throw new Error("notification offsets must be whole minutes from 0 to 525600");
+  return offsets.sort((a, b) => b - a);
 }
 
 function previewVillageExport(value: RequestValue) {
@@ -280,31 +257,19 @@ async function importVillageExport(value: RequestValue) {
     await refreshAccounts();
   }
   if (!account) throw new Error("failed to create village account");
-  const previous = await saveVillageExport(account.id, parsed);
-  if (previous) {
-    const currentKeys = new Set(parsed.upgrades.map((upgrade) => `${upgrade.base}:${upgrade.type}:${upgrade.dataId}:${upgrade.level}`));
-    for (const upgrade of previous.normalized.upgrades || []) {
-      if (!currentKeys.has(`${upgrade.base}:${upgrade.type}:${upgrade.dataId}:${upgrade.level}`)) {
-        await recordEvent({
-          id: `${account.id}:export:${upgrade.id}:${parsed.exportedAt}`, type: "upgrade.completed", accountId: account.id,
-          accountName: account.label, occurredAt: parsed.exportedAt, title: `${account.label} 업그레이드 변경 감지`,
-          body: `${upgrade.name} 레벨 ${upgrade.nextLevel} 진행 목록에서 사라짐`, data: { upgrade },
-        });
-      }
-    }
-  }
+  await saveVillageExport(account.id, parsed);
   return { account: { id: account.id, label: account.label }, created, exportedAt: parsed.exportedAt, upgrades: parsed.upgrades.length, builders: parsed.builders, unknownDataIds: parsed.unknownDataIds };
 }
 
 async function completeDue(): Promise<void> {
-  for (const upgrade of await completeDueManualUpgrades()) await emitManualCompletion(upgrade);
+  await completeDueTrackedUpgrades();
 }
 
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     if (request.method === "OPTIONS") { response.writeHead(204, cors); return response.end(); }
-    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ok: true, accounts: accounts.length, database: true, adminConfigured: Boolean(adminToken), retention: { snapshots: snapshotRetentionDays, events: eventRetentionDays } });
+    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ok: true, accounts: accounts.length, database: true, adminConfigured: Boolean(adminToken), retention: { snapshots: snapshotRetentionDays } });
     if (request.method === "GET" && url.pathname === "/api/dashboard") return json(response, 200, await dashboard());
     if (request.method === "GET" && url.pathname === "/api/sources") return json(response, 200, { accounts: accounts.map((account) => ({ id: account.id, label: account.label, source: pollStates.get(account.id), official: officialStates.get(account.id) })) });
     if (request.method === "GET" && url.pathname === "/api/history") {
@@ -334,8 +299,7 @@ const server = createServer(async (request, response) => {
         return json(response, 200, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color } });
       }
       if (request.method === "DELETE" && accountPath) { await deleteAccount(accountPath[1]); await refreshAccounts(); return json(response, 200, { deleted: true }); }
-      if (request.method === "GET" && url.pathname === "/api/admin/upgrades") return json(response, 200, { upgrades: await listManualUpgrades() });
-      if (request.method === "POST" && url.pathname === "/api/admin/upgrades") return json(response, 201, { upgrade: await createManualUpgrade(upgradeInput(await requestJson(request))) });
+      if (request.method === "GET" && url.pathname === "/api/admin/upgrades") return json(response, 200, { upgrades: await listTrackedUpgrades() });
       if (request.method === "POST" && url.pathname === "/api/admin/village-export/preview") {
         const { preview } = previewVillageExport(await requestJson(request));
         return json(response, 200, preview);
@@ -343,11 +307,11 @@ const server = createServer(async (request, response) => {
       if (request.method === "POST" && url.pathname === "/api/admin/village-export") return json(response, 201, await importVillageExport(await requestJson(request)));
       const upgradePatch = request.method === "PATCH" && url.pathname.match(/^\/api\/admin\/upgrades\/(\d+)$/);
       if (upgradePatch) {
-        const current = (await listManualUpgrades()).find((item) => item.id === upgradePatch[1]);
+        const current = (await listTrackedUpgrades()).find((item) => item.id === upgradePatch[1]);
         if (!current) return json(response, 404, { error: "unknown upgrade" });
         const value = await requestJson(request);
-        const upgrade = Object.keys(value).length === 1 && value.status ? await setManualUpgradeStatus(upgradePatch[1], String(value.status)) : await updateManualUpgrade(upgradePatch[1], upgradeInput(value, current));
-        if (upgrade?.status === "completed" && current.status !== "completed") await emitManualCompletion(upgrade);
+        if (Object.keys(value).some((key) => key !== "notificationOffsets")) throw new Error("only notificationOffsets can be changed");
+        const upgrade = await updateTrackedUpgrade(upgradePatch[1], { notificationOffsets: notificationOffsets(value.notificationOffsets, current.notificationOffsets) });
         return json(response, 200, { upgrade });
       }
     }
@@ -383,8 +347,8 @@ setInterval(() => accounts.forEach((account) => { refreshOfficialProfile(account
 await completeDue();
 setInterval(completeDue, Math.min(interval, 60_000)).unref();
 const clean = () => Promise.all([
-  cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays, eventDays: eventRetentionDays }),
-  cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays, eventDays: eventRetentionDays }),
+  cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays }),
+  cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays }),
 ]).catch((error: Error) => console.error(`[collector] retention: ${error.message}`));
 await clean(); setInterval(clean, 6 * 60 * 60 * 1000).unref();
 server.listen(port, "0.0.0.0", () => console.log(`[collector] listening on :${port}`));

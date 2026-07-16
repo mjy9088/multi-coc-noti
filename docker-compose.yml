@@ -78,11 +78,15 @@ services:
       - path: docker/.env
         required: false
     environment:
-      DATA_DIR: /data
-    volumes:
-      - coc-data:/data
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: multi_coc
+      PGUSER: coc
     depends_on:
-      - collector
+      db:
+        condition: service_healthy
+      collector:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRateLimiter } from "../src/rate-limit.ts";
-import { appendEventRecord, appendSnapshotRecord, cleanupRetention, listEventFiles, readSnapshotHistory } from "../src/storage.ts";
+import { appendSnapshotRecord, cleanupRetention, readSnapshotHistory } from "../src/storage.ts";
 
 test("rate limiter resets after its window", () => {
   let timestamp = 1_000;
@@ -16,18 +16,15 @@ test("rate limiter resets after its window", () => {
   assert.equal(consume("1:local").allowed, true);
 });
 
-test("rotates snapshot and event JSONL by UTC date and reads newest history first", async (context) => {
+test("rotates snapshot JSONL by UTC date and reads newest history first", async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), "multi-coc-storage-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   const older = { id: "1", name: "Main", lastSeen: "2026-07-15T23:50:00Z", builders: { free: 0, total: 6 }, resources: {}, upgrades: [] };
   const newer = { ...older, lastSeen: "2026-07-16T00:10:00Z", builders: { free: 1, total: 6 } };
   await appendSnapshotRecord(root, "1", older, { village: { name: "Main" } });
   await appendSnapshotRecord(root, "1", newer, { village: { name: "Main" } });
-  await appendEventRecord(root, { id: "event-1", occurredAt: newer.lastSeen });
   const history = await readSnapshotHistory(root, "1", 10);
   assert.deepEqual(history.map((record) => record.capturedAt), [newer.lastSeen, older.lastSeen]);
-  assert.equal((await listEventFiles(root)).length, 1);
-  assert.match(await readFile(path.join(root, "accounts", "1", "snapshots", "2026-07-16.jsonl"), "utf8"), /2026-07-16/);
 });
 
 test("removes only dated files outside retention", async (context) => {
@@ -35,8 +32,7 @@ test("removes only dated files outside retention", async (context) => {
   context.after(() => rm(root, { recursive: true, force: true }));
   await appendSnapshotRecord(root, "1", { id: "1", lastSeen: "2026-01-01T00:00:00Z" }, {});
   await appendSnapshotRecord(root, "1", { id: "1", lastSeen: "2026-07-16T00:00:00Z" }, {});
-  await appendEventRecord(root, { id: "old", occurredAt: "2026-01-01T00:00:00Z" });
-  const result = await cleanupRetention(root, ["1"], { snapshotDays: 30, eventDays: 30, now: new Date("2026-07-17T00:00:00Z") });
-  assert.deepEqual(result, { snapshots: 1, events: 1 });
+  const result = await cleanupRetention(root, ["1"], { snapshotDays: 30, now: new Date("2026-07-17T00:00:00Z") });
+  assert.deepEqual(result, { snapshots: 1 });
   assert.equal((await readSnapshotHistory(root, "1", 10)).length, 1);
 });

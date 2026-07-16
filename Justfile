@@ -9,7 +9,7 @@ setup:
     mise install
     mise exec -- pnpm install
 
-# Docker DB + 로컬 collector + 로컬 대시보드 실행
+# Docker DB + 로컬 collector + notifier + 대시보드 실행
 ui port="3000":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -66,18 +66,20 @@ ui port="3000":
     echo "처음이면 대시보드의 알림 설정에서 계정과 게임 export JSON을 추가하세요."
     mise exec -- node --env-file=docker/.env packages/collector/src/server.ts &
     collector_pid=$!
+    mise exec -- node --env-file=docker/.env packages/notifier/src/notifier.ts &
+    notifier_pid=$!
     (
       cd apps/dashboard
       exec mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
     ) &
     dashboard_pid=$!
     cleanup() {
-      kill "$collector_pid" "$dashboard_pid" 2>/dev/null || true
-      wait "$collector_pid" "$dashboard_pid" 2>/dev/null || true
+      kill "$collector_pid" "$notifier_pid" "$dashboard_pid" 2>/dev/null || true
+      wait "$collector_pid" "$notifier_pid" "$dashboard_pid" 2>/dev/null || true
     }
     trap cleanup EXIT
     trap 'exit 0' INT TERM
-    while kill -0 "$collector_pid" 2>/dev/null && kill -0 "$dashboard_pid" 2>/dev/null; do
+    while kill -0 "$collector_pid" 2>/dev/null && kill -0 "$notifier_pid" 2>/dev/null && kill -0 "$dashboard_pid" 2>/dev/null; do
       sleep 1
     done
     exit 1

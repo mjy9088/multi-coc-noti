@@ -18,12 +18,6 @@ export async function appendSnapshotRecord(root: string, accountId: string, snap
   return file;
 }
 
-export async function appendEventRecord(root: string, event: { occurredAt: string; [key: string]: unknown }): Promise<string> {
-  const file = path.join(root, "events", `${dayKey(event.occurredAt)}.jsonl`);
-  await appendJsonl(file, event);
-  return file;
-}
-
 async function files(directory: string, order: "asc" | "desc" = "desc"): Promise<string[]> {
   try {
     const names = (await readdir(directory)).filter((name) => datedFile.test(name)).sort();
@@ -48,11 +42,6 @@ export async function readSnapshotHistory(root: string, accountId: string, limit
   return records;
 }
 
-export async function listEventFiles(root: string): Promise<string[]> {
-  const directory = path.join(root, "events");
-  return (await files(directory, "asc")).map((name) => path.join(directory, name));
-}
-
 async function removeExpired(directory: string, retentionDays: number, now: Date): Promise<number> {
   if (!Number.isFinite(retentionDays) || retentionDays <= 0) return 0;
   const cutoff = dayKey(new Date(now.getTime() - retentionDays * DAY_MS));
@@ -65,8 +54,7 @@ async function removeExpired(directory: string, retentionDays: number, now: Date
   return removed;
 }
 
-export async function cleanupRetention(root: string, accountIds: string[], { snapshotDays = 90, eventDays = 90, now = new Date() }: { snapshotDays?: number; eventDays?: number; now?: Date } = {}): Promise<{ snapshots: number; events: number }> {
+export async function cleanupRetention(root: string, accountIds: string[], { snapshotDays = 90, now = new Date() }: { snapshotDays?: number; now?: Date } = {}): Promise<{ snapshots: number }> {
   const snapshots = await Promise.all(accountIds.map((id) => removeExpired(path.join(root, "accounts", id, "snapshots"), snapshotDays, now)));
-  const events = await removeExpired(path.join(root, "events"), eventDays, now);
-  return { snapshots: snapshots.reduce((sum, count) => sum + count, 0), events };
+  return { snapshots: snapshots.reduce((sum, count) => sum + count, 0) };
 }

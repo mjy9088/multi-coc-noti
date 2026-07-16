@@ -51,17 +51,6 @@ export type VillageSnapshot = {
   upgrades: Upgrade[];
 };
 
-export type VillageEvent = {
-  id: string;
-  type: "upgrade.completed" | "builder.available";
-  accountId: string;
-  accountName: string;
-  occurredAt: string;
-  title: string;
-  body: string;
-  data: { upgrade?: Upgrade; free?: number; total?: number };
-};
-
 type RawUpgrade = Partial<Upgrade> & { type?: string };
 type RawVillage = {
   name?: string; tag?: string; townHall?: number; level?: number;
@@ -143,35 +132,6 @@ export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color
       finishAt: iso(upgrade.finishAt),
     })),
   };
-}
-
-export function completionEvents(previous: VillageSnapshot | null, current: VillageSnapshot): VillageEvent[] {
-  if (!previous) return [];
-  const currentIds = new Set(current.upgrades.map((upgrade) => upgrade.id));
-  const completed = previous.upgrades.filter((upgrade) => !currentIds.has(upgrade.id));
-  const events: VillageEvent[] = completed.map((upgrade) => ({
-    id: `${current.id}:upgrade:${upgrade.id}:${upgrade.finishAt}`,
-    type: "upgrade.completed",
-    accountId: current.id,
-    accountName: current.name,
-    occurredAt: current.lastSeen,
-    title: `${current.name} 업그레이드 완료`,
-    body: `${upgrade.name} 레벨 ${upgrade.nextLevel || upgrade.level + 1} 완료`,
-    data: { upgrade },
-  }));
-  if (current.builders.free > previous.builders.free) {
-    events.push({
-      id: `${current.id}:builder:${current.lastSeen}:${current.builders.free}`,
-      type: "builder.available",
-      accountId: current.id,
-      accountName: current.name,
-      occurredAt: current.lastSeen,
-      title: `${current.name} 빌더 대기`,
-      body: `현재 ${current.builders.free}명의 빌더가 대기 중입니다.`,
-      data: { free: current.builders.free, total: current.builders.total },
-    });
-  }
-  return events;
 }
 
 export function isUpgradeActive(upgrade: Pick<Upgrade, "finishAt">, reference = Date.now()): boolean {

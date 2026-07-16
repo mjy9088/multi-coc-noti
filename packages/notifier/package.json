@@ -8,6 +8,6 @@
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {
-    "@multi-coc/shared": "workspace:*"
+    "@multi-coc/database": "workspace:*"
   }
 }

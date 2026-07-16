@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { completionEvents, isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
+import { isUpgradeActive, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
 
 const account = { id: "main", label: "Main", color: "#123456" };
 
@@ -20,14 +20,6 @@ test("treats an upgrade as active only before its finish time", () => {
   assert.equal(isUpgradeActive({ finishAt }, new Date("2026-07-17T09:59:59Z").getTime()), true);
   assert.equal(isUpgradeActive({ finishAt }, new Date(finishAt).getTime()), false);
   assert.equal(isUpgradeActive({ finishAt: "invalid" }), false);
-});
-
-test("emits deduplicatable completion and builder events", () => {
-  const previous = normalizeSnapshot(account, { capturedAt: "2026-07-16T10:00:00Z", village: { builders: { free: 0, total: 6 }, upgrades: [{ id: "queen-97", name: "Archer Queen", type: "hero", level: 96, nextLevel: 97, finishAt: "2026-07-16T11:00:00Z" }] } });
-  const current = normalizeSnapshot(account, { capturedAt: "2026-07-16T11:01:00Z", village: { builders: { free: 1, total: 6 }, upgrades: [] } });
-  const events = completionEvents(previous, current);
-  assert.deepEqual(events.map((event) => event.type), ["upgrade.completed", "builder.available"]);
-  assert.match(events[0].body, /레벨 97/);
 });
 
 test("parses pretty JSON as one document and NDJSON line by line", () => {

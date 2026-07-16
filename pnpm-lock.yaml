@@ -84,9 +84,9 @@ importers:
 
   packages/notifier:
     dependencies:
-      '@multi-coc/shared':
+      '@multi-coc/database':
         specifier: workspace:*
-        version: link:../shared
+        version: link:../database
 
   packages/shared: {}
 

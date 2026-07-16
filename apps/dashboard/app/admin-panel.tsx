@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import { useDashboardFormat } from "./use-dashboard-format";
 
 type Account = { id: string; label: string; playerTag: string; color: string; sourceUrl: string; hasApiKey: boolean };
-type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string };
+type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string; source: "export" | "snapshot"; notificationOffsets: number[] };
 type ExportPreview = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
   upgradeSlots?: {
@@ -18,7 +18,11 @@ type ExportPreview = {
   unknownDataIds: number[]; account: { id: string; label: string; color: string } | null; isNew: boolean;
 };
 
-const blankUpgrade = { accountId: "", name: "", type: "building", level: "0", nextLevel: "1", remainingHours: "1" };
+function parseNotificationOffsets(value: string): number[] {
+  const offsets = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean).map(Number))];
+  if (offsets.some((item) => !Number.isInteger(item) || item < 0 || item > 525_600)) throw new Error("invalid notification offset");
+  return offsets.sort((a, b) => b - a);
+}
 
 export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; onChanged: () => void }) {
   const t = useTranslations("Admin");
@@ -26,13 +30,13 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
   const [token, setToken] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
+  const [notificationDrafts, setNotificationDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<"import" | "manual" | "villages">("import");
+  const [section, setSection] = useState<"import" | "alerts" | "villages">("import");
   const [exportText, setExportText] = useState("");
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [newLabel, setNewLabel] = useState("");
-  const [upgrade, setUpgrade] = useState(blankUpgrade);
   const [editing, setEditing] = useState<Account | null>(null);
   const [accountForm, setAccountForm] = useState({ label: "", color: "#4c9a79", sourceUrl: "", apiKey: "" });
 
@@ -52,7 +56,8 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
     if (!token) return;
     try {
       const [accountResult, upgradeResult] = await Promise.all([request("/api/admin/accounts"), request("/api/admin/upgrades")]);
-      setAccounts(accountResult.accounts); setUpgrades(upgradeResult.upgrades); setError("");
+      setAccounts(accountResult.accounts); setUpgrades(upgradeResult.upgrades);
+      setNotificationDrafts(Object.fromEntries(upgradeResult.upgrades.map((item: Upgrade) => [item.id, item.notificationOffsets.join(", ")]))); setError("");
     } catch (reason) { setError((reason as Error).message); }
   }, [request, token]);
 
@@ -82,7 +87,7 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
     <div className="admin-title"><div><p className="eyebrow">VILLAGE DATA</p><h1>{t("title")}</h1></div><button className="secondary" onClick={() => { localStorage.removeItem("multi-coc-admin-token"); setToken(""); }}>{t("signOut")}</button></div>
     <div className="admin-sections">
       <button className={section === "import" ? "active" : ""} onClick={() => setSection("import")}>{t("updateData")}</button>
-      <button className={section === "manual" ? "active" : ""} onClick={() => setSection("manual")}>{t("manualAdjustment")}</button>
+      <button className={section === "alerts" ? "active" : ""} onClick={() => setSection("alerts")}>{t("upgradeAlerts")}</button>
       <button className={section === "villages" ? "active" : ""} onClick={() => setSection("villages")}>{t("manageVillages")}</button>
     </div>
     {error && <p className="admin-alert error">{error}</p>}{message && <p className="admin-alert">{message}</p>}
@@ -108,16 +113,8 @@ export default function AdminPanel({ apiBase, onChanged }: { apiBase: string; on
       </article>}
     </div>}
 
-    {section === "manual" && <article className="admin-card wide-card"><h2>{t("manualUpgrade")}</h2><p>{t("manualUpgradeHelp")}</p>
-      <form className="admin-form upgrade-form" onSubmit={(event: FormEvent) => { event.preventDefault(); run(async () => { const result = await request("/api/admin/upgrades", { method: "POST", body: JSON.stringify({ accountId: upgrade.accountId, name: upgrade.name, type: upgrade.type, level: Number(upgrade.level), nextLevel: Number(upgrade.nextLevel), remainingMinutes: Number(upgrade.remainingHours) * 60 }) }); setUpgrade({ ...blankUpgrade, accountId: upgrade.accountId }); return result; }, t("upgradeAdded")); }}>
-        <label>{t("village")}<select required value={upgrade.accountId} onChange={(e) => setUpgrade({ ...upgrade, accountId: e.target.value })}><option value="">-</option>{accounts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-        <label>{t("upgrade")}<input required value={upgrade.name} onChange={(e) => setUpgrade({ ...upgrade, name: e.target.value })} /></label>
-        <label>{t("type")}<select value={upgrade.type} onChange={(e) => setUpgrade({ ...upgrade, type: e.target.value })}><option value="building">{t("buildingType")}</option><option value="hero">{t("heroType")}</option><option value="pet">{t("petType")}</option><option value="research">{t("researchType")}</option></select></label>
-        <label>{t("currentLevel")}<input type="number" min="0" value={upgrade.level} onChange={(e) => setUpgrade({ ...upgrade, level: e.target.value })} /></label>
-        <label>{t("nextLevel")}<input type="number" min="1" value={upgrade.nextLevel} onChange={(e) => setUpgrade({ ...upgrade, nextLevel: e.target.value })} /></label>
-        <label>{t("hoursRemaining")}<input type="number" min="0.1" step="0.1" value={upgrade.remainingHours} onChange={(e) => setUpgrade({ ...upgrade, remainingHours: e.target.value })} /></label><button>{t("add")}</button>
-      </form>
-      <div className="upgrade-admin-list">{upgrades.filter((item) => item.status === "active").map((item) => <div key={item.id}><span><b>{accounts.find((a) => a.id === item.accountId)?.label} · {item.name}</b><small>{formatDateTime(item.finishAt)}</small></span><button onClick={() => run(() => request(`/api/admin/upgrades/${item.id}`, { method: "PATCH", body: JSON.stringify({ remainingMinutes: 60 }) }), t("oneHourSet"))}>{t("oneHourLeft")}</button><button onClick={() => run(() => request(`/api/admin/upgrades/${item.id}`, { method: "PATCH", body: JSON.stringify({ status: "completed" }) }), t("markedComplete"))}>{t("complete")}</button><button className="danger" onClick={() => run(() => request(`/api/admin/upgrades/${item.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) }), t("cancelled"))}>{t("cancel")}</button></div>)}</div>
+    {section === "alerts" && <article className="admin-card wide-card"><h2>{t("upgradeAlertsTitle")}</h2><p>{t("upgradeAlertsHelp")}</p>
+      <div className="upgrade-admin-list">{upgrades.some((item) => item.status === "active") ? upgrades.filter((item) => item.status === "active").map((item) => <div key={item.id}><span><b>{accounts.find((a) => a.id === item.accountId)?.label} · {item.name}</b><small>{formatDateTime(item.finishAt)} · {t(item.source === "export" ? "source_export" : "source_snapshot")}</small></span><label className="notification-offsets"><small>{t("notificationMinutes")}</small><input value={notificationDrafts[item.id] ?? ""} onChange={(event) => setNotificationDrafts({ ...notificationDrafts, [item.id]: event.target.value })} placeholder="60, 1, 0" /></label><button onClick={() => run(() => request(`/api/admin/upgrades/${item.id}`, { method: "PATCH", body: JSON.stringify({ notificationOffsets: parseNotificationOffsets(notificationDrafts[item.id] || "") }) }), t("notificationsSaved"))}>{t("saveNotifications")}</button></div>) : <p>{t("noTrackedUpgrades")}</p>}</div>
     </article>}
 
     {section === "villages" && <div className="village-admin-layout"><article className="admin-card"><h2>{t("registeredVillages")}</h2><p>{t("registeredVillagesHelp")}</p><div className="admin-list village-picker">{accounts.map((item) => <button key={item.id} className={editing?.id === item.id ? "selected" : ""} onClick={() => chooseAccount(item)}><i style={{ background: item.color }} /><span><b>{item.label}</b><small>{item.playerTag}</small></span></button>)}{!accounts.length && <p>{t("noVillages")}</p>}</div></article>
