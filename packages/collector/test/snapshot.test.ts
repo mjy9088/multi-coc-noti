@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isUpgradeActive, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
+import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments } from "../../shared/snapshot.ts";
 
 const account = { id: "main", label: "Main", color: "#123456" };
 
@@ -20,6 +20,13 @@ test("[DATA-UPGRADE-001] treats an upgrade as active only before its finish time
   assert.equal(isUpgradeActive({ finishAt }, new Date("2026-07-17T09:59:59Z").getTime()), true);
   assert.equal(isUpgradeActive({ finishAt }, new Date(finishAt).getTime()), false);
   assert.equal(isUpgradeActive({ finishAt: "invalid" }), false);
+});
+
+test("[DATA-REFRESH-001] requires a village update 30 minutes after an unobserved completion", () => {
+  const finishAt = "2026-07-17T10:00:00Z";
+  assert.equal(isVillageRefreshRequired("2026-07-17T09:00:00Z", finishAt, Date.parse("2026-07-17T10:29:59Z")), false);
+  assert.equal(isVillageRefreshRequired("2026-07-17T09:00:00Z", finishAt, Date.parse("2026-07-17T10:30:00Z")), true);
+  assert.equal(isVillageRefreshRequired("2026-07-17T10:01:00Z", finishAt, Date.parse("2026-07-18T10:00:00Z")), false);
 });
 
 test("[DATA-FORMAT-001] accepts the documented snapshot JSON and JSONL variants", () => {

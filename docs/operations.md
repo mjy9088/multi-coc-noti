@@ -70,7 +70,7 @@ Detected upgrades merge into `tracked_upgrades`. Duplicate timers for the same v
 <!-- contract: OPS-HISTORY-001 -->
 <!-- contract: OPS-RETENTION-001 -->
 
-PostgreSQL stores accounts, group order, exports, snapshots, upgrades, and notification state. Independent snapshot copies use UTC-dated paths:
+PostgreSQL stores accounts, group order, exports, snapshots, upgrades, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Independent snapshot copies use UTC-dated paths:
 
 ```text
 /data/accounts/<account-uuid>/latest.json

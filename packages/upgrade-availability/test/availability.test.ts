@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyDisplayOptions, defaultDisplayOptions, observeAvailability } from "../index.ts";
+import { applyDisplayOptions, defaultDisplayOptions, matchesAvailabilityFilter, observeAvailability, summarizeAvailability } from "../index.ts";
 
 test("[DISPLAY-SLOT-001] observes Goblin helpers from concurrent work", () => {
   const observations = observeAvailability([
@@ -34,4 +34,30 @@ test("[DISPLAY-SLOT-004] respects disabled inference options", () => {
   const result = applyDisplayOptions(account, { goblinResearcher: true, goblinBuilder: true }, { goblinResearcher: false, goblinBuilder: false });
   assert.equal(result.builders, account.builders);
   assert.equal(result.laboratory, account.upgradeSlots.laboratory);
+});
+
+test("[DISPLAY-SUMMARY-001] totals idle Home Village and Builder Base slots separately", () => {
+  const accounts = [
+    {
+      builders: { free: 1, total: 6 },
+      upgradeSlots: {
+        laboratory: { available: true }, petHouse: { available: false },
+        builderBase: { builders: { free: 1, total: 2 }, laboratory: { available: true } },
+      },
+    },
+    {
+      builders: { free: 2, total: 5 },
+      upgradeSlots: { laboratory: { available: false }, petHouse: { available: true }, builderBase: null },
+    },
+  ];
+  assert.deepEqual(summarizeAvailability(accounts, { goblinResearcher: false, goblinBuilder: false }, defaultDisplayOptions), {
+    homeVillage: 5, builderBase: 2,
+  });
+});
+
+test("[DISPLAY-FILTER-001] distinguishes Home Village availability from any available slot", () => {
+  const account = { builders: { free: 0, total: 6 }, upgradeSlots: { laboratory: { available: false }, petHouse: null, builderBase: { builders: { free: 1, total: 2 }, laboratory: null } } };
+  const observations = { goblinResearcher: false, goblinBuilder: false };
+  assert.equal(matchesAvailabilityFilter(account, "home", observations, defaultDisplayOptions), false);
+  assert.equal(matchesAvailabilityFilter(account, "any", observations, defaultDisplayOptions), true);
 });

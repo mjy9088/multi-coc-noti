@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { localizeNotification, runOnce } from "../src/notifier.ts";
 import type { NotifierConfig } from "../src/notifier.ts";
 import type { DueNotification } from "@multi-coc/database";
-import { planResourceNotifications } from "@multi-coc/database";
+import { planRefreshNotification, planResourceNotifications } from "@multi-coc/database";
 
 const due: DueNotification = {
   id: "notification-1", upgradeId: "upgrade-1", kind: "resource_preparation", minutesBefore: 60,
@@ -17,6 +17,7 @@ const due: DueNotification = {
 test("[ALERT-COPY-001] formats reminder and completion notifications", () => {
   assert.match(localizeNotification(due, "ko").title, /자원을 미리 준비하세요/);
   assert.match(localizeNotification({ ...due, kind: "completion", minutesBefore: 0 }, "en").title, /complete/);
+  assert.match(localizeNotification({ ...due, kind: "refresh_required", minutesBefore: 0 }, "en").title, /update required/);
 });
 
 test("[ALERT-PLAN-001] plans notifications from the village resource policy", () => {
@@ -28,6 +29,10 @@ test("[ALERT-PLAN-001] plans notifications from the village resource policy", ()
   assert.deepEqual(insufficient.map((item) => item.kind), ["resource_preparation", "completion"]);
   assert.equal(insufficient[0].scheduledAt.toISOString(), now.toISOString());
   assert.deepEqual(planResourceNotifications("unanswered", null, finish, now).map((item) => item.kind), ["completion"]);
+});
+
+test("[ALERT-REFRESH-001] schedules the stale-village reminder 24 hours after completion", () => {
+  assert.equal(planRefreshNotification("2026-07-17T10:00:00Z").toISOString(), "2026-07-18T10:00:00.000Z");
 });
 
 test("[ALERT-DELIVERY-001] delivers claimed notifications and records Bark success", async (context) => {

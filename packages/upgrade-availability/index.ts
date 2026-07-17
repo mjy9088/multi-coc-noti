@@ -17,7 +17,11 @@ export type LaboratoryAvailability = {
 
 export type AvailabilityAccount = {
   builders: BuilderAvailability;
-  upgradeSlots?: { laboratory: LaboratoryAvailability | null };
+  upgradeSlots?: {
+    laboratory: LaboratoryAvailability | null;
+    petHouse?: { available: boolean } | null;
+    builderBase?: { builders: BuilderAvailability; laboratory: LaboratoryAvailability | null } | null;
+  };
 };
 
 export type AvailabilityObservations = {
@@ -29,6 +33,12 @@ export type DisplayAvailability = {
   builders: BuilderAvailability;
   laboratory: LaboratoryAvailability | null;
 };
+
+export type AvailabilitySummary = {
+  homeVillage: number;
+  builderBase: number;
+};
+export type AvailabilityFilter = "all" | "home" | "any";
 
 export const defaultDisplayOptions: DisplayOptions = {
   goblinResearcher: true,
@@ -62,4 +72,24 @@ export function applyDisplayOptions(account: AvailabilityAccount, observations: 
       ? { ...laboratory, available: true, total: Math.max(2, laboratory.total || 1) }
       : laboratory,
   };
+}
+
+export function summarizeAvailability(accounts: AvailabilityAccount[], observations: AvailabilityObservations, options: DisplayOptions): AvailabilitySummary {
+  return accounts.reduce<AvailabilitySummary>((summary, account) => {
+    const displayed = applyDisplayOptions(account, observations, options);
+    summary.homeVillage += displayed.builders.free
+      + Number(Boolean(displayed.laboratory?.available))
+      + Number(Boolean(account.upgradeSlots?.petHouse?.available));
+    summary.builderBase += (account.upgradeSlots?.builderBase?.builders.free || 0)
+      + Number(Boolean(account.upgradeSlots?.builderBase?.laboratory?.available));
+    return summary;
+  }, { homeVillage: 0, builderBase: 0 });
+}
+
+export function matchesAvailabilityFilter(account: AvailabilityAccount, filter: AvailabilityFilter, observations: AvailabilityObservations, options: DisplayOptions): boolean {
+  if (filter === "all") return true;
+  const displayed = applyDisplayOptions(account, observations, options);
+  const home = displayed.builders.free > 0 || Boolean(displayed.laboratory?.available) || Boolean(account.upgradeSlots?.petHouse?.available);
+  if (filter === "home") return home;
+  return home || Boolean(account.upgradeSlots?.builderBase?.builders.free) || Boolean(account.upgradeSlots?.builderBase?.laboratory?.available);
 }

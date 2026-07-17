@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { applyDisplayOptions, defaultDisplayOptions, observeAvailability } from "@multi-coc/upgrade-availability";
-import type { DisplayOptions } from "@multi-coc/upgrade-availability";
+import { applyDisplayOptions, defaultDisplayOptions, matchesAvailabilityFilter, observeAvailability, summarizeAvailability } from "@multi-coc/upgrade-availability";
+import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import { useTranslations } from "next-intl";
 import AdminPanel from "./admin-panel";
 import LocaleSwitcher from "./locale-switcher";
@@ -28,7 +28,8 @@ type Village = {
   tags?: string[];
   dataSource?: "example" | "pull" | "push" | "unknown";
   online: boolean;
-  officialApiStatus?: "disabled" | "synced" | "delayed";
+  refreshRequired?: boolean;
+  refreshCompletedAt?: string | null;
   lastSeen: string;
   builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {
@@ -112,7 +113,8 @@ export default function Home() {
   const [clockNow, setClockNow] = useState(now);
   const [demo, setDemo] = useState(demoEnabled);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "free" | "delayed">("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
+  const [refreshOnly, setRefreshOnly] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
   const [view, setView] = useState<"dashboard" | "settings">("dashboard");
@@ -204,10 +206,11 @@ export default function Home() {
     const needle = lowerCase(query.trim());
     return liveAccounts.filter((account) => {
       const matchesQuery = !needle || [account.name, account.tag, account.id, ...(account.tags || [])].some((value) => lowerCase(value).includes(needle));
-      const matchesStatus = statusFilter === "all" || (statusFilter === "free" ? account.builders.free > 0 : account.officialApiStatus === "delayed");
-      return matchesQuery && matchesStatus;
+      return matchesQuery
+        && matchesAvailabilityFilter(account, availabilityFilter, availabilityObservations, displayOptions)
+        && (!refreshOnly || Boolean(account.refreshRequired));
     });
-  }, [liveAccounts, lowerCase, query, statusFilter]);
+  }, [availabilityFilter, availabilityObservations, displayOptions, liveAccounts, lowerCase, query, refreshOnly]);
   const tagOptions = useMemo(() => {
     const options = new Map<string, { label: string; count: number }>();
     for (const account of visibleAccounts) for (const tag of account.tags || []) {
@@ -237,9 +240,9 @@ export default function Home() {
       .sort((a, b) => Number(b.available) - Number(a.available) || a.index - b.index).map(({ account }) => account);
   }, [availabilityObservations, displayOptions, lowerCase, prioritizeAvailable, selectedTag, visibleAccounts]);
   const allUpgrades = useMemo(() => accounts.flatMap((account) => account.upgrades.map((upgrade) => ({ account, upgrade }))).sort((a, b) => +new Date(a.upgrade.finishAt) - +new Date(b.upgrade.finishAt)), [accounts]);
-  const freeBuilders = liveAccounts.reduce((sum, a) => sum + a.builders.free, 0);
+  const availabilitySummary = summarizeAvailability(accounts, availabilityObservations, displayOptions);
   const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
-  const next = liveAccounts.flatMap((a) => a.upgrades.map((u) => ({ ...u, account: a.name }))).sort((a, b) => +new Date(a.finishAt) - +new Date(b.finishAt))[0];
+  const next = allUpgrades[0]?.upgrade;
 
   return (
     <main>
@@ -251,11 +254,30 @@ export default function Home() {
 
       {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
-        <section className="hero-row">
-          <div><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
+        <section className="dashboard-hero">
+          <div className="hero-copy"><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
+          <div className="account-controls dashboard-filters">
+            <div className="account-tools">
+              <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveTag(null); }} placeholder={t("search")} aria-label={t("search")} />
+              <div className="availability-filter" role="radiogroup" aria-label={t("availabilityFilter")}>
+                {(["all", "home", "any"] as const).map((filter) => <label key={filter}><input type="radio" name="availability" checked={availabilityFilter === filter} onChange={() => { setAvailabilityFilter(filter); setActiveTag(null); }} />{t(filter === "all" ? "statusAll" : filter === "home" ? "homeSlotAvailable" : "anySlotAvailable")}</label>)}
+              </div>
+              <label className="refresh-filter"><input type="checkbox" checked={refreshOnly} onChange={(event) => { setRefreshOnly(event.target.checked); setActiveTag(null); }} />{t("refreshRequired")}</label>
+              <details className="display-options"><summary>{t("displayOptions")}</summary><div>
+                <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t("inferGoblinResearcher")}</label>
+                <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t("inferGoblinBuilder")}</label>
+                <label><input type="checkbox" checked={prioritizeAvailable} onChange={(event) => { setPrioritizeAvailable(event.target.checked); localStorage.setItem("multi-village-prioritize-available", String(event.target.checked)); }} />{t("prioritizeAvailable")}</label>
+              </div></details>
+            </div>
+            <div className="account-tabs" role="tablist">
+              <button className={selectedTag === null ? "active" : ""} onClick={() => setActiveTag(null)}>{t("all")} <b>{visibleAccounts.length}</b></button>
+              {tagOptions.map((tag) => <button key={tag.key} className={selectedTag === tag.key ? "active" : ""} onClick={() => setActiveTag(tag.key)}><span className="tag-hash">#</span>{tag.label} <b>{tag.count}</b></button>)}
+            </div>
+          </div>
           <div className="summary-strip">
-            <div><span>{t("accounts")}</span><strong>{liveAccounts.length}</strong></div>
-            <div><span>{t("builders")}</span><strong className={freeBuilders ? "green" : ""}>{freeBuilders}</strong></div>
+            <div><span>{t("accounts")}</span><strong>{accounts.length}</strong></div>
+            <div><span>{t("homeVillageIdle")}</span><strong className={availabilitySummary.homeVillage ? "green" : ""}>{availabilitySummary.homeVillage}</strong></div>
+            <div className="builder-base-summary"><span>{t("builderBaseIdle")}</span><strong className={availabilitySummary.builderBase ? "green" : ""}>{availabilitySummary.builderBase}</strong></div>
             <div><span>{t("earliest")}</span><strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t("none")}</strong></div>
           </div>
         </section>
@@ -266,30 +288,12 @@ export default function Home() {
         </div>
 
         <section id="village-list" className="dashboard-scroll-section">
-          <div className="account-controls">
-          <div className="account-tools">
-            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveTag(null); }} placeholder={t("search")} aria-label={t("search")} />
-            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "free" | "delayed"); setActiveTag(null); }} aria-label={t("statusAll")}>
-              <option value="all">{t("statusAll")}</option><option value="free">{t("freeOnly")}</option><option value="delayed">{t("delayedOnly")}</option>
-            </select>
-            <details className="display-options"><summary>{t("displayOptions")}</summary><div>
-              <label><input type="checkbox" checked={displayOptions.goblinResearcher} onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)} />{t("inferGoblinResearcher")}</label>
-              <label><input type="checkbox" checked={displayOptions.goblinBuilder} onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)} />{t("inferGoblinBuilder")}</label>
-              <label><input type="checkbox" checked={prioritizeAvailable} onChange={(event) => { setPrioritizeAvailable(event.target.checked); localStorage.setItem("multi-village-prioritize-available", String(event.target.checked)); }} />{t("prioritizeAvailable")}</label>
-            </div></details>
-          </div>
-          <div className="account-tabs" role="tablist">
-            <button className={selectedTag === null ? "active" : ""} onClick={() => setActiveTag(null)}>{t("all")} <b>{visibleAccounts.length}</b></button>
-            {tagOptions.map((tag) => <button key={tag.key} className={selectedTag === tag.key ? "active" : ""} onClick={() => setActiveTag(tag.key)}><span className="tag-hash">#</span>{tag.label} <b>{tag.count}</b></button>)}
-          </div>
-          </div>
-
           <div className="village-grid">
           {accounts.map((account) => {
             const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
             const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
             return <article className="village-card village-card-link" key={account.id} style={{ "--accent": account.color } as React.CSSProperties} role="button" tabIndex={0} aria-label={t("manageVillage", { name: account.name })} onClick={() => openVillageSettings(account.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openVillageSettings(account.id); } }}>
-              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t("level")} {account.level}</p></div><span className={`status ${account.officialApiStatus === "synced" ? "online" : account.officialApiStatus === "delayed" ? "" : "game-data"}`}>{account.officialApiStatus === "synced" ? `${t("profileApi")} · ${t("syncedState")}` : account.officialApiStatus === "delayed" ? `${t("profileApi")} · ${t("delayedState")}` : t("gameData")}</span></div>
+              <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t("level")} {account.level}</p></div>{account.refreshRequired && <span className="status refresh-needed">{t("refreshRequired")}</span>}</div>
               {!!account.tags?.length && <div className="account-tag-list">{account.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>}
               <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
               <div className="card-foot"><span>{t("inProgress")} <b>{account.upgrades.length}</b></span><span>{t("updated")} {formatRelative(account.lastSeen, clockNow)}</span></div>

@@ -42,7 +42,8 @@ export type VillageSnapshot = {
   tags?: string[];
   dataSource: string;
   online: boolean;
-  officialApiStatus?: "disabled" | "synced" | "delayed";
+  refreshRequired?: boolean;
+  refreshCompletedAt?: string | null;
   lastSeen: string;
   builders: { free: number; total: number; regularTotal?: number };
   upgradeSlots?: {
@@ -159,4 +160,10 @@ export function normalizeSnapshot(account: Pick<Account, "id" | "label" | "color
 export function isUpgradeActive(upgrade: Pick<Upgrade, "finishAt">, reference = Date.now()): boolean {
   const finish = new Date(upgrade.finishAt).getTime();
   return Number.isFinite(finish) && finish > reference;
+}
+
+export function isVillageRefreshRequired(lastSeen: string, finishAt: string, now = Date.now(), graceMs = 30 * 60_000): boolean {
+  const observed = new Date(lastSeen).getTime();
+  const finished = new Date(finishAt).getTime();
+  return Number.isFinite(observed) && Number.isFinite(finished) && finished > observed && finished + graceMs <= now;
 }

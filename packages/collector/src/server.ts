@@ -8,7 +8,7 @@ import {
   getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
 } from "@multi-coc/database";
-import { dataDir, isUpgradeActive, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
+import { dataDir, isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
 import type { Account, ResourceStatus, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
@@ -144,7 +144,7 @@ async function refreshOfficialProfile(account: Account): Promise<void> {
 }
 
 async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[]; groupOrder: string[] }> {
-  const tracked = await listTrackedUpgrades({ activeOnly: true });
+  const tracked = await listTrackedUpgrades();
   const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
   const databaseSnapshots = new Map((await listLatestSnapshotLogs()).map((item) => [item.accountId, item.snapshot]));
   const result = await Promise.all(accounts.map(async (account) => {
@@ -207,9 +207,13 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
       });
     }
     const upgrades = accountUpgrades.filter((upgrade) => isUpgradeActive(upgrade));
-    const officialState = officialStates.get(account.id);
-    const officialApiStatus = !officialState?.configured ? "disabled" : !officialState.lastError && officialState.lastSuccessAt && Date.now() - new Date(officialState.lastSuccessAt).getTime() < interval * 2.5 ? "synced" : "delayed";
-    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, tags: account.tags, upgrades, officialApiStatus, online: Boolean(stored || villageExport) && Date.now() - new Date(latest.lastSeen).getTime() < interval * 2.5 }, officialProfiles.get(account.id));
+    const lastSeen = new Date(latest.lastSeen).getTime();
+    const refreshCompletion = accountUpgrades.filter((upgrade) => {
+      return isVillageRefreshRequired(latest.lastSeen, upgrade.finishAt);
+    }).sort((a, b) => +new Date(b.finishAt) - +new Date(a.finishAt))[0];
+    return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, tags: account.tags, upgrades,
+      refreshRequired: Boolean(refreshCompletion), refreshCompletedAt: refreshCompletion?.finishAt || null,
+      online: Boolean(stored || villageExport) && Date.now() - lastSeen < interval * 2.5 }, officialProfiles.get(account.id));
   }));
   const { groupOrder } = await getDashboardSettings();
   return { generatedAt: new Date().toISOString(), accounts: result, groupOrder };

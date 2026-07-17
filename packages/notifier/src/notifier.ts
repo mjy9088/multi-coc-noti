@@ -24,6 +24,13 @@ export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierCo
 }
 
 export function localizeNotification(notification: DueNotification, locale: "ko" | "en"): { title: string; body: string } {
+  if (notification.kind === "refresh_required") return locale === "en" ? {
+    title: `${notification.accountName}: village update required`,
+    body: `${notification.upgradeName} completed more than 24 hours ago. Paste fresh village data to update available slots.`,
+  } : {
+    title: `${notification.accountName} 마을 업데이트 필요`,
+    body: `${notification.upgradeName} 완료 후 24시간이 지났습니다. 최신 마을 데이터를 붙여넣어 주세요.`,
+  };
   const complete = notification.kind === "completion";
   const resource = notification.kind === "resource_preparation";
   if (locale === "en") return {

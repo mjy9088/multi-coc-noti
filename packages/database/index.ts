@@ -9,7 +9,7 @@ let pool: pg.Pool | undefined;
 type AccountInput = Omit<Account, "id" | "legacyIndex" | "resourceStatus" | "resourceStatusUpdatedAt" | "resourcePreparationMinutes"> &
   Partial<Pick<Account, "resourceStatus" | "resourcePreparationMinutes">>;
 export type UpgradeSource = "export" | "snapshot";
-export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "legacy";
+export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "refresh_required" | "legacy";
 export type TrackedUpgrade = Upgrade & {
   accountId: string; startedAt: string; status: string; source: UpgradeSource;
   sourceKey: string; notificationOffsets: number[];
@@ -154,7 +154,7 @@ function normalizeOffsets(offsets: number[] | undefined): number[] {
   return [...new Set((offsets || [60, 1, 0]).map(Number).filter((value) => Number.isInteger(value) && value >= 0 && value <= 525_600))].sort((a, b) => b - a);
 }
 
-export type PlannedNotification = { kind: Exclude<NotificationKind, "legacy">; minutesBefore: number; preparationMinutes: number | null; scheduledAt: Date };
+export type PlannedNotification = { kind: Exclude<NotificationKind, "legacy" | "refresh_required">; minutesBefore: number; preparationMinutes: number | null; scheduledAt: Date };
 
 export function planResourceNotifications(status: ResourceStatus, preparationMinutes: number | null, finishAt: string | Date, now = new Date()): PlannedNotification[] {
   const finish = new Date(finishAt);
@@ -169,6 +169,10 @@ export function planResourceNotifications(status: ResourceStatus, preparationMin
     scheduledAt: new Date(Math.max(now.getTime(), finish.getTime() - preparationMinutes * 60_000)),
   });
   return result;
+}
+
+export function planRefreshNotification(finishAt: string | Date): Date {
+  return new Date(new Date(finishAt).getTime() + 24 * 60 * 60_000);
 }
 
 async function rescheduleAccountNotifications(client: pg.PoolClient, accountId: string, now = new Date()): Promise<void> {
@@ -189,6 +193,12 @@ async function rescheduleAccountNotifications(client: pg.PoolClient, accountId: 
         ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING
       `, [upgrade.id, notification.minutesBefore, notification.kind, notification.preparationMinutes, notification.scheduledAt]);
     }
+    const refreshAt = planRefreshNotification(upgrade.finish_at);
+    await client.query(`
+      INSERT INTO upgrade_notifications (upgrade_id,minutes_before,notification_kind,preparation_minutes,scheduled_at,next_attempt_at)
+      VALUES ($1,0,'refresh_required',NULL,$2,$2)
+      ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING
+    `, [upgrade.id, refreshAt]);
   }
 }
 
@@ -256,10 +266,20 @@ export async function claimDueNotifications(limit = 20, now = new Date()): Promi
       JOIN tracked_upgrades u ON u.id=n.upgrade_id JOIN accounts a ON a.id=u.account_id
       WHERE u.status IN ('active','completed') AND n.scheduled_at <= $1 AND n.next_attempt_at <= $1
         AND (n.status='pending' OR (n.status='processing' AND n.locked_at < $1 - interval '5 minutes'))
+        AND (n.notification_kind<>'refresh_required' OR NOT EXISTS (
+          SELECT 1 FROM village_exports e WHERE e.account_id=u.account_id AND e.exported_at>u.finish_at
+          UNION ALL
+          SELECT 1 FROM snapshot_logs s WHERE s.account_id=u.account_id AND s.captured_at>u.finish_at
+        ))
       ORDER BY n.scheduled_at FOR UPDATE OF n SKIP LOCKED LIMIT $2
     `, [now, limit]);
     const claimed: pg.QueryResultRow[] = [];
+    const refreshAccounts = new Set<string>();
     for (const row of candidates.rows) {
+      if (row.notification_kind === "refresh_required" && refreshAccounts.has(String(row.account_id))) {
+        await client.query("UPDATE upgrade_notifications SET status='skipped',last_error='refresh reminder deduplicated',updated_at=now() WHERE id=$1", [row.id]);
+        continue;
+      }
       if (row.notification_kind === "resource_preparation") {
         const suppression = await client.query(`
           INSERT INTO resource_reminder_suppressions (account_id,notification_id,suppress_until,preparation_minutes)
@@ -275,6 +295,14 @@ export async function claimDueNotifications(limit = 20, now = new Date()): Promi
         }
       }
       await client.query("UPDATE upgrade_notifications SET status='processing',locked_at=$2,attempts=attempts+1,updated_at=now() WHERE id=$1", [row.id, now]);
+      if (row.notification_kind === "refresh_required") {
+        refreshAccounts.add(String(row.account_id));
+        await client.query(`
+          UPDATE upgrade_notifications n SET status='skipped',last_error='refresh reminder deduplicated',updated_at=now()
+          FROM tracked_upgrades u WHERE n.upgrade_id=u.id AND u.account_id=$1 AND n.id<>$2
+            AND n.notification_kind='refresh_required' AND n.status='pending' AND n.scheduled_at<=$3
+        `, [row.account_id, row.id, now]);
+      }
       claimed.push(row);
     }
     await client.query("COMMIT");

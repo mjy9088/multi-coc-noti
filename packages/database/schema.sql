@@ -120,7 +120,7 @@ END WHERE notification_kind IS NULL;
 ALTER TABLE upgrade_notifications ALTER COLUMN notification_kind SET NOT NULL;
 ALTER TABLE upgrade_notifications DROP CONSTRAINT IF EXISTS upgrade_notifications_notification_kind_check;
 ALTER TABLE upgrade_notifications ADD CONSTRAINT upgrade_notifications_notification_kind_check
-  CHECK (notification_kind IN ('completion', 'one_minute', 'resource_preparation', 'legacy'));
+  CHECK (notification_kind IN ('completion', 'one_minute', 'resource_preparation', 'refresh_required', 'legacy'));
 ALTER TABLE upgrade_notifications DROP CONSTRAINT IF EXISTS upgrade_notifications_upgrade_id_minutes_before_key;
 CREATE UNIQUE INDEX IF NOT EXISTS upgrade_notifications_policy_kind_idx
   ON upgrade_notifications (upgrade_id, notification_kind) WHERE notification_kind <> 'legacy';
@@ -228,6 +228,11 @@ WHERE (SELECT needed FROM resource_policy_migration_needed)
 ORDER BY u.account_id,n.sent_at DESC
 ON CONFLICT (account_id) DO NOTHING;
 DROP TABLE resource_policy_migration_needed;
+
+INSERT INTO upgrade_notifications (upgrade_id,minutes_before,notification_kind,preparation_minutes,scheduled_at,next_attempt_at)
+SELECT id,0,'refresh_required',NULL,finish_at + interval '24 hours',finish_at + interval '24 hours'
+FROM tracked_upgrades WHERE status='active'
+ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS snapshot_logs (
   id bigserial PRIMARY KEY,
