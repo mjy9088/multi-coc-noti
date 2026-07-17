@@ -294,6 +294,7 @@ async function previewVillageExport(value: RequestValue) {
   const parsed = parseVillageExport(value.export ?? value.exportText ?? value);
   const account = accounts.find((item) => item.playerTag === parsed.tag);
   const previous = account ? await latestVillageExport(account.id) : null;
+  const previousParsed = previous ? parseVillageExport(previous.raw, { allowHistorical: true }) : null;
   return {
     parsed,
     preview: {
@@ -314,7 +315,7 @@ async function previewVillageExport(value: RequestValue) {
       unknownDataIds: parsed.unknownDataIds,
       account: account ? { id: account.id, label: account.label, color: account.color } : null,
       isNew: !account,
-      changes: compareVillageExports(previous?.normalized || null, parsed),
+      changes: compareVillageExports(previousParsed, parsed),
     },
   };
 }

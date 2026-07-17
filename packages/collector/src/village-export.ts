@@ -212,7 +212,10 @@ export function normalizePlayerTag(value: unknown): string {
   return normalized;
 }
 
-export function parseVillageExport(input: unknown, { now = Date.now() } = {}): ParsedVillageExport {
+export function parseVillageExport(
+  input: unknown,
+  { now = Date.now(), allowHistorical = false }: { now?: number; allowHistorical?: boolean } = {},
+): ParsedVillageExport {
   let raw: unknown;
   try {
     raw = typeof input === "string" ? (JSON.parse(input) as unknown) : input;
@@ -226,7 +229,8 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
   if (!Number.isInteger(timestamp) || timestamp <= 0) throw new Error("village export timestamp is invalid");
   const nowSeconds = Math.floor(now / 1000);
   if (timestamp > nowSeconds + 10 * 60) throw new Error("village export timestamp is too far in the future");
-  if (timestamp < nowSeconds - MAX_AGE_SECONDS) throw new Error("village export is older than 30 days");
+  if (!allowHistorical && timestamp < nowSeconds - MAX_AGE_SECONDS)
+    throw new Error("village export is older than 30 days");
 
   const upgrades: ExportUpgrade[] = [];
   const unknownDataIds = new Set<number>();

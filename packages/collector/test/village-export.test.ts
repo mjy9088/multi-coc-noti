@@ -162,6 +162,27 @@ test("[IMPORT-DIFF-001] summarizes changed upgrades and available slots", () => 
     ["builderBuilders"],
   );
   assert.deepEqual(compareVillageExports(null, current), { hasPrevious: false, started: [], ended: [], slots: [] });
+
+  const legacyNormalized = {
+    ...previous,
+    upgrades: previous.upgrades.map((upgrade, index) => ({
+      ...upgrade,
+      id: `export:buildings:${upgrade.dataId}:${index}`,
+    })),
+  };
+  assert.notDeepEqual(compareVillageExports(legacyNormalized, previous), {
+    hasPrevious: true,
+    started: [],
+    ended: [],
+    slots: [],
+  });
+  const reparsedStored = parseVillageExport(previous.raw, { allowHistorical: true });
+  assert.deepEqual(compareVillageExports(reparsedStored, previous), {
+    hasPrevious: true,
+    started: [],
+    ended: [],
+    slots: [],
+  });
 });
 
 test("[IMPORT-SLOT-001] reports unlocked idle upgrade slots as available", () => {
