@@ -2,30 +2,27 @@ import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { mkdir, rename } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import {
   cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
-  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveSnapshotLog, saveVillageExport,
+  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
+  updateUpgradePreparationOverride,
 } from "@multi-coc/database";
-import { dataDir, isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot, parseSnapshotDocuments, readJson, writeJson } from "@multi-coc/shared";
-import type { Account, ResourceStatus, SnapshotDocument, VillageSnapshot } from "@multi-coc/shared";
+import { dataDir, isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot, readJson } from "@multi-coc/shared";
+import type { Account, ResourceStatus, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
-import { createRateLimiter } from "./rate-limit.ts";
-import { appendSnapshotRecord, cleanupRetention } from "./storage.ts";
+import { cleanupRetention } from "./storage.ts";
 import { normalizePlayerTag, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
-const interval = Number(process.env.POLL_INTERVAL_SECONDS || 300) * 1000;
-const ingestLimit = Number(process.env.INGEST_RATE_LIMIT_PER_MINUTE || 120);
+const profileRefreshInterval = Number(process.env.PROFILE_REFRESH_INTERVAL_SECONDS || 300) * 1000;
 const snapshotRetentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS || 90);
 const adminToken = process.env.ADMIN_TOKEN || "";
 const root = dataDir();
-type PollState = { configured: boolean; lastAttemptAt: string | null; lastSuccessAt: string | null; lastError: string | null; accepted: number };
-type OfficialState = Omit<PollState, "accepted">;
+type OfficialState = { configured: boolean; lastAttemptAt: string | null; lastSuccessAt: string | null; lastError: string | null };
 type RequestValue = Record<string, unknown>;
-const pollStates = new Map<string, PollState>();
 const officialStates = new Map<string, OfficialState>();
 const officialProfiles = new Map<string, PlayerProfile>();
 let accounts: Account[] = [];
@@ -34,11 +31,10 @@ await migrate();
 await mkdir(path.join(root, "accounts"), { recursive: true });
 await refreshAccounts();
 await migrateLegacyDataDirectories();
-const consumeIngest = createRateLimiter({ limit: Number.isFinite(ingestLimit) && ingestLimit > 0 ? ingestLimit : 120 });
 
 const cors = {
   "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-api-key, x-data-origin",
+  "Access-Control-Allow-Headers": "authorization, content-type",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
@@ -48,10 +44,7 @@ function equalSecret(a = "", b = ""): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function bearer(request: IncomingMessage): string {
-  const apiKey = request.headers["x-api-key"];
-  return request.headers.authorization?.replace(/^Bearer\s+/i, "") || (Array.isArray(apiKey) ? apiKey[0] : apiKey) || "";
-}
+function bearer(request: IncomingMessage): string { return request.headers.authorization?.replace(/^Bearer\s+/i, "") || ""; }
 
 function requireAdmin(request: IncomingMessage, response: ServerResponse): boolean {
   if (!adminToken) { json(response, 503, { error: "ADMIN_TOKEN is not configured" }); return false; }
@@ -78,8 +71,6 @@ async function requestJson(request: IncomingMessage): Promise<RequestValue> {
 async function refreshAccounts(): Promise<void> {
   accounts = await listAccounts();
   for (const account of accounts) {
-    if (!pollStates.has(account.id)) pollStates.set(account.id, { configured: Boolean(account.sourceUrl), lastAttemptAt: null, lastSuccessAt: null, lastError: null, accepted: 0 });
-    else pollStates.get(account.id)!.configured = Boolean(account.sourceUrl);
     const configured = Boolean(account.playerTag && process.env.CLASH_OF_CLANS_API_TOKEN);
     if (!officialStates.has(account.id)) officialStates.set(account.id, { configured, lastAttemptAt: null, lastSuccessAt: null, lastError: null });
     else officialStates.get(account.id)!.configured = configured;
@@ -104,32 +95,6 @@ async function migrateLegacyDataDirectories(): Promise<void> {
     }
   }
   if (changed) await refreshAccounts();
-}
-
-async function ingest(account: Account, raw: SnapshotDocument, { dataSource = "push", onlyNewer = false }: { dataSource?: string; onlyNewer?: boolean } = {}): Promise<VillageSnapshot | null> {
-  const dir = path.join(root, "accounts", account.id);
-  const previous = await readJson<VillageSnapshot>(path.join(dir, "latest.json"));
-  const snapshot = normalizeSnapshot(account, raw, { dataSource });
-  if (onlyNewer && previous && new Date(snapshot.lastSeen).getTime() <= new Date(previous.lastSeen).getTime()) return null;
-  await Promise.all([appendSnapshotRecord(root, account.id, snapshot, raw), saveSnapshotLog(account.id, snapshot, raw)]);
-  await writeJson(path.join(dir, "latest.json"), snapshot);
-  await syncTrackedUpgrades(account.id, "snapshot", snapshot.upgrades, snapshot.lastSeen);
-  return snapshot;
-}
-
-async function poll(account: Account): Promise<void> {
-  if (!account.sourceUrl) return;
-  const state = pollStates.get(account.id)!;
-  state.lastAttemptAt = new Date().toISOString();
-  try {
-    const response = await fetch(account.sourceUrl, { headers: { Authorization: `Bearer ${account.apiKey}`, Accept: "application/json, application/x-ndjson" } });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text(); let accepted = 0;
-    for (const document of parseSnapshotDocuments(text, response.headers.get("content-type") || "application/json")) {
-      if (await ingest(account, document, { dataSource: "pull", onlyNewer: true })) accepted += 1;
-    }
-    Object.assign(state, { lastSuccessAt: new Date().toISOString(), lastError: null, accepted });
-  } catch (error) { state.lastError = (error as Error).message; console.error(`[collector] ${account.id}: ${(error as Error).message}`); }
 }
 
 async function refreshOfficialProfile(account: Account): Promise<void> {
@@ -207,13 +172,12 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
       });
     }
     const upgrades = accountUpgrades.filter((upgrade) => isUpgradeActive(upgrade));
-    const lastSeen = new Date(latest.lastSeen).getTime();
     const refreshCompletion = accountUpgrades.filter((upgrade) => {
       return isVillageRefreshRequired(latest.lastSeen, upgrade.finishAt);
     }).sort((a, b) => +new Date(b.finishAt) - +new Date(a.finishAt))[0];
     return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, tags: account.tags, upgrades,
       refreshRequired: Boolean(refreshCompletion), refreshCompletedAt: refreshCompletion?.finishAt || null,
-      online: Boolean(stored || villageExport) && Date.now() - lastSeen < interval * 2.5 }, officialProfiles.get(account.id));
+      online: Boolean(stored || villageExport) }, officialProfiles.get(account.id));
   }));
   const { groupOrder } = await getDashboardSettings();
   return { generatedAt: new Date().toISOString(), accounts: result, groupOrder };
@@ -231,9 +195,9 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
     throw new Error("resource preparation time must be whole minutes from 1 to 525600, or disabled");
   }
   return {
-    label, playerTag, apiKey: String(value.apiKey || existing?.apiKey || randomUUID()),
+    label, playerTag,
     color: String(value.color || existing?.color || "#4c9a79"), tags: normalizeAccountTags(value.tags, existing?.tags),
-    sourceUrl: String(value.sourceUrl ?? existing?.sourceUrl ?? ""), resourceStatus: resourceStatus as ResourceStatus,
+    resourceStatus: resourceStatus as ResourceStatus,
     resourceStatusUpdatedAt: existing?.resourceStatusUpdatedAt || new Date().toISOString(), resourcePreparationMinutes,
   };
 }
@@ -280,8 +244,8 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     if (request.method === "OPTIONS") { response.writeHead(204, cors); return response.end(); }
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ok: true, accounts: accounts.length, database: true, adminConfigured: Boolean(adminToken), retention: { snapshots: snapshotRetentionDays } });
+    if (request.method === "GET" && url.pathname === "/api/sources") return json(response, 200, { accounts: accounts.map((account) => ({ id: account.id, label: account.label, official: officialStates.get(account.id) })) });
     if (request.method === "GET" && url.pathname === "/api/dashboard") return json(response, 200, await dashboard());
-    if (request.method === "GET" && url.pathname === "/api/sources") return json(response, 200, { accounts: accounts.map((account) => ({ id: account.id, label: account.label, source: pollStates.get(account.id), official: officialStates.get(account.id) })) });
     if (request.method === "GET" && url.pathname === "/api/history") {
       const account = accounts.find((item) => item.id === url.searchParams.get("account"));
       if (!account) return json(response, 404, { error: "unknown account" });
@@ -292,7 +256,7 @@ const server = createServer(async (request, response) => {
 
     if (url.pathname.startsWith("/api/admin/")) {
       if (!requireAdmin(request, response)) return;
-      if (request.method === "GET" && url.pathname === "/api/admin/accounts") return json(response, 200, { accounts: accounts.map(({ apiKey, legacyIndex, ...account }) => ({ ...account, hasApiKey: Boolean(apiKey) })) });
+      if (request.method === "GET" && url.pathname === "/api/admin/accounts") return json(response, 200, { accounts: accounts.map(({ legacyIndex, ...account }) => account) });
       if (request.method === "GET" && url.pathname === "/api/admin/dashboard-settings") return json(response, 200, await getDashboardSettings());
       if (request.method === "PATCH" && url.pathname === "/api/admin/dashboard-settings") {
         const value = await requestJson(request);
@@ -301,7 +265,7 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === "POST" && url.pathname === "/api/admin/accounts") {
         const account = await createAccount(accountInput(await requestJson(request), null)); await refreshAccounts();
-        await Promise.all([poll(account), refreshOfficialProfile(account)]);
+        await refreshOfficialProfile(account);
         return json(response, 201, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color, tags: account.tags } });
       }
       const accountPath = url.pathname.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})$/i);
@@ -322,11 +286,22 @@ const server = createServer(async (request, response) => {
         const account = await updateAccount(existing.id, accountInput(await requestJson(request), existing));
         if (!account) return json(response, 404, { error: "unknown account" });
         await refreshAccounts();
-        await Promise.all([poll(account), refreshOfficialProfile(account)]);
+        await refreshOfficialProfile(account);
         return json(response, 200, { account: { id: account.id, label: account.label, playerTag: account.playerTag, color: account.color, tags: account.tags } });
       }
       if (request.method === "DELETE" && accountPath) { await deleteAccount(accountPath[1]); await refreshAccounts(); return json(response, 200, { deleted: true }); }
       if (request.method === "GET" && url.pathname === "/api/admin/upgrades") return json(response, 200, { upgrades: await listTrackedUpgrades() });
+      const upgradeAlertPath = url.pathname.match(/^\/api\/admin\/upgrades\/(\d+)\/alerts$/);
+      if (request.method === "PATCH" && upgradeAlertPath) {
+        const value = await requestJson(request);
+        if (Object.keys(value).some((key) => key !== "resourcePreparationOverrideMinutes")) throw new Error("only resourcePreparationOverrideMinutes can be changed");
+        const raw = value.resourcePreparationOverrideMinutes;
+        const overrideMinutes = raw === null ? null : Number(raw);
+        if (overrideMinutes !== null && (!Number.isInteger(overrideMinutes) || overrideMinutes < 0 || overrideMinutes > 525_600)) throw new Error("upgrade preparation override must be whole minutes from 0 to 525600, or null");
+        const upgrade = await updateUpgradePreparationOverride(upgradeAlertPath[1], overrideMinutes);
+        if (!upgrade) return json(response, 404, { error: "unknown upgrade" });
+        return json(response, 200, { upgrade });
+      }
       if (request.method === "POST" && url.pathname === "/api/admin/village-export/preview") {
         const { preview } = previewVillageExport(await requestJson(request));
         return json(response, 200, preview);
@@ -334,23 +309,6 @@ const server = createServer(async (request, response) => {
       if (request.method === "POST" && url.pathname === "/api/admin/village-export") return json(response, 201, await importVillageExport(await requestJson(request)));
     }
 
-    if (request.method === "POST" && url.pathname === "/api/ingest") {
-      const documents = parseSnapshotDocuments(await body(request), request.headers["content-type"]);
-      const secret = String(bearer(request));
-      let account = accounts.find((item) => equalSecret(secret, item.apiKey));
-      if (!account && equalSecret(secret, adminToken)) {
-        const tags = new Set(documents.map((document) => normalizePlayerTag(document.village?.tag || document.tag)));
-        if (tags.size !== 1) throw new Error("admin ingest requires one consistent player tag");
-        account = accounts.find((item) => item.playerTag === [...tags][0]);
-      }
-      if (!account) return json(response, 401, { error: "invalid api key or unknown player tag" });
-      const rate = consumeIngest(`${account.id}:${request.socket.remoteAddress || "unknown"}`);
-      if (!rate.allowed) return json(response, 429, { error: "ingest rate limit exceeded" }, { "Retry-After": String(rate.retryAfterSeconds) });
-      const snapshots: Array<VillageSnapshot | null> = [];
-      const dataSource = request.headers["x-data-origin"] === "example" ? "example" : "push";
-      for (const document of documents) snapshots.push(await ingest(account, document, { dataSource }));
-      return json(response, 202, { accepted: snapshots.length, latest: snapshots.at(-1) });
-    }
     json(response, 404, { error: "not found" });
   } catch (error) { const message = (error as Error).message; json(response, message === "payload too large" ? 413 : 400, { error: message }); }
 });
@@ -360,10 +318,10 @@ function json(response: ServerResponse, status: number, value: unknown, headers:
   response.end(JSON.stringify(value));
 }
 
-await Promise.all(accounts.flatMap((account) => [refreshOfficialProfile(account), poll(account)]));
-setInterval(() => accounts.forEach((account) => { refreshOfficialProfile(account); poll(account); }), interval).unref();
+await Promise.all(accounts.map((account) => refreshOfficialProfile(account)));
+setInterval(() => accounts.forEach((account) => { refreshOfficialProfile(account); }), profileRefreshInterval).unref();
 await completeDue();
-setInterval(completeDue, Math.min(interval, 60_000)).unref();
+setInterval(completeDue, Math.min(profileRefreshInterval, 60_000)).unref();
 const clean = () => Promise.all([
   cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays }),
   cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays }),

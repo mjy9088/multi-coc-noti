@@ -26,7 +26,7 @@ type Village = {
   level: number;
   color: string;
   tags?: string[];
-  dataSource?: "example" | "pull" | "push" | "unknown";
+  dataSource?: string;
   online: boolean;
   refreshRequired?: boolean;
   refreshCompletedAt?: string | null;

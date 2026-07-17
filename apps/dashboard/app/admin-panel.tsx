@@ -6,8 +6,9 @@ import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import { useDashboardFormat } from "./use-dashboard-format";
 
 type ResourceStatus = "abundant" | "sufficient" | "insufficient" | "unanswered";
-type Account = { id: string; label: string; playerTag: string; color: string; tags: string[]; sourceUrl: string; hasApiKey: boolean; resourceStatus: ResourceStatus; resourceStatusUpdatedAt: string; resourcePreparationMinutes: number | null };
-type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string; source: "export" | "snapshot"; notificationOffsets: number[] };
+type Account = { id: string; label: string; playerTag: string; color: string; tags: string[]; resourceStatus: ResourceStatus; resourceStatusUpdatedAt: string; resourcePreparationMinutes: number | null };
+type Upgrade = { id: string; accountId: string; name: string; type: string; level: number; nextLevel: number; finishAt: string; status: string; source: "export" | "snapshot"; notificationOffsets: number[]; resourcePreparationOverrideMinutes: number | null };
+type UpgradeAlertDraft = { mode: "inherit" | "disabled" | "custom"; minutes: number };
 type ExportPreview = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
   upgradeSlots?: {
@@ -29,6 +30,8 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
+  const [upgradeAlertDrafts, setUpgradeAlertDrafts] = useState<Record<string, UpgradeAlertDraft>>({});
+  const [savingUpgradeId, setSavingUpgradeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [section, setSection] = useState<AdminSection>(initialSection);
@@ -38,7 +41,7 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
   const [clockNow, setClockNow] = useState(adminLoadedAt);
   const [newLabel, setNewLabel] = useState("");
   const [editing, setEditing] = useState<Account | null>(null);
-  const [accountForm, setAccountForm] = useState({ label: "", color: "#4c9a79", tags: "", sourceUrl: "", apiKey: "", resourceStatus: "unanswered" as ResourceStatus, resourcePreparationEnabled: true, resourcePreparationMinutes: 60 });
+  const [accountForm, setAccountForm] = useState({ label: "", color: "#4c9a79", tags: "", resourceStatus: "unanswered" as ResourceStatus, resourcePreparationEnabled: true, resourcePreparationMinutes: 60 });
   const [resourcePrompt, setResourcePrompt] = useState<{ accountId: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [resourceResponding, setResourceResponding] = useState(false);
@@ -66,12 +69,16 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
     try {
       const [accountResult, upgradeResult, dashboardSettings] = await Promise.all([request("/api/admin/accounts"), request("/api/admin/upgrades"), request("/api/admin/dashboard-settings")]);
       setAccounts(accountResult.accounts); setUpgrades(upgradeResult.upgrades);
+      setUpgradeAlertDrafts(Object.fromEntries(upgradeResult.upgrades.map((upgrade: Upgrade) => [upgrade.id, {
+        mode: upgrade.resourcePreparationOverrideMinutes === null ? "inherit" : upgrade.resourcePreparationOverrideMinutes === 0 ? "disabled" : "custom",
+        minutes: upgrade.resourcePreparationOverrideMinutes && upgrade.resourcePreparationOverrideMinutes > 0 ? upgrade.resourcePreparationOverrideMinutes : 60,
+      }])));
       setEditing((current) => current ? accountResult.accounts.find((item: Account) => item.id === current.id) || null : null);
       if (!initialAccountApplied.current && initialAccountId) {
         const account = accountResult.accounts.find((item: Account) => item.id === initialAccountId);
         if (account) {
           setEditing(account);
-          setAccountForm({ label: account.label, color: account.color, tags: (account.tags || []).join(", "), sourceUrl: account.sourceUrl, apiKey: "", resourceStatus: account.resourceStatus, resourcePreparationEnabled: account.resourcePreparationMinutes != null, resourcePreparationMinutes: account.resourcePreparationMinutes || 60 });
+          setAccountForm({ label: account.label, color: account.color, tags: (account.tags || []).join(", "), resourceStatus: account.resourceStatus, resourcePreparationEnabled: account.resourcePreparationMinutes != null, resourcePreparationMinutes: account.resourcePreparationMinutes || 60 });
         }
         initialAccountApplied.current = true;
       }
@@ -164,7 +171,7 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
 
   const chooseAccount = (item: Account) => {
     setEditing(item);
-    setAccountForm({ label: item.label, color: item.color, tags: (item.tags || []).join(", "), sourceUrl: item.sourceUrl, apiKey: "", resourceStatus: item.resourceStatus, resourcePreparationEnabled: item.resourcePreparationMinutes != null, resourcePreparationMinutes: item.resourcePreparationMinutes || 60 });
+    setAccountForm({ label: item.label, color: item.color, tags: (item.tags || []).join(", "), resourceStatus: item.resourceStatus, resourcePreparationEnabled: item.resourcePreparationMinutes != null, resourcePreparationMinutes: item.resourcePreparationMinutes || 60 });
     if (window.matchMedia("(max-width: 760px)").matches) window.setTimeout(() => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
@@ -205,6 +212,20 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
     if (result) setResourcePrompt(null);
   };
 
+  const saveUpgradeAlert = async (upgrade: Upgrade) => {
+    const draft = upgradeAlertDrafts[upgrade.id] || { mode: "inherit", minutes: 60 };
+    const override = draft.mode === "inherit" ? null : draft.mode === "disabled" ? 0 : draft.minutes;
+    setSavingUpgradeId(upgrade.id);
+    await run(() => request(`/api/admin/upgrades/${upgrade.id}/alerts`, { method: "PATCH", body: JSON.stringify({ resourcePreparationOverrideMinutes: override }) }), t("notificationsSaved"));
+    setSavingUpgradeId(null);
+  };
+
+  const openVillageSettings = (account: Account | undefined) => {
+    if (!account) return;
+    chooseAccount(account); setSection("villages");
+    window.setTimeout(() => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
+
   if (!token) return <section className="admin-shell"><div className="admin-login"><p className="eyebrow">ADMIN</p><h1>{t("authentication")}</h1><p>{t("authenticationHelp")}</p>{error && <p className="admin-alert error">{error}</p>}<form onSubmit={(event) => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get("token") || "").trim(); setError(""); setMessage(""); localStorage.setItem("multi-coc-admin-token", value); setToken(value); }}><input name="token" type="password" required autoComplete="current-password" autoFocus /><button>{t("signIn")}</button></form></div></section>;
 
   return <section className="admin-shell">
@@ -233,7 +254,7 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
     </div>}
 
     {section === "alerts" && <article className="admin-card wide-card"><h2>{t("upgradeAlertsTitle")}</h2><p>{t("upgradeAlertsHelp")}</p>
-      <div className="upgrade-admin-list">{upgrades.some((item) => item.status === "active") ? upgrades.filter((item) => item.status === "active").map((item) => { const account = accounts.find((a) => a.id === item.accountId); return <div key={item.id}><span><b>{account?.label} · {item.name}</b><small>{formatDateTime(item.finishAt)} · {t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })} · {t(item.source === "export" ? "source_export" : "source_snapshot")}</small></span><span className="policy-badge">{t(`resourcePolicy_${account?.resourceStatus || "unanswered"}`)}</span></div>; }) : <p>{t("noTrackedUpgrades")}</p>}</div>
+      <div className="upgrade-admin-list">{upgrades.some((item) => item.status === "active") ? upgrades.filter((item) => item.status === "active").map((item) => { const account = accounts.find((a) => a.id === item.accountId); const draft = upgradeAlertDrafts[item.id] || { mode: "inherit", minutes: 60 }; return <div className="upgrade-alert-row" key={item.id}><div className="upgrade-alert-heading"><span><b>{account?.label} · {item.name}</b><small>{formatDateTime(item.finishAt)} · {t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })} · {t(item.source === "export" ? "source_export" : "source_snapshot")}</small></span><span className="policy-badge">{t(`resourcePolicy_${account?.resourceStatus || "unanswered"}`)}</span></div><div className="upgrade-alert-controls"><label>{t("preparationAlertSetting")}<select value={draft.mode} onChange={(event) => setUpgradeAlertDrafts({ ...upgradeAlertDrafts, [item.id]: { ...draft, mode: event.target.value as UpgradeAlertDraft["mode"] } })}><option value="inherit">{t("preparationInherit", { minutes: account?.resourcePreparationMinutes ?? t("disabled") })}</option><option value="disabled">{t("preparationDisabled")}</option><option value="custom">{t("preparationCustom")}</option></select></label>{draft.mode === "custom" && <label>{t("resourcePreparationMinutes")}<input type="number" min="1" max="525600" required value={draft.minutes} onChange={(event) => setUpgradeAlertDrafts({ ...upgradeAlertDrafts, [item.id]: { ...draft, minutes: Number(event.target.value) } })} /></label>}<div className="upgrade-alert-actions"><button type="button" className="secondary" onClick={() => openVillageSettings(account)}>{t("goToVillageSettings")}</button><button type="button" disabled={savingUpgradeId === item.id || (draft.mode === "custom" && (!Number.isInteger(draft.minutes) || draft.minutes < 1 || draft.minutes > 525600))} onClick={() => saveUpgradeAlert(item)}>{savingUpgradeId === item.id ? t("saving") : t("saveNotifications")}</button></div></div></div>; }) : <p>{t("noTrackedUpgrades")}</p>}</div>
     </article>}
 
     {section === "villages" && <div className="village-admin-layout"><article className="admin-card village-list-card"><h2>{t("registeredVillages")}</h2><p>{t("registeredVillagesHelp")}</p><div className="admin-list village-picker">{accounts.map((item) => <button key={item.id} className={editing?.id === item.id ? "selected" : ""} onClick={() => chooseAccount(item)}><i style={{ background: item.color }} /><span><b>{item.label}</b><small>{item.playerTag}{item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}</small></span></button>)}{!accounts.length && <p>{t("noVillages")}</p>}</div></article>
@@ -243,8 +264,6 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
         <label className="wide">{t("resourceStatus")}<select value={accountForm.resourceStatus} onChange={(e) => setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })}><option value="abundant">{t("resourceAbundant")}</option><option value="sufficient">{t("resourceSufficient")}</option><option value="insufficient">{t("resourceInsufficient")}</option><option value="unanswered">{t("resourceUnanswered")}</option></select><small>{t("resourceStatusHelp")}</small></label>
         <label className="wide check-label"><input type="checkbox" checked={accountForm.resourcePreparationEnabled} onChange={(e) => setAccountForm({ ...accountForm, resourcePreparationEnabled: e.target.checked })} />{t("resourcePreparationEnabled")}</label>
         {accountForm.resourcePreparationEnabled && <label className="wide">{t("resourcePreparationMinutes")}<input type="number" min="1" max="525600" required value={accountForm.resourcePreparationMinutes} onChange={(e) => setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })} /></label>}
-        <label className="wide">{t("sourceUrl")}<input value={accountForm.sourceUrl} onChange={(e) => setAccountForm({ ...accountForm, sourceUrl: e.target.value })} /></label>
-        <label className="wide">{t("newIngestKey")}<input type="password" value={accountForm.apiKey} onChange={(e) => setAccountForm({ ...accountForm, apiKey: e.target.value })} /></label>
         <button className="wide">{t("saveSettings")}</button></form><button className="danger standalone-danger" onClick={() => confirm(t("deleteConfirm")) && run(async () => { await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" }); setEditing(null); }, t("deleted"))}>{t("deleteVillage")}</button></> : <div className="empty settings-empty">{t("chooseVillage")}</div>}</article></div>}
 
     {section === "groups" && <article className="admin-card group-order-card"><h2>{t("groupOrder")}</h2><p>{t("groupOrderHelp")}</p><div className="group-order-settings standalone-group-order">{availableGroups.map((tag, index) => <div key={tag}><span>#{tag}</span><span><button type="button" className="secondary" disabled={index === 0} onClick={() => moveGroup(index, -1)} aria-label={t("moveGroupUp", { tag })}>↑</button><button type="button" className="secondary" disabled={index === availableGroups.length - 1} onClick={() => moveGroup(index, 1)} aria-label={t("moveGroupDown", { tag })}>↓</button></span></div>)}{!availableGroups.length && <small>{t("noGroups")}</small>}</div></article>}

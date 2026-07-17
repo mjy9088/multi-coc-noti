@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { localizeNotification, runOnce } from "../src/notifier.ts";
 import type { NotifierConfig } from "../src/notifier.ts";
 import type { DueNotification } from "@multi-coc/database";
-import { planRefreshNotification, planResourceNotifications } from "@multi-coc/database";
+import { planRefreshNotification, planResourceNotifications, resolvePreparationMinutes } from "@multi-coc/database";
 
 const due: DueNotification = {
   id: "notification-1", upgradeId: "upgrade-1", kind: "resource_preparation", minutesBefore: 60,
@@ -34,6 +34,13 @@ test("[ALERT-PLAN-001] plans notifications from the village resource policy", ()
 
 test("[ALERT-REFRESH-001] schedules the stale-village reminder 24 hours after completion", () => {
   assert.equal(planRefreshNotification("2026-07-17T10:00:00Z").toISOString(), "2026-07-18T10:00:00.000Z");
+});
+
+test("[ALERT-OVERRIDE-001] resolves per-upgrade preparation overrides", () => {
+  assert.equal(resolvePreparationMinutes(60, null), 60);
+  assert.equal(resolvePreparationMinutes(60, 0), null);
+  assert.equal(resolvePreparationMinutes(60, 120), 120);
+  assert.equal(resolvePreparationMinutes(null, 30), 30);
 });
 
 test("[ALERT-DELIVERY-001] delivers claimed notifications and records Bark success", async (context) => {

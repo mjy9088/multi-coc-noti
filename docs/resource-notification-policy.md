@@ -36,7 +36,7 @@ When an export contains active upgrades:
 4. A response is saved separately and future notifications are recalculated.
 5. Dismissal retains the already imported export and `unanswered` state.
 
-Do not show the prompt when no upgrade is active. Automated Push/Pull cannot show it and therefore keeps the last stored state. The prompt is never a confirmation that can cancel an import.
+Do not show the prompt when no upgrade is active. The prompt is never a confirmation that can cancel an import.
 
 ## Notification schedule
 
@@ -84,6 +84,14 @@ Changes under Manage villages recalculate only unsent notifications for that vil
 - `insufficient` and `unanswered` retain completion and optionally preparation.
 - If preparation time has passed, omit the unsent preparation notification.
 
+## Per-upgrade preparation overrides
+
+<!-- contract: ALERT-OVERRIDE-001 -->
+
+Under `Settings → Upgrades & alerts`, each active upgrade can inherit its village's preparation time, disable only its own preparation alert, or use a custom number of minutes. The override affects only `resource_preparation`; completion, one-minute, and stale-data notifications continue to follow the village resource policy.
+
+Saving an override recalculates unsent notifications for that village without changing successful delivery records. A tracked upgrade keeps its override when a newer observation updates the same source key. Each row also links directly to the corresponding village settings.
+
 ## Data model
 
 Accounts store:
@@ -95,6 +103,8 @@ resource_preparation_minutes: integer | null
 ```
 
 Notification rows store `completion`, `one_minute`, or `resource_preparation`. Although a preparation row originates from an upgrade, its suppression key is village ID plus kind. Preserve the preparation duration used at delivery so later setting changes do not alter an active suppression window.
+
+Tracked upgrades store `resource_preparation_override_minutes`: `null` inherits the village value, `0` disables preparation for that upgrade, and a positive integer supplies a custom duration.
 
 ## Migration from fixed offsets
 
@@ -132,3 +142,4 @@ This reminder is separate from resource policy. When a tracked upgrade completes
 - An overdue preparation notification is not newly scheduled when JSON or settings are applied.
 - Suppress same-village preparation alerts within the preparation window.
 - Recalculate only unsent rows after state or preparation changes.
+- Apply per-upgrade preparation overrides without removing other notification kinds.

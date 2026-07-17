@@ -39,8 +39,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   player_tag text NOT NULL DEFAULT '',
   color text NOT NULL DEFAULT '#4c9a79',
   tags text[] NOT NULL DEFAULT ARRAY[]::text[],
-  api_key text NOT NULL,
-  source_url text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -58,6 +56,8 @@ ALTER TABLE accounts ADD CONSTRAINT accounts_resource_preparation_minutes_check
 
 ALTER TABLE accounts DROP COLUMN IF EXISTS source_api_token;
 ALTER TABLE accounts DROP COLUMN IF EXISTS clash_api_token;
+ALTER TABLE accounts DROP COLUMN IF EXISTS api_key;
+ALTER TABLE accounts DROP COLUMN IF EXISTS source_url;
 
 CREATE TABLE IF NOT EXISTS dashboard_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
@@ -82,6 +82,11 @@ CREATE TABLE IF NOT EXISTS tracked_upgrades (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE tracked_upgrades ADD COLUMN IF NOT EXISTS resource_preparation_override_minutes integer;
+ALTER TABLE tracked_upgrades DROP CONSTRAINT IF EXISTS tracked_upgrades_resource_preparation_override_check;
+ALTER TABLE tracked_upgrades ADD CONSTRAINT tracked_upgrades_resource_preparation_override_check
+  CHECK (resource_preparation_override_minutes IS NULL OR resource_preparation_override_minutes BETWEEN 0 AND 525600);
 
 CREATE UNIQUE INDEX IF NOT EXISTS tracked_upgrades_source_key_idx
   ON tracked_upgrades (account_id, source, source_key);

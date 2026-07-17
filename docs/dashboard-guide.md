@@ -70,8 +70,8 @@ Preview shows export time, builder and slot status, exact completion timestamps,
 | Section | Purpose |
 | --- | --- |
 | `Update Data` | Review and import game-export JSON |
-| `Upgrades & alerts` | Inspect active upgrades and effective Bark policy |
-| `Manage villages` | Edit name, color, tags, Pull URL, API key, resource policy, or delete |
+| `Upgrades & alerts` | Inspect active upgrades, override preparation alerts, or open the corresponding village settings |
+| `Manage villages` | Edit name, color, tags, resource policy, or delete |
 | `Group order` | Configure dashboard tag-group order |
 
 On mobile, the Manage villages form appears before the long village list. Selecting another village scrolls back to the form.
@@ -84,7 +84,7 @@ An import containing active upgrades is saved immediately with resource status `
 - Sufficient: notify one minute before completion.
 - Insufficient or unanswered: notify at the configured preparation time and again at completion.
 
-Preparation time is a per-village minute value and can be disabled. Overdue preparation notifications become eligible on the next Notifier cycle. The same village does not receive duplicate preparation alerts within its preparation window. Sent alerts survive policy changes; failed Bark requests record an error and retry time. See the [notification policy](resource-notification-policy.md).
+Preparation time is a per-village minute value and can be disabled. Each active upgrade can inherit that value, disable only its own preparation alert, or use a custom time under `Upgrades & alerts`. Preparation times that have already passed are not newly scheduled. The same village does not receive duplicate preparation alerts within its preparation window. Sent alerts survive policy changes; failed Bark requests record an error and retry time. See the [notification policy](resource-notification-policy.md).
 
 ## Storage locations
 

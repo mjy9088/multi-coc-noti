@@ -7,7 +7,6 @@ Routine work should be pasting and reviewing game-export JSON, not editing accou
 ## Standard flow
 
 <!-- contract: DATA-SNAPSHOT-001 -->
-<!-- contract: DATA-FORMAT-001 -->
 
 1. Paste through Quick Paste, the Update Data clipboard button, or the text area.
 2. Once a complete JSON document is detected, debounce briefly and request a server preview. Discard stale preview responses after input changes.
@@ -59,7 +58,6 @@ Settings contains `Update Data`, `Upgrades & alerts`, `Manage villages`, and the
 - Account tag: user metadata for grouping villages; unrelated to player tags.
 - UUID: internal identifier for DB relations and management API paths.
 - Do not expose or rely on user-visible numeric indexes.
-- Push collection identifies villages by per-account API keys.
 - Sort lists by meaningful fields such as label or recent update time.
 
 ## Errors and safeguards

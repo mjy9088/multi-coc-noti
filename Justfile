@@ -100,7 +100,7 @@ status:
     @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:8787/health
     @echo
 
-# 계정별 원본 서버 및 공식 API 동기화 상태 확인
+# 계정별 공식 API 동기화 상태 확인
 sources:
     @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:8787/api/sources
     @echo

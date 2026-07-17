@@ -28,8 +28,6 @@ export type Account = {
   resourceStatus: ResourceStatus;
   resourceStatusUpdatedAt: string;
   resourcePreparationMinutes: number | null;
-  apiKey: string;
-  sourceUrl: string;
 };
 
 export type VillageSnapshot = {
@@ -101,20 +99,6 @@ export async function readJson<T>(file: string, fallback: T): Promise<T>;
 export async function readJson<T>(file: string): Promise<T | null>;
 export async function readJson<T>(file: string, fallback: T | null = null): Promise<T | null> {
   try { return JSON.parse(await readFile(file, "utf8")) as T; } catch { return fallback; }
-}
-
-export function parseSnapshotDocuments(text: string, contentType = "application/json"): SnapshotDocument[] {
-  const value = text.trim();
-  if (!value) return [];
-  if (!contentType.includes("ndjson")) {
-    try {
-      const parsed = JSON.parse(value) as SnapshotDocument | SnapshotDocument[];
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      // Some JSONL endpoints respond with text/plain or application/json.
-    }
-  }
-  return value.split(/\r?\n/).filter(Boolean).map((document) => JSON.parse(document) as SnapshotDocument);
 }
 
 const iso = (value?: string | number | null, fallback = new Date().toISOString()): string => {

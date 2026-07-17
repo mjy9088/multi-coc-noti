@@ -1,6 +1,6 @@
 # Multi Village Command Center
 
-A responsive dashboard for tracking builders, research slots, active upgrades, and iOS Bark notifications across multiple Clash of Clans villages. It combines pasted game-export JSON and optional automated collection in PostgreSQL.
+A responsive dashboard for tracking builders, research slots, active upgrades, and iOS Bark notifications across multiple Clash of Clans villages. It stores pasted game-export JSON and notification state in PostgreSQL.
 
 ## Features
 
@@ -41,7 +41,7 @@ Open `http://localhost:3000`, then sign in with `ADMIN_TOKEN` under `Settings â†
 | Path | Responsibility |
 | --- | --- |
 | `apps/dashboard` | Responsive Next.js dashboard and admin UI |
-| `packages/collector` | Push/Pull collection, game exports, official Player API enrichment, and HTTP API |
+| `packages/collector` | Game exports, official Player API enrichment, and HTTP API |
 | `packages/notifier` | PostgreSQL notification queue consumer and Bark delivery |
 | `packages/database` | Schema and account, upgrade, notification, and history stores |
 | `packages/shared` | Snapshot normalization, account tags, and JSONL utilities |
@@ -57,7 +57,7 @@ just up                 # all services in Docker
 just down               # stop Docker services
 just logs collector     # service logs
 just status             # Collector status
-just sources            # collection and official API status by account
+just sources            # official API status by account
 just data export        # back up all village history
 just data import --path .local/village-history
 just check              # tests, lint, and Compose validation

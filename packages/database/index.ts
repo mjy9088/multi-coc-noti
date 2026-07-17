@@ -12,7 +12,7 @@ export type UpgradeSource = "export" | "snapshot";
 export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "refresh_required" | "legacy";
 export type TrackedUpgrade = Upgrade & {
   accountId: string; startedAt: string; status: string; source: UpgradeSource;
-  sourceKey: string; notificationOffsets: number[];
+  sourceKey: string; notificationOffsets: number[]; resourcePreparationOverrideMinutes: number | null;
 };
 export type DueNotification = {
   id: string; upgradeId: string; kind: NotificationKind; minutesBefore: number; preparationMinutes: number | null;
@@ -30,7 +30,7 @@ export type VillageHistoryBundle = {
   account: { id: string; label: string; playerTag: string; color: string; tags?: string[]; resourceStatus?: ResourceStatus; resourceStatusUpdatedAt?: string; resourcePreparationMinutes?: number | null };
   snapshots: Array<{ capturedAt: string; dataSource: string; snapshot: VillageSnapshot; source: SnapshotDocument }>;
   villageExports: Array<{ playerTag: string; exportedAt: string; raw: unknown; normalized: ExportData }>;
-  upgradeSettings: Array<{ source: UpgradeSource; sourceKey: string; notificationOffsets: number[] }>;
+  upgradeSettings: Array<{ source: UpgradeSource; sourceKey: string; notificationOffsets: number[]; resourcePreparationOverrideMinutes?: number | null }>;
 };
 
 export type VillageHistoryImportResult = {
@@ -60,7 +60,6 @@ const accountFromRow = (row: pg.QueryResultRow): Account => ({
   color: row.color, tags: (row.tags as string[] || []).map(String), resourceStatus: row.resource_status as ResourceStatus,
   resourceStatusUpdatedAt: new Date(row.resource_status_updated_at).toISOString(),
   resourcePreparationMinutes: row.resource_preparation_minutes == null ? null : Number(row.resource_preparation_minutes),
-  apiKey: row.api_key, sourceUrl: row.source_url,
 });
 
 export async function listAccounts() {
@@ -70,9 +69,9 @@ export async function listAccounts() {
 
 export async function createAccount(value: AccountInput): Promise<Account> {
   const { rows } = await database().query(`
-    INSERT INTO accounts (label, player_tag, color, tags, api_key, source_url, resource_status, resource_preparation_minutes)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
-  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || "",
+    INSERT INTO accounts (label, player_tag, color, tags, resource_status, resource_preparation_minutes)
+    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
+  `, [value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [],
     value.resourceStatus || "unanswered", value.resourcePreparationMinutes === undefined ? 60 : value.resourcePreparationMinutes]);
   return accountFromRow(rows[0]);
 }
@@ -83,12 +82,12 @@ export async function updateAccount(id: string, value: AccountInput): Promise<Ac
     await client.query("BEGIN");
     const previous = (await client.query("SELECT resource_status,resource_preparation_minutes FROM accounts WHERE id=$1 FOR UPDATE", [id])).rows[0];
     const { rows } = await client.query(`
-      UPDATE accounts SET label=$2, player_tag=$3, color=$4, tags=$5, api_key=$6,
-        source_url=$7, resource_status=COALESCE($8,resource_status),
-        resource_status_updated_at=CASE WHEN $8::text IS NULL OR $8=resource_status THEN resource_status_updated_at ELSE now() END,
-        resource_preparation_minutes=CASE WHEN $10 THEN $9 ELSE resource_preparation_minutes END, updated_at=now()
+      UPDATE accounts SET label=$2, player_tag=$3, color=$4, tags=$5,
+        resource_status=COALESCE($6,resource_status),
+        resource_status_updated_at=CASE WHEN $6::text IS NULL OR $6=resource_status THEN resource_status_updated_at ELSE now() END,
+        resource_preparation_minutes=CASE WHEN $8 THEN $7 ELSE resource_preparation_minutes END, updated_at=now()
       WHERE id=$1 RETURNING *
-    `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [], value.apiKey, value.sourceUrl || "",
+    `, [id, value.label, value.playerTag || "", value.color || "#4c9a79", value.tags || [],
       value.resourceStatus ?? null, value.resourcePreparationMinutes ?? null, value.resourcePreparationMinutes !== undefined]);
     if (!rows[0]) { await client.query("ROLLBACK"); return null; }
     const policyChanged = previous && (previous.resource_status !== rows[0].resource_status
@@ -142,6 +141,7 @@ const upgradeFromRow = (row: pg.QueryResultRow): TrackedUpgrade => ({
   startedAt: new Date(row.started_at).toISOString(), finishAt: new Date(row.finish_at).toISOString(), status: row.status,
   source: row.source as UpgradeSource, sourceKey: String(row.source_key),
   notificationOffsets: (row.notification_offsets as number[] || []).map(Number),
+  resourcePreparationOverrideMinutes: row.resource_preparation_override_minutes == null ? null : Number(row.resource_preparation_override_minutes),
 });
 
 export async function listTrackedUpgrades({ activeOnly = false } = {}): Promise<TrackedUpgrade[]> {
@@ -155,6 +155,10 @@ function normalizeOffsets(offsets: number[] | undefined): number[] {
 }
 
 export type PlannedNotification = { kind: Exclude<NotificationKind, "legacy" | "refresh_required">; minutesBefore: number; preparationMinutes: number | null; scheduledAt: Date };
+
+export function resolvePreparationMinutes(villageMinutes: number | null, overrideMinutes: number | null): number | null {
+  return overrideMinutes === null ? villageMinutes : overrideMinutes === 0 ? null : overrideMinutes;
+}
 
 export function planResourceNotifications(status: ResourceStatus, preparationMinutes: number | null, finishAt: string | Date, now = new Date()): PlannedNotification[] {
   const finish = new Date(finishAt);
@@ -184,10 +188,11 @@ async function rescheduleAccountNotifications(client: pg.PoolClient, accountId: 
     WHERE n.upgrade_id=u.id AND u.account_id=$1 AND n.status<>'sent'
       AND (u.status<>'completed' OR n.notification_kind<>'completion')
   `, [accountId]);
-  const upgrades = await client.query("SELECT id,finish_at FROM tracked_upgrades WHERE account_id=$1 AND status='active'", [accountId]);
+  const upgrades = await client.query("SELECT id,finish_at,resource_preparation_override_minutes FROM tracked_upgrades WHERE account_id=$1 AND status='active'", [accountId]);
   for (const upgrade of upgrades.rows) {
+    const overrideMinutes = upgrade.resource_preparation_override_minutes == null ? null : Number(upgrade.resource_preparation_override_minutes);
     for (const notification of planResourceNotifications(account.resource_status as ResourceStatus,
-      account.resource_preparation_minutes == null ? null : Number(account.resource_preparation_minutes), upgrade.finish_at, now)) {
+      resolvePreparationMinutes(account.resource_preparation_minutes == null ? null : Number(account.resource_preparation_minutes), overrideMinutes), upgrade.finish_at, now)) {
       await client.query(`
         INSERT INTO upgrade_notifications (upgrade_id,minutes_before,notification_kind,preparation_minutes,scheduled_at,next_attempt_at)
         VALUES ($1,$2,$3,$4,$5,$5)
@@ -201,6 +206,20 @@ async function rescheduleAccountNotifications(client: pg.PoolClient, accountId: 
       ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING
     `, [upgrade.id, refreshAt]);
   }
+}
+
+export async function updateUpgradePreparationOverride(id: string, overrideMinutes: number | null): Promise<TrackedUpgrade | null> {
+  const client = await database().connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(`UPDATE tracked_upgrades
+      SET resource_preparation_override_minutes=$2,updated_at=now()
+      WHERE id=$1 RETURNING *`, [id, overrideMinutes]);
+    if (!rows[0]) { await client.query("ROLLBACK"); return null; }
+    await rescheduleAccountNotifications(client, String(rows[0].account_id));
+    await client.query("COMMIT");
+    return upgradeFromRow(rows[0]);
+  } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 
 export async function completeDueTrackedUpgrades(now = new Date()): Promise<TrackedUpgrade[]> {
@@ -421,7 +440,7 @@ export async function exportVillageHistories(selector?: string): Promise<Village
     const [snapshots, exports, settings] = await Promise.all([
       database().query("SELECT captured_at,data_source,snapshot,source FROM snapshot_logs WHERE account_id=$1 ORDER BY captured_at", [row.id]),
       database().query("SELECT player_tag,exported_at,raw,normalized FROM village_exports WHERE account_id=$1 ORDER BY exported_at", [row.id]),
-      database().query("SELECT source,source_key,notification_offsets FROM tracked_upgrades WHERE account_id=$1 ORDER BY source,source_key", [row.id]),
+      database().query("SELECT source,source_key,notification_offsets,resource_preparation_override_minutes FROM tracked_upgrades WHERE account_id=$1 ORDER BY source,source_key", [row.id]),
     ]);
     bundles.push({
       format: "multi-coc-village-history", version: 1, exportedAt: new Date().toISOString(),
@@ -433,7 +452,7 @@ export async function exportVillageHistories(selector?: string): Promise<Village
       },
       snapshots: snapshots.rows.map((item) => ({ capturedAt: new Date(item.captured_at).toISOString(), dataSource: item.data_source, snapshot: item.snapshot as VillageSnapshot, source: item.source as SnapshotDocument })),
       villageExports: exports.rows.map((item) => ({ playerTag: item.player_tag, exportedAt: new Date(item.exported_at).toISOString(), raw: item.raw as unknown, normalized: item.normalized as ExportData })),
-      upgradeSettings: settings.rows.map((item) => ({ source: item.source as UpgradeSource, sourceKey: item.source_key, notificationOffsets: normalizeOffsets(item.notification_offsets as number[]) })),
+      upgradeSettings: settings.rows.map((item) => ({ source: item.source as UpgradeSource, sourceKey: item.source_key, notificationOffsets: normalizeOffsets(item.notification_offsets as number[]), resourcePreparationOverrideMinutes: item.resource_preparation_override_minutes == null ? null : Number(item.resource_preparation_override_minutes) })),
     });
   }
   return bundles;
@@ -454,9 +473,9 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       const idTaken = validOriginalId && (await client.query("SELECT 1 FROM accounts WHERE id::text=$1", [bundle.account.id])).rowCount;
       const id = validOriginalId && !idTaken ? bundle.account.id : randomUUID();
       const result = await client.query(`
-        INSERT INTO accounts (id,label,player_tag,color,tags,api_key,source_url,resource_status,resource_status_updated_at,resource_preparation_minutes)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
-      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", bundle.account.tags || [], randomUUID(), "",
+        INSERT INTO accounts (id,label,player_tag,color,tags,resource_status,resource_status_updated_at,resource_preparation_minutes)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+      `, [id, bundle.account.label, playerTag, bundle.account.color || "#4c9a79", bundle.account.tags || [],
         bundle.account.resourceStatus || "unanswered", bundle.account.resourceStatusUpdatedAt || new Date().toISOString(),
         bundle.account.resourcePreparationMinutes === undefined ? 60 : bundle.account.resourcePreparationMinutes]);
       accountRow = result.rows[0];
@@ -491,9 +510,9 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       if (existingUpgradeKeys.has(`${setting.source}:${setting.sourceKey}`)) continue;
       const offsets = normalizeOffsets(setting.notificationOffsets);
       await client.query(`
-        UPDATE tracked_upgrades SET notification_offsets=$4,updated_at=now()
+        UPDATE tracked_upgrades SET notification_offsets=$4,resource_preparation_override_minutes=$5,updated_at=now()
         WHERE account_id=$1 AND source=$2 AND source_key=$3
-      `, [accountId, setting.source, setting.sourceKey, offsets]);
+      `, [accountId, setting.source, setting.sourceKey, offsets, setting.resourcePreparationOverrideMinutes ?? null]);
     }
     await client.query(`
       DELETE FROM upgrade_notifications n USING tracked_upgrades u

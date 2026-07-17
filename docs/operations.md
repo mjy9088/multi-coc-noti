@@ -15,8 +15,6 @@ The repository does not use a root `.env`. Copy the example files and replace se
 
 ### Important environment variables
 
-<!-- contract: OPS-RATE-001 -->
-
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | none | Admin API and Settings authentication |
@@ -26,8 +24,7 @@ The repository does not use a root `.env`. Copy the example files and replace se
 | `DATA_DIR` | `/data` | Collector JSONL and `latest.json` storage |
 | `PORT` | `8787` | Collector HTTP port |
 | `CORS_ORIGIN` | `*` | Allowed dashboard origin; restrict in production |
-| `POLL_INTERVAL_SECONDS` | `300` | Pull and official API refresh interval |
-| `INGEST_RATE_LIMIT_PER_MINUTE` | `120` | Push limit by account and source IP |
+| `PROFILE_REFRESH_INTERVAL_SECONDS` | `300` | Official Player API refresh interval |
 | `SNAPSHOT_RETENTION_DAYS` | `90` | JSONL and DB snapshot retention; `0` disables cleanup |
 | `CLASH_OF_CLANS_API_TOKEN` | none | Official developer Player API server key |
 | `CLASH_OF_CLANS_API_BASE` | Supercell API | Compatible proxy or test base URL |
@@ -40,7 +37,7 @@ The repository does not use a root `.env`. Copy the example files and replace se
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | Public metadata URL |
 | `NEXT_PUBLIC_DEMO_MODE` | `false` | Enable demo fallback after Collector failure |
 
-The per-village API token copied from game settings proves ownership; it is not the official Player API key. Only a server key from the official developer site belongs in `CLASH_OF_CLANS_API_TOKEN`.
+Only a server key from the official developer site belongs in `CLASH_OF_CLANS_API_TOKEN`.
 
 ## Local execution
 
@@ -59,8 +56,6 @@ just notifier           # standalone Notifier
 | Path | Identity/authentication | Purpose |
 | --- | --- | --- |
 | Game export | JSON player tag plus admin auth | Routine upgrade and slot refresh |
-| `POST /api/ingest` | Account API key or admin key plus document tag | External JSON/JSONL Push |
-| Account `sourceUrl` | Bearer account API key | Periodic Pull from an external status server |
 | Official Player API | Global server token | Enrich name, tag, Town Hall, and experience level |
 
 Detected upgrades merge into `tracked_upgrades`. Duplicate timers for the same village, item, and next level are cancelled; missing active entries become complete or cancelled according to completion time.
@@ -89,7 +84,7 @@ just data seed
 just data reseed        # stop just ui first; recreates the development DB
 ```
 
-Backups include display name, player tag, color, account tags, resource policy, snapshots, and exports. They exclude API keys and Pull URLs. Import matches existing accounts by player tag without overwriting current settings, restores resource settings only for new accounts, and skips duplicate history records.
+Backups include display name, player tag, color, account tags, resource policy, snapshots, and exports. Import matches existing accounts by player tag without overwriting current settings, restores resource settings only for new accounts, and skips duplicate history records.
 
 ## Separate Notifier deployment
 
@@ -114,10 +109,9 @@ Public and collection endpoints:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/health` | Collector, DB, and admin configuration status |
-| GET | `/api/sources` | Pull and official API status by account |
+| GET | `/api/sources` | Official Player API status by account |
 | GET | `/api/dashboard` | Latest villages and group order |
 | GET | `/api/history?account=<uuid>&limit=100` | Recent snapshots, up to 500 |
-| POST | `/api/ingest` | Authenticated JSON/JSONL Push |
 
 Admin Bearer authentication is required for account CRUD, resource status, dashboard settings, tracked upgrades, and village-export preview/import under `/api/admin/*`.
 

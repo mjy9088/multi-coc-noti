@@ -22,5 +22,5 @@ test("[API-PROFILE-001] fetches and maps an official player profile with an enco
 test("[API-PROFILE-002] preserves the example origin when merging an official profile", () => {
   const example = { name: "Example", dataSource: "example" };
   assert.equal(mergeOfficialProfile(example, { name: "Real" }), example);
-  assert.equal(mergeOfficialProfile({ name: "Old", dataSource: "pull" }, { name: "Real" }).name, "Real");
+  assert.equal(mergeOfficialProfile({ name: "Old", dataSource: "game-export" }, { name: "Real" }).name, "Real");
 });
