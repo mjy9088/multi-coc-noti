@@ -19,6 +19,12 @@ type ExportPreview = {
   };
   upgrades: Array<{ id: string; name: string; type: string; level: number; nextLevel: number; finishAt: string }>;
   unknownDataIds: number[]; account: { id: string; label: string; color: string } | null; isNew: boolean;
+  changes: {
+    hasPrevious: boolean;
+    started: Array<{ id: string; name: string; type: string; base: string; level: number; nextLevel: number }>;
+    ended: Array<{ id: string; name: string; type: string; base: string; level: number; nextLevel: number }>;
+    slots: Array<{ slot: "homeBuilders" | "homeLaboratory" | "petHouse" | "builderBuilders" | "builderLaboratory"; before: number | boolean | null; after: number | boolean | null }>;
+  };
 };
 const adminLoadedAt = Date.now();
 type AdminSection = "import" | "alerts" | "villages" | "groups";
@@ -256,6 +262,11 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
       </article>
 
       {preview && <article className="admin-card preview-card import-step step-current" aria-current="step"><p className="step-label" data-step-state={t("stepNow")}>02 · REVIEW</p><div className="preview-heading"><div><h2>{preview.account?.label || t("newVillage")}</h2><p>{preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}</p></div><span className={preview.isNew ? "new-badge" : "match-badge"}>{preview.isNew ? t("newBadge") : t("matchedBadge")}</span></div>
+        <section className="preview-changes" aria-live="polite"><h3>{t("changesTitle")}</h3>{!preview.changes.hasPrevious ? <p>{t("changesFirstExport")}</p> : !preview.changes.started.length && !preview.changes.ended.length && !preview.changes.slots.length ? <p>{t("changesNone")}</p> : <>
+          {!!preview.changes.started.length && <div className="change-group started"><b>{t("changesStarted")}</b>{preview.changes.started.map((item) => <span key={item.id}>+ {item.name} <small>Lv. {item.level} → {item.nextLevel}</small></span>)}</div>}
+          {!!preview.changes.ended.length && <div className="change-group ended"><b>{t("changesEnded")}</b>{preview.changes.ended.map((item) => <span key={item.id}>− {item.name} <small>Lv. {item.level} → {item.nextLevel}</small></span>)}</div>}
+          {!!preview.changes.slots.length && <div className="change-group slots"><b>{t("changesSlots")}</b>{preview.changes.slots.map((item) => <span key={item.slot}>{t(`changeSlot_${item.slot}`)} <small>{t("changeValue", { before: typeof item.before === "boolean" ? t(item.before ? "available" : "busy") : item.before ?? "—", after: typeof item.after === "boolean" ? t(item.after ? "available" : "busy") : item.after ?? "—" })}</small></span>)}</div>}
+        </>}</section>
         <div className="preview-stats compact"><div><span>{t("inProgress")}</span><b>{preview.upgrades.length}</b></div><div><span>{t("unknownItems")}</span><b>{preview.unknownDataIds.length}</b></div></div>
         <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
         {preview.isNew && <label className="new-label">{t("displayName")}<input required autoFocus value={newLabel} onChange={(event) => setNewLabel(event.target.value)} placeholder={t("displayNamePlaceholder")} /><small>{t("newVillageHelp")}</small></label>}

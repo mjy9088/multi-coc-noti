@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import {
   completeDueTrackedUpgrades, createAccount, deleteAccount,
-  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listUpgradeHistory, migrate, saveVillageExport,
+  getDashboardSettings, latestVillageExport, listAccounts, listTrackedUpgrades, listLatestVillageExports, listUpgradeHistory, migrate, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
   updateUpgradePreparationOverride,
 } from "@multi-coc/database";
@@ -11,7 +11,7 @@ import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags } from 
 import type { Account, ResourceStatus, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
-import { normalizePlayerTag, parseVillageDetails, parseVillageExport } from "./village-export.ts";
+import { compareVillageExports, normalizePlayerTag, parseVillageDetails, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "0.0.0.0";
@@ -177,9 +177,10 @@ function accountInput(value: RequestValue, existing: Account | null): Omit<Accou
   };
 }
 
-function previewVillageExport(value: RequestValue) {
+async function previewVillageExport(value: RequestValue) {
   const parsed = parseVillageExport(value.export ?? value.exportText ?? value);
   const account = accounts.find((item) => item.playerTag === parsed.tag);
+  const previous = account ? await latestVillageExport(account.id) : null;
   return {
     parsed,
     preview: {
@@ -189,12 +190,13 @@ function previewVillageExport(value: RequestValue) {
       unknownDataIds: parsed.unknownDataIds,
       account: account ? { id: account.id, label: account.label, color: account.color } : null,
       isNew: !account,
+      changes: compareVillageExports(previous?.normalized || null, parsed),
     },
   };
 }
 
 async function importVillageExport(value: RequestValue) {
-  const { parsed } = previewVillageExport(value);
+  const { parsed } = await previewVillageExport(value);
   let account = accounts.find((item) => item.playerTag === parsed.tag);
   let created = false;
   if (!account) {
@@ -296,7 +298,7 @@ const server = createServer(async (request, response) => {
         return json(response, 200, { upgrade });
       }
       if (request.method === "POST" && url.pathname === "/api/admin/village-export/preview") {
-        const { preview } = previewVillageExport(await requestJson(request));
+        const { preview } = await previewVillageExport(await requestJson(request));
         return json(response, 200, preview);
       }
       if (request.method === "POST" && url.pathname === "/api/admin/village-export") return json(response, 201, await importVillageExport(await requestJson(request)));

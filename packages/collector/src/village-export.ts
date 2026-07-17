@@ -41,6 +41,42 @@ export type ParsedVillageExport = {
   helpers: VillageHelper[]; heroEquipment: HeroEquipment[];
   unknownDataIds: number[]; raw: RawVillageExport;
 };
+export type VillageExportDiff = {
+  hasPrevious: boolean;
+  started: Array<Pick<ExportUpgrade, "id" | "name" | "type" | "base" | "level" | "nextLevel">>;
+  ended: Array<Pick<ExportUpgrade, "id" | "name" | "type" | "base" | "level" | "nextLevel">>;
+  slots: Array<{ slot: "homeBuilders" | "homeLaboratory" | "petHouse" | "builderBuilders" | "builderLaboratory"; before: number | boolean | null; after: number | boolean | null }>;
+};
+
+type ComparableExport = {
+  upgrades: Array<Pick<Upgrade, "id" | "name" | "type" | "base" | "level" | "nextLevel">>;
+  builders: { free: number };
+  upgradeSlots?: {
+    laboratory?: { available: boolean } | null;
+    petHouse?: { available: boolean } | null;
+    builderBase?: { builders: { free: number }; laboratory?: { available: boolean } | null } | null;
+  };
+};
+
+export function compareVillageExports(previous: ComparableExport | null, current: ComparableExport): VillageExportDiff {
+  if (!previous) return { hasPrevious: false, started: [], ended: [], slots: [] };
+  const compact = ({ id, name, type, base, level, nextLevel }: ComparableExport["upgrades"][number]) => ({ id, name, type, base: base === "builder" ? "builder" as const : "home" as const, level, nextLevel });
+  const previousKeys = new Set(previous.upgrades.map((item) => item.id));
+  const currentKeys = new Set(current.upgrades.map((item) => item.id));
+  const values = {
+    homeBuilders: [previous.builders.free, current.builders.free],
+    homeLaboratory: [previous.upgradeSlots?.laboratory?.available ?? null, current.upgradeSlots?.laboratory?.available ?? null],
+    petHouse: [previous.upgradeSlots?.petHouse?.available ?? null, current.upgradeSlots?.petHouse?.available ?? null],
+    builderBuilders: [previous.upgradeSlots?.builderBase?.builders.free ?? null, current.upgradeSlots?.builderBase?.builders.free ?? null],
+    builderLaboratory: [previous.upgradeSlots?.builderBase?.laboratory?.available ?? null, current.upgradeSlots?.builderBase?.laboratory?.available ?? null],
+  } as const;
+  return {
+    hasPrevious: true,
+    started: current.upgrades.filter((item) => !previousKeys.has(item.id)).map(compact),
+    ended: previous.upgrades.filter((item) => !currentKeys.has(item.id)).map(compact),
+    slots: Object.entries(values).flatMap(([slot, [before, after]]) => before === after ? [] : [{ slot: slot as VillageExportDiff["slots"][number]["slot"], before, after }]),
+  };
+}
 
 export function parseVillageCooldowns(input: unknown, fallbackTimestamp?: number): VillageCooldowns {
   if (!input || Array.isArray(input) || typeof input !== "object") return { clockTower: null, helpers: [] };

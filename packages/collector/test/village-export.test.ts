@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePlayerTag, parseVillageExport } from "../src/village-export.ts";
+import { compareVillageExports, normalizePlayerTag, parseVillageExport } from "../src/village-export.ts";
 
 const now = Date.parse("2026-07-17T01:00:00Z");
 const timestamp = Math.floor(now / 1000) - 60;
@@ -62,6 +62,23 @@ test("[IMPORT-KEY-001] keeps upgrade keys stable when unrelated export entries r
     { data: 1000010, lvl: 12, timer: 7200 }, { data: 1000008, lvl: 20, timer: 3600 },
   ] }, { now });
   assert.equal(first.upgrades.find((item) => item.dataId === 1000008)?.id, reordered.upgrades.find((item) => item.dataId === 1000008)?.id);
+});
+
+test("[IMPORT-DIFF-001] summarizes changed upgrades and available slots", () => {
+  const previous = parseVillageExport({ tag: "#2P0J8LQ", timestamp, buildings: [
+    { data: 1000015, lvl: 6, cnt: 2 }, { data: 1000007, lvl: 15 },
+    { data: 1000008, lvl: 20, timer: 3600 },
+  ], buildings2: [{ data: 1000034, lvl: 10 }, { data: 1000046, lvl: 10 }] }, { now });
+  const current = parseVillageExport({ tag: "#2P0J8LQ", timestamp: timestamp + 60, buildings: [
+    { data: 1000015, lvl: 6, cnt: 2 }, { data: 1000007, lvl: 15 },
+  ], heroes: [{ data: 28000001, lvl: 96, timer: 7200 }], buildings2: [
+    { data: 1000034, lvl: 10 }, { data: 1000046, lvl: 10 }, { data: 1000044, lvl: 10, timer: 900 },
+  ] }, { now });
+  const diff = compareVillageExports(previous, current);
+  assert.deepEqual(diff.started.map((item) => item.name), ["Archer Queen", "Cannon"]);
+  assert.deepEqual(diff.ended.map((item) => item.name), ["Cannon"]);
+  assert.deepEqual(diff.slots.map((item) => item.slot), ["builderBuilders"]);
+  assert.deepEqual(compareVillageExports(null, current), { hasPrevious: false, started: [], ended: [], slots: [] });
 });
 
 test("[IMPORT-SLOT-001] reports unlocked idle upgrade slots as available", () => {

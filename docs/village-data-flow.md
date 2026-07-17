@@ -13,6 +13,10 @@ Routine work should be pasting and reviewing game-export JSON, not editing accou
 5. Preview village identity, Town Hall, export time, builders, upgrades, and remaining durations.
 6. For an existing village, focus Import and apply the data after confirmation.
 
+<!-- contract: IMPORT-DIFF-001 -->
+
+For an existing village, Review compares the candidate with its newest stored game export. It lists newly observed and no-longer-observed upgrades and changes to Home Village builders/laboratory/Pet House and Builder Base builders/laboratory. The comparison is informational: the server still validates freshness again during import. New villages show that no prior export exists, and unchanged candidates explicitly report no detected changes.
+
 Imports with active upgrades first save `unanswered`, then ask for the village-wide resource state. The response is saved separately; dismissing the prompt retains the imported data and unanswered state. See the [notification policy](resource-notification-policy.md).
 
 For a new player tag, clearly label the preview as new and require a display name plus explicit creation confirmation. Pasting invalid or unintended JSON must never create an account automatically.
