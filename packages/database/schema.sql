@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS dashboard_settings (
 CREATE TABLE IF NOT EXISTS tracked_upgrades (
   id bigserial PRIMARY KEY,
   account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  source text NOT NULL CHECK (source IN ('export', 'snapshot')),
+  source text NOT NULL CHECK (source = 'export'),
   source_key text NOT NULL,
   name text NOT NULL,
   type text NOT NULL CHECK (type IN ('building', 'hero', 'pet', 'research')),
@@ -259,40 +259,5 @@ SELECT id,0,'refresh_required',NULL,finish_at + interval '24 hours',finish_at + 
 FROM tracked_upgrades WHERE status='active'
 ON CONFLICT (upgrade_id,notification_kind) WHERE notification_kind<>'legacy' DO NOTHING;
 
-CREATE TABLE IF NOT EXISTS snapshot_logs (
-  id bigserial PRIMARY KEY,
-  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  captured_at timestamptz NOT NULL,
-  data_source text NOT NULL,
-  snapshot jsonb NOT NULL,
-  source jsonb NOT NULL,
-  recorded_at timestamptz NOT NULL DEFAULT now()
-);
-
-WITH latest AS (
-  SELECT DISTINCT ON (account_id) account_id, snapshot
-  FROM snapshot_logs ORDER BY account_id, captured_at DESC
-), snapshot_upgrades AS (
-  SELECT latest.account_id, value
-  FROM latest CROSS JOIN LATERAL jsonb_array_elements(COALESCE(latest.snapshot->'upgrades', '[]'::jsonb)) AS value
-)
-UPDATE tracked_upgrades tracked SET base=CASE WHEN snapshot_upgrades.value->>'base'='builder' THEN 'builder' ELSE 'home' END
-FROM snapshot_upgrades
-WHERE tracked.account_id=snapshot_upgrades.account_id AND tracked.source='snapshot'
-  AND tracked.source_key=snapshot_upgrades.value->>'id';
-
--- Older versions allowed the same collected document to be inserted more than
--- once. Keep the first copy so history imports can use a stable conflict key.
-DELETE FROM snapshot_logs newer
-USING snapshot_logs older
-WHERE newer.account_id = older.account_id
-  AND newer.captured_at = older.captured_at
-  AND newer.data_source = older.data_source
-  AND newer.id > older.id;
-
-CREATE UNIQUE INDEX IF NOT EXISTS snapshot_logs_account_capture_source_unique_idx
-  ON snapshot_logs (account_id, captured_at, data_source);
-CREATE INDEX IF NOT EXISTS snapshot_logs_account_captured_idx
-  ON snapshot_logs (account_id, captured_at DESC);
-
+DROP TABLE IF EXISTS snapshot_logs;
 DROP TABLE IF EXISTS event_logs;

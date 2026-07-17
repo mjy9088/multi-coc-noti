@@ -1,19 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot } from "../../shared/snapshot.ts";
-
-const account = { id: "main", label: "Main", color: "#123456" };
-
-test("[DATA-SNAPSHOT-001] normalizes a compact village snapshot", () => {
-  const snapshot = normalizeSnapshot(account, {
-    capturedAt: "2026-07-16T10:00:00Z",
-    village: { townHall: 17, builders: { free: 1, total: 6 }, upgrades: [{ id: "queen-97", name: "Archer Queen", type: "hero", level: 96, finishAt: "2026-07-17T10:00:00Z" }] },
-  });
-  assert.equal(snapshot.id, "main");
-  assert.equal(snapshot.townHall, 17);
-  assert.equal(snapshot.upgrades[0].nextLevel, 97);
-  assert.equal(snapshot.resources, null);
-});
+import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags } from "../../shared/index.ts";
 
 test("[DATA-UPGRADE-001] treats an upgrade as active only before its finish time", () => {
   const finishAt = "2026-07-17T10:00:00Z";

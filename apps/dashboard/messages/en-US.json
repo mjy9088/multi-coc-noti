@@ -153,7 +153,6 @@
     "disabled": "off",
     "saving": "Saving…",
     "source_export": "Game JSON",
-    "source_snapshot": "Collector",
     "noTrackedUpgrades": "No upgrades are in progress. Import fresh game JSON to populate this list.",
     "registeredVillages": "Registered villages",
     "registeredVillagesHelp": "Choose a village to rename it or change integrations.",

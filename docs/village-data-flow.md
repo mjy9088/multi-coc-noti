@@ -6,8 +6,6 @@ Routine work should be pasting and reviewing game-export JSON, not editing accou
 
 ## Standard flow
 
-<!-- contract: DATA-SNAPSHOT-001 -->
-
 1. Paste through Quick Paste, the Update Data clipboard button, or the text area.
 2. Once a complete JSON document is detected, debounce briefly and request a server preview. Discard stale preview responses after input changes.
 3. Validate JSON, player tag, export timestamp, and timer ranges.
@@ -50,6 +48,8 @@ The unified upgrade tracker preserves each upgrade's `home` or `builder` base cl
 Village history backups use JSON Lines v2. The first record contains village identity, display metadata, resource policy, and per-upgrade alert overrides; each following record contains one raw game export in chronological order. Restore reparses every raw export and rebuilds the tracked-upgrade projection, so normalized parser output is not treated as durable backup data.
 
 The importer also accepts legacy v1 JSON bundles, ignores their obsolete snapshot records, and restores their game exports. A duplicate timestamp with identical raw data is idempotent; conflicting raw data at the same village and timestamp is rejected.
+
+Every upgrade detected from an export remains in `tracked_upgrades` after it completes or disappears from a later export. `GET /api/villages/<uuid>/upgrades` returns this newest-first record set with bounded cursor pagination; the history UI can therefore be added without retaining normalized snapshots or reparsing backups during a request.
 
 ## Upgrade availability
 

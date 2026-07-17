@@ -1,27 +1,22 @@
 import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { mkdir, rename } from "node:fs/promises";
-import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import {
-  cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
-  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveVillageExport,
+  completeDueTrackedUpgrades, createAccount, deleteAccount,
+  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listVillageUpgradeHistory, migrate, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
   updateUpgradePreparationOverride,
 } from "@multi-coc/database";
-import { dataDir, isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags, normalizeSnapshot, readJson } from "@multi-coc/shared";
+import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags } from "@multi-coc/shared";
 import type { Account, ResourceStatus, VillageSnapshot } from "@multi-coc/shared";
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
-import { cleanupRetention } from "./storage.ts";
 import { normalizePlayerTag, parseVillageDetails, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "0.0.0.0";
 const profileRefreshInterval = Number(process.env.PROFILE_REFRESH_INTERVAL_SECONDS || 300) * 1000;
-const snapshotRetentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS || 90);
 const adminToken = process.env.ADMIN_TOKEN || "";
-const root = dataDir();
 type OfficialState = { configured: boolean; lastAttemptAt: string | null; lastSuccessAt: string | null; lastError: string | null };
 type RequestValue = Record<string, unknown>;
 const officialStates = new Map<string, OfficialState>();
@@ -29,9 +24,7 @@ const officialProfiles = new Map<string, PlayerProfile>();
 let accounts: Account[] = [];
 
 await migrate();
-await mkdir(path.join(root, "accounts"), { recursive: true });
 await refreshAccounts();
-await migrateLegacyDataDirectories();
 
 const cors = {
   "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
@@ -76,26 +69,6 @@ async function refreshAccounts(): Promise<void> {
     if (!officialStates.has(account.id)) officialStates.set(account.id, { configured, lastAttemptAt: null, lastSuccessAt: null, lastError: null });
     else officialStates.get(account.id)!.configured = configured;
   }
-}
-
-async function migrateLegacyDataDirectories(): Promise<void> {
-  let changed = false;
-  for (const account of accounts.filter((item) => item.legacyIndex != null)) {
-    const from = path.join(root, "accounts", String(account.legacyIndex));
-    const to = path.join(root, "accounts", account.id);
-    try {
-      await rename(from, to);
-      await clearLegacyIndex(account.id);
-      changed = true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        await clearLegacyIndex(account.id);
-        changed = true;
-      } else if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      else console.warn(`[collector] both legacy and UUID data directories exist for ${account.label}; keeping both for manual review`);
-    }
-  }
-  if (changed) await refreshAccounts();
 }
 
 async function refreshOfficialProfile(account: Account): Promise<void> {
@@ -245,15 +218,20 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     if (request.method === "OPTIONS") { response.writeHead(204, cors); return response.end(); }
-    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ok: true, accounts: accounts.length, database: true, adminConfigured: Boolean(adminToken), retention: { snapshots: snapshotRetentionDays } });
+    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ok: true, accounts: accounts.length, database: true, adminConfigured: Boolean(adminToken) });
     if (request.method === "GET" && url.pathname === "/api/sources") return json(response, 200, { accounts: accounts.map((account) => ({ id: account.id, label: account.label, official: officialStates.get(account.id) })) });
     if (request.method === "GET" && url.pathname === "/api/dashboard") return json(response, 200, await dashboard());
-    if (request.method === "GET" && url.pathname === "/api/history") {
-      const account = accounts.find((item) => item.id === url.searchParams.get("account"));
+    const villageUpgradeHistoryPath = url.pathname.match(/^\/api\/villages\/([0-9a-f-]{36})\/upgrades$/i);
+    if (request.method === "GET" && villageUpgradeHistoryPath) {
+      const account = accounts.find((item) => item.id === villageUpgradeHistoryPath[1]);
       if (!account) return json(response, 404, { error: "unknown account" });
       const limit = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("limit") || 100)) || 100));
-      const records = await listSnapshotHistoryLogs(account.id, limit);
-      return json(response, 200, { account: { id: account.id, name: account.label }, snapshots: records.map((record) => record.snapshot || normalizeSnapshot(account, record.source || {})) });
+      const upgrades = await listVillageUpgradeHistory(account.id, { limit, before: url.searchParams.get("before") || undefined });
+      return json(response, 200, {
+        village: { id: account.id, name: account.label, playerTag: account.playerTag },
+        upgrades,
+        nextBefore: upgrades.length === limit ? upgrades.at(-1)?.id || null : null,
+      });
     }
 
     if (url.pathname.startsWith("/api/admin/")) {
@@ -324,9 +302,4 @@ await Promise.all(accounts.map((account) => refreshOfficialProfile(account)));
 setInterval(() => accounts.forEach((account) => { refreshOfficialProfile(account); }), profileRefreshInterval).unref();
 await completeDue();
 setInterval(completeDue, Math.min(profileRefreshInterval, 60_000)).unref();
-const clean = () => Promise.all([
-  cleanupRetention(root, accounts.map((account) => account.id), { snapshotDays: snapshotRetentionDays }),
-  cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays }),
-]).catch((error: Error) => console.error(`[collector] retention: ${error.message}`));
-await clean(); setInterval(clean, 6 * 60 * 60 * 1000).unref();
 server.listen(port, host, () => console.log(`[collector] listening on ${host}:${port}`));

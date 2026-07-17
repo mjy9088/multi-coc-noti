@@ -75,7 +75,6 @@ dev port="3000":
       fi
     done
     docker compose --env-file docker/.env up -d --wait db
-    export DATA_DIR="$PWD/data"
     echo "대시보드 gateway: http://localhost:{{port}}"
     echo "처음이면 대시보드의 Settings → Update Data에서 게임 export JSON을 추가하세요."
     HOST=127.0.0.1 PORT="$collector_port" mise exec -- node --env-file=docker/.env packages/collector/src/server.ts &

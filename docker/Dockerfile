@@ -47,6 +47,6 @@ COPY packages/collector/src packages/collector/src
 COPY packages/database/index.ts packages/database/index.ts
 COPY packages/database/schema.sql packages/database/schema.sql
 COPY packages/notifier/src packages/notifier/src
-COPY packages/shared/snapshot.ts packages/shared/snapshot.ts
+COPY packages/shared/index.ts packages/shared/index.ts
 COPY packages/reverse-proxy/src packages/reverse-proxy/src
 CMD ["node", "packages/collector/src/server.ts"]

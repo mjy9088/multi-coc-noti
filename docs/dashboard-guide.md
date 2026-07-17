@@ -42,7 +42,7 @@ Village navigation uses stable UUID resource paths:
 - `/settings/villages/<uuid>`: settings with that village selected
 - `/settings/groups`: Group order
 
-Settings tab selection is represented by the URL, so tab changes, direct navigation, reload, and browser history preserve the selected section. Selecting a village updates the URL to its UUID resource path. The village route currently loads the existing `/api/dashboard` aggregate snapshot and selects the matching village in the browser. A future data-shape review may introduce a village-specific endpoint, but route identity must remain the account UUID and missing UUIDs must not silently display another village.
+Settings tab selection is represented by the URL, so tab changes, direct navigation, reload, and browser history preserve the selected section. Selecting a village updates the URL to its UUID resource path. The village route currently loads the existing `/api/dashboard` aggregate response and selects the matching village in the browser. A future data-shape review may introduce a village-specific endpoint, but route identity must remain the account UUID and missing UUIDs must not silently display another village.
 
 On mobile, focusing search, import, authentication, and settings fields must not trigger browser auto-zoom. Text inputs use a mobile-safe font size while pinch zoom remains available.
 

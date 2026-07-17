@@ -48,7 +48,7 @@ Open `http://localhost:3000/settings/paste`, then sign in with `ADMIN_TOKEN`. Pa
 | `packages/collector` | Game exports, official Player API enrichment, and HTTP API |
 | `packages/notifier` | PostgreSQL notification queue consumer and Bark delivery |
 | `packages/database` | Schema and account, upgrade, notification, and history stores |
-| `packages/shared` | Snapshot normalization, account tags, and JSONL utilities |
+| `packages/shared` | Shared dashboard data model and account-tag utilities |
 | `packages/upgrade-availability` | Display-slot calculation, including Goblin Builder and Researcher inference |
 | `packages/reverse-proxy` | Single public gateway: `/api/*` to Collector and all other traffic to Next.js |
 

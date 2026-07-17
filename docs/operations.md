@@ -21,11 +21,9 @@ The repository does not use a root `.env`. Copy the example files and replace se
 | `POSTGRES_PASSWORD` | none | PostgreSQL password; not an admin login token |
 | `DATABASE_URL` | none | PostgreSQL connection string for standalone services |
 | `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` | local defaults | Individual DB settings when `DATABASE_URL` is absent |
-| `DATA_DIR` | `/data` | Collector JSONL and `latest.json` storage |
 | `PORT` | `8787` | Collector HTTP port |
 | `CORS_ORIGIN` | `*` | Allowed dashboard origin; restrict in production |
 | `PROFILE_REFRESH_INTERVAL_SECONDS` | `300` | Official Player API refresh interval |
-| `SNAPSHOT_RETENTION_DAYS` | `90` | JSONL and DB snapshot retention; `0` disables cleanup |
 | `CLASH_OF_CLANS_API_TOKEN` | none | Official developer Player API server key |
 | `CLASH_OF_CLANS_API_BASE` | Supercell API | Compatible proxy or test base URL |
 | `BARK_DEVICE_KEY` | none | Bark device key required by Notifier |
@@ -95,19 +93,9 @@ Do not publish the application under a path prefix such as `/coc` without also i
 
 Detected upgrades merge into `tracked_upgrades`. Duplicate timers for the same village, item, and next level are cancelled; missing active entries become complete or cancelled according to completion time.
 
-## Data storage and retention
+## Data storage
 
-<!-- contract: OPS-HISTORY-001 -->
-<!-- contract: OPS-RETENTION-001 -->
-
-PostgreSQL stores accounts, group order, exports, snapshots, upgrades, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Independent snapshot copies use UTC-dated paths:
-
-```text
-/data/accounts/<account-uuid>/latest.json
-/data/accounts/<account-uuid>/snapshots/YYYY-MM-DD.jsonl
-```
-
-Collector performs retention cleanup once at startup and every six hours. Notifier reads PostgreSQL only.
+PostgreSQL is the only runtime data store. It stores accounts, group order, raw game exports, the derived upgrade record set, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Collector and Notifier do not write runtime snapshot files.
 
 ## Backup and restore
 
@@ -146,11 +134,11 @@ Public and collection endpoints:
 | GET | `/health` | Collector, DB, and admin configuration status |
 | GET | `/api/sources` | Official Player API status by account |
 | GET | `/api/dashboard` | Latest villages and group order |
-| GET | `/api/history?account=<uuid>&limit=100` | Recent snapshots, up to 500 |
+| GET | `/api/villages/<uuid>/upgrades?limit=100&before=<id>` | Export-detected upgrade records, newest first; up to 500 |
 
 Admin Bearer authentication is required for account CRUD, resource status, dashboard settings, tracked upgrades, and village-export preview/import under `/api/admin/*`.
 
-Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` snapshot. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. There is no public `/api/villages/<uuid>` endpoint yet; evaluate that boundary before expanding route-specific payloads or snapshot history.
+Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` response. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. Upgrade history uses the UUID resource path above; a village-detail endpoint can be introduced separately if the aggregate response becomes unsuitable.
 
 Use a TLS reverse proxy and restrict `CORS_ORIGIN` in production. Clipboard-based Quick Paste requires HTTPS outside localhost.
 

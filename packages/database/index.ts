@@ -1,7 +1,7 @@
 import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import type { Account, HeroEquipment, ResourceStatus, SnapshotDocument, Upgrade, UpgradeType, VillageCooldowns, VillageHelper, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, HeroEquipment, ResourceStatus, Upgrade, UpgradeType, VillageCooldowns, VillageHelper, VillageSnapshot } from "@multi-coc/shared";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
@@ -36,7 +36,7 @@ export type VillageHistoryBundle = {
 };
 
 export type VillageHistoryImportResult = {
-  accountId: string; label: string; created: boolean; snapshots: number; villageExports: number;
+  accountId: string; label: string; created: boolean; villageExports: number;
 };
 
 export function database() {
@@ -133,10 +133,6 @@ export async function updateDashboardSettings(groupOrder: string[]): Promise<{ g
   return { groupOrder: (rows[0].group_order as string[] || []).map(String) };
 }
 
-export async function clearLegacyIndex(id: string): Promise<void> {
-  await database().query("UPDATE accounts SET legacy_index=NULL WHERE id=$1", [id]);
-}
-
 const upgradeFromRow = (row: pg.QueryResultRow): TrackedUpgrade => ({
   id: String(row.id), accountId: String(row.account_id), name: String(row.name), type: row.type as UpgradeType,
   base: row.base === "builder" ? "builder" : "home",
@@ -150,6 +146,18 @@ const upgradeFromRow = (row: pg.QueryResultRow): TrackedUpgrade => ({
 export async function listTrackedUpgrades({ activeOnly = false } = {}): Promise<TrackedUpgrade[]> {
   const where = activeOnly ? "WHERE status='active'" : "";
   const { rows } = await database().query(`SELECT * FROM tracked_upgrades ${where} ORDER BY finish_at`);
+  return rows.map(upgradeFromRow);
+}
+
+export async function listVillageUpgradeHistory(accountId: string, { limit = 100, before }: { limit?: number; before?: string } = {}): Promise<TrackedUpgrade[]> {
+  const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
+  const cursor = before == null ? null : Number(before);
+  if (cursor != null && (!Number.isSafeInteger(cursor) || cursor <= 0)) throw new Error("invalid upgrade history cursor");
+  const { rows } = await database().query(`
+    SELECT * FROM tracked_upgrades
+    WHERE account_id=$1 AND ($2::bigint IS NULL OR id < $2)
+    ORDER BY id DESC LIMIT $3
+  `, [accountId, cursor, boundedLimit]);
   return rows.map(upgradeFromRow);
 }
 
@@ -415,29 +423,6 @@ export async function saveVillageExport(accountId: string, parsed: ExportData, o
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 
-export async function saveSnapshotLog(accountId: string, snapshot: VillageSnapshot, source: SnapshotDocument): Promise<void> {
-  await database().query(`
-    INSERT INTO snapshot_logs (account_id,captured_at,data_source,snapshot,source)
-    VALUES ($1,$2,$3,$4,$5) ON CONFLICT (account_id,captured_at,data_source) DO NOTHING
-  `, [accountId, snapshot.lastSeen, snapshot.dataSource, snapshot, source]);
-}
-
-export async function listLatestSnapshotLogs(): Promise<Array<{ accountId: string; snapshot: VillageSnapshot }>> {
-  const { rows } = await database().query(`
-    SELECT DISTINCT ON (account_id) account_id,snapshot
-    FROM snapshot_logs ORDER BY account_id,captured_at DESC
-  `);
-  return rows.map((row) => ({ accountId: String(row.account_id), snapshot: row.snapshot as VillageSnapshot }));
-}
-
-export async function listSnapshotHistoryLogs(accountId: string, limit = 100): Promise<Array<{ capturedAt: string; snapshot: VillageSnapshot; source: SnapshotDocument }>> {
-  const { rows } = await database().query(`
-    SELECT captured_at,snapshot,source FROM snapshot_logs
-    WHERE account_id=$1 ORDER BY captured_at DESC LIMIT $2
-  `, [accountId, limit]);
-  return rows.map((row) => ({ capturedAt: new Date(row.captured_at).toISOString(), snapshot: row.snapshot as VillageSnapshot, source: row.source as SnapshotDocument }));
-}
-
 export async function exportVillageHistories(selector?: string): Promise<VillageHistoryBundle[]> {
   const selected = selector?.trim() || null;
   const { rows: accountRows } = await database().query(`
@@ -519,15 +504,8 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
     await client.query("UPDATE tracked_upgrades SET status='completed',updated_at=now() WHERE account_id=$1 AND status='active' AND finish_at<=now()", [accountId]);
     await rescheduleAccountNotifications(client, accountId);
     await client.query("COMMIT");
-    return { accountId, label: accountRow.label, created, snapshots: 0, villageExports: exportCount };
+    return { accountId, label: accountRow.label, created, villageExports: exportCount };
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
-}
-
-export async function cleanupDatabaseLogs({ snapshotDays = 90, now = new Date() }: { snapshotDays?: number; now?: Date } = {}): Promise<{ snapshots: number }> {
-  const snapshots = snapshotDays > 0
-    ? await database().query("DELETE FROM snapshot_logs WHERE captured_at < $1::timestamptz - ($2 * interval '1 day')", [now, snapshotDays])
-    : null;
-  return { snapshots: snapshots?.rowCount || 0 };
 }
 
 export async function closeDatabase(): Promise<void> {
