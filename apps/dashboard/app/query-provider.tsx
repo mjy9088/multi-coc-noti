@@ -6,6 +6,7 @@ import { useState } from "react";
 export const dashboardQueryKey = (apiBase: string) => ["dashboard", apiBase] as const;
 export const historyQueryKey = (apiBase: string, filters: Record<string, string>) =>
   ["upgrade-history", apiBase, filters] as const;
+export const syncHistoryQueryKey = (apiBase: string, village: string) => ["sync-history", apiBase, village] as const;
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
   const [client] = useState(

@@ -8,6 +8,7 @@ import {
   latestVillageExport,
   listAccounts,
   listLatestVillageExports,
+  listSyncHistory,
   listTrackedUpgrades,
   listUpgradeHistory,
   migrate,
@@ -372,6 +373,22 @@ const server = createServer(async (request, response) => {
         villages: accounts.map(({ id, label: name, playerTag, color }) => ({ id, name, playerTag, color })),
         upgrades: upgrades.map(({ status, ...upgrade }) => ({ ...upgrade, active: status === "active" })),
         nextBefore: upgrades.length === limit ? upgrades.at(-1)?.id || null : null,
+      });
+    }
+    if (request.method === "GET" && url.pathname === "/api/syncs") {
+      const villageId = url.searchParams.get("village") || undefined;
+      if (villageId && !accounts.some((item) => item.id === villageId))
+        return json(response, 404, { error: "unknown account" });
+      const limit = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("limit") || 100)) || 100));
+      const syncs = await listSyncHistory({
+        accountId: villageId,
+        limit,
+        before: url.searchParams.get("before") || undefined,
+      });
+      return json(response, 200, {
+        villages: accounts.map(({ id, label: name, playerTag, color }) => ({ id, name, playerTag, color })),
+        syncs,
+        nextBefore: syncs.length === limit ? syncs.at(-1)?.id || null : null,
       });
     }
 

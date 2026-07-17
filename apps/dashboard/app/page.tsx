@@ -18,6 +18,7 @@ import { useQuickPasteRequest } from "./app-shell";
 import HistoryPanel from "./history-panel";
 import { dashboardQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
+import SyncHistoryPanel from "./sync-history-panel";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -202,11 +203,13 @@ export default function Home({
   initialSettingsSection = null,
   initialSettingsVillageId = null,
   initialHistoryVillageId,
+  initialHistorySection = "upgrades",
 }: {
   initialVillageId?: string | null;
   initialSettingsSection?: SettingsSection | null;
   initialSettingsVillageId?: string | null;
   initialHistoryVillageId?: string;
+  initialHistorySection?: "upgrades" | "syncs";
 } = {}) {
   const t = useTranslations("Dashboard");
   const router = useRouter();
@@ -219,7 +222,7 @@ export default function Home({
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
   const [view] = useState<"dashboard" | "village" | "history" | "settings">(
-    initialHistoryVillageId !== undefined
+    initialHistoryVillageId !== undefined || initialHistorySection === "syncs"
       ? "history"
       : initialVillageId
         ? "village"
@@ -408,7 +411,10 @@ export default function Home({
           quickPasteRequest={quickPasteRequest}
         />
       )}
-      {view === "history" && <HistoryPanel apiBase={apiBase} initialVillageId={initialHistoryVillageId} />}
+      {view === "history" && initialHistorySection === "upgrades" && (
+        <HistoryPanel apiBase={apiBase} initialVillageId={initialHistoryVillageId} />
+      )}
+      {view === "history" && initialHistorySection === "syncs" && <SyncHistoryPanel apiBase={apiBase} />}
       {view !== "settings" && view !== "history" && dashboardLoading && !data.accounts.length && <LoadingState />}
       {view !== "settings" && view !== "history" && dashboardError && !data.accounts.length && (
         <ErrorState message={dashboardError || t("dashboardLoadFailed")} retry={() => void dashboardQuery.refetch()} />
@@ -426,7 +432,7 @@ export default function Home({
           formatDuration={formatDuration}
           formatDateTime={formatDateTime}
           onBack={() => router.push("/")}
-          onHistory={() => router.push(`/history?village=${encodeURIComponent(selectedVillageId)}`)}
+          onHistory={() => router.push(`/history/upgrades?village=${encodeURIComponent(selectedVillageId)}`)}
           onSettings={() => openVillageSettings(selectedVillageId)}
         />
       )}

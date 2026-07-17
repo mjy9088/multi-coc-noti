@@ -144,11 +144,12 @@ Public and collection endpoints:
 | GET | `/api/sources` | Official Player API status by account |
 | GET | `/api/dashboard` | Latest villages and group order |
 | GET | `/api/upgrades?limit=100&before=<id>` | Export-detected upgrade records across villages, newest first; filterable by village, base, status, and type |
+| GET | `/api/syncs?limit=100&before=<id>` | Stored village-export sync records, newest first; filterable by village |
 | GET | `/api/villages/<uuid>/upgrades?limit=100&before=<id>` | Export-detected upgrade records, newest first; up to 500 |
 
 Admin Bearer authentication is required for account CRUD, resource status, dashboard settings, tracked upgrades, and village-export preview/import under `/api/admin/*`.
 
-Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` response. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. Upgrade history uses the UUID resource path above; a village-detail endpoint can be introduced separately if the aggregate response becomes unsuitable.
+Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` response. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. History uses `/history/upgrades` and `/history/syncs`, while the UUID upgrade resource path above supports village-scoped reads. A village-detail endpoint can be introduced separately if the aggregate response becomes unsuitable.
 
 Use a TLS reverse proxy and restrict `CORS_ORIGIN` in production. Clipboard-based Quick Paste requires HTTPS outside localhost.
 

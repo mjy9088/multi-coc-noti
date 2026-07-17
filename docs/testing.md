@@ -66,6 +66,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 10. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
 11. REST upgrade-history filtering and pagination, the global History screen, `Load more`, and village-detail prefiltered navigation
 12. Route loading/error boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
+13. URL-backed Upgrade/Sync History sections, sync-history village filtering and pagination, and export/import timestamp plus state-summary rendering
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 

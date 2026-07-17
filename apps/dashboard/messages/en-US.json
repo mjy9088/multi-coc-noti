@@ -101,6 +101,11 @@
     "retry": "Try again"
   },
   "History": {
+    "historyTitle": "History",
+    "historyDescription": "Review changes and data imports recorded across your villages.",
+    "sections": "History sections",
+    "upgrades": "Upgrades",
+    "syncs": "Syncs",
     "title": "Upgrade history",
     "description": "Review upgrades detected from village exports and whether they are still in progress.",
     "village": "Village",
@@ -122,7 +127,16 @@
     "loading": "Loading…",
     "loadMore": "Load more",
     "retry": "Try again",
-    "loadFailed": "Upgrade history could not be loaded."
+    "loadFailed": "Upgrade history could not be loaded.",
+    "syncTitle": "Sync history",
+    "syncDescription": "Review when each village export was created and stored, and the state it contained.",
+    "syncSummary": "Town Hall {townHall} · {upgrades} active upgrades",
+    "syncDetails": "Home {home} · Builder Base {builder} · Builders {free}/{total} free",
+    "synced": "Synced",
+    "exportedAt": "Exported {date}",
+    "unknownData": "{count} unknown data IDs",
+    "syncEmpty": "No sync records match this village.",
+    "syncLoadFailed": "Sync history could not be loaded."
   },
   "Availability": {
     "title": "Upgrade availability",

@@ -93,7 +93,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <button className={view === "dashboard" ? "nav-active" : ""} onClick={() => router.push("/")}>
             {t("dashboard")}
           </button>
-          <button className={view === "history" ? "nav-active" : ""} onClick={() => router.push("/history")}>
+          <button className={view === "history" ? "nav-active" : ""} onClick={() => router.push("/history/upgrades")}>
             {t("history")}
           </button>
           <button className={view === "settings" ? "nav-active" : ""} onClick={() => router.push("/settings/paste")}>

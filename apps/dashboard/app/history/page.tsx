@@ -1,6 +1,6 @@
-import Dashboard from "../page";
+import { redirect } from "next/navigation";
 
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ village?: string }> }) {
   const { village = "" } = await searchParams;
-  return <Dashboard initialHistoryVillageId={village} />;
+  redirect(`/history/upgrades${village ? `?village=${encodeURIComponent(village)}` : ""}`);
 }

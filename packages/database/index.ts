@@ -280,6 +280,64 @@ export async function listUpgradeHistory({
   return rows.map(upgradeFromRow);
 }
 
+export type SyncHistoryEntry = {
+  id: string;
+  accountId: string;
+  playerTag: string;
+  exportedAt: string;
+  importedAt: string;
+  townHall: number;
+  upgrades: number;
+  homeUpgrades: number;
+  builderUpgrades: number;
+  builders: { free: number; total: number };
+  unknownDataIds: number;
+};
+
+export async function listSyncHistory({
+  accountId,
+  limit = 100,
+  before,
+}: {
+  accountId?: string;
+  limit?: number;
+  before?: string;
+} = {}): Promise<SyncHistoryEntry[]> {
+  const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
+  const cursor = before == null ? null : Number(before);
+  if (cursor != null && (!Number.isSafeInteger(cursor) || cursor <= 0)) throw new Error("invalid sync history cursor");
+  const { rows } = await database().query(
+    `
+    SELECT id,account_id,player_tag,exported_at,imported_at,normalized
+    FROM village_exports
+    WHERE ($1::uuid IS NULL OR account_id=$1)
+      AND ($2::bigint IS NULL OR id < $2)
+    ORDER BY id DESC LIMIT $3
+  `,
+    [accountId || null, cursor, boundedLimit],
+  );
+  return rows.map((row: pg.QueryResultRow) => {
+    const normalized = row.normalized as ExportData;
+    const upgrades = normalized.upgrades || [];
+    return {
+      id: String(row.id),
+      accountId: String(row.account_id),
+      playerTag: String(row.player_tag),
+      exportedAt: new Date(row.exported_at).toISOString(),
+      importedAt: new Date(row.imported_at).toISOString(),
+      townHall: Number(normalized.townHall || 0),
+      upgrades: upgrades.length,
+      homeUpgrades: upgrades.filter((upgrade) => upgrade.base !== "builder").length,
+      builderUpgrades: upgrades.filter((upgrade) => upgrade.base === "builder").length,
+      builders: {
+        free: Number(normalized.builders?.free || 0),
+        total: Number(normalized.builders?.total || 0),
+      },
+      unknownDataIds: normalized.unknownDataIds?.length || 0,
+    };
+  });
+}
+
 function normalizeOffsets(offsets: number[] | undefined): number[] {
   return [
     ...new Set(

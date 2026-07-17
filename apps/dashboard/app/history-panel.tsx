@@ -3,6 +3,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import HistoryNav from "./history-nav";
 import { historyQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -62,9 +63,10 @@ export default function HistoryPanel({
 
   return (
     <section className="history-shell shell">
-      <header className="history-header">
+      <HistoryNav section="upgrades" />
+      <header className="history-section-header">
         <p className="eyebrow">UPGRADE HISTORY</p>
-        <h1>{t("title")}</h1>
+        <h2>{t("title")}</h2>
         <p>{t("description")}</p>
       </header>
       <div className="history-filters">
