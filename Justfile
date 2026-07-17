@@ -12,8 +12,8 @@ setup:
     mise install
     mise exec -- pnpm install
 
-# Docker DB + 로컬 collector + notifier + 대시보드 실행
-ui port="3000":
+# 개발: Docker DB + 로컬 gateway, collector, notifier, Next.js 실행
+dev port="3000":
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ ! -f docker/.env ]]; then
@@ -55,71 +55,85 @@ ui port="3000":
       '
     }
     if ! port_available "{{port}}"; then
-      echo "대시보드 포트 {{port}}가 이미 사용 중입니다. 예: just ui 3001"
+      echo "개발 gateway 포트 {{port}}가 이미 사용 중입니다. 예: just dev 3100"
       exit 1
     fi
-    if ! port_available 8787; then
-      echo "수집 API 포트 8787이 이미 사용 중입니다. 기존 collector를 종료한 뒤 다시 실행하세요."
-      exit 1
-    fi
+    internal_port=$(({{port}} + 1))
+    while ! port_available "$internal_port"; do
+      internal_port=$((internal_port + 1))
+      if [[ "$internal_port" -gt $(({{port}} + 100)) ]]; then
+        echo "Next.js에 사용할 내부 포트를 찾지 못했습니다."
+        exit 1
+      fi
+    done
+    collector_port=$((internal_port + 1))
+    while ! port_available "$collector_port"; do
+      collector_port=$((collector_port + 1))
+      if [[ "$collector_port" -gt $(({{port}} + 200)) ]]; then
+        echo "Collector에 사용할 내부 포트를 찾지 못했습니다."
+        exit 1
+      fi
+    done
     docker compose --env-file docker/.env up -d --wait db
     export DATA_DIR="$PWD/data"
-    echo "대시보드: http://localhost:{{port}}"
-    echo "수집 API: http://localhost:8787"
+    echo "대시보드 gateway: http://localhost:{{port}}"
     echo "처음이면 대시보드의 Settings → Update Data에서 게임 export JSON을 추가하세요."
-    mise exec -- node --env-file=docker/.env packages/collector/src/server.ts &
+    HOST=127.0.0.1 PORT="$collector_port" mise exec -- node --env-file=docker/.env packages/collector/src/server.ts &
     collector_pid=$!
     mise exec -- node --env-file=docker/.env packages/notifier/src/notifier.ts &
     notifier_pid=$!
+    PORT="{{port}}" DASHBOARD_UPSTREAM="http://127.0.0.1:$internal_port" COLLECTOR_UPSTREAM="http://127.0.0.1:$collector_port" mise exec -- node packages/reverse-proxy/src/server.ts &
+    proxy_pid=$!
     (
       cd apps/dashboard
       export NEXT_DASHBOARD_ENV_FILE=../../docker/.env
-      exec mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
+      exec mise exec -- ./node_modules/.bin/next dev --hostname 127.0.0.1 --port "$internal_port"
     ) &
     dashboard_pid=$!
     cleanup() {
-      kill "$collector_pid" "$notifier_pid" "$dashboard_pid" 2>/dev/null || true
-      wait "$collector_pid" "$notifier_pid" "$dashboard_pid" 2>/dev/null || true
+      kill "$collector_pid" "$notifier_pid" "$proxy_pid" "$dashboard_pid" 2>/dev/null || true
+      wait "$collector_pid" "$notifier_pid" "$proxy_pid" "$dashboard_pid" 2>/dev/null || true
     }
     trap cleanup EXIT
     trap 'exit 0' INT TERM
-    while kill -0 "$collector_pid" 2>/dev/null && kill -0 "$notifier_pid" 2>/dev/null && kill -0 "$dashboard_pid" 2>/dev/null; do
+    while kill -0 "$collector_pid" 2>/dev/null && kill -0 "$notifier_pid" 2>/dev/null && kill -0 "$proxy_pid" 2>/dev/null && kill -0 "$dashboard_pid" 2>/dev/null; do
       sleep 1
     done
     exit 1
 
-# Next.js 대시보드만 로컬 개발 서버로 실행 (.env.local 자동 사용)
-dashboard port="3000":
+# 개발: Next.js만 실행 (.env.local 자동 사용, gateway 없음)
+dev-dashboard port="3000":
     cd apps/dashboard && mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
 
-# Collector만 standalone 설정으로 실행
-collector:
+# 개발: Collector만 standalone 설정으로 실행
+dev-collector:
     mise exec -- pnpm collector
 
-# collector 상태 확인
-status:
-    @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:8787/health
+# 개발: Collector 상태 확인
+dev-status:
+    @curl --max-time 5 --fail-with-body --silent --show-error --output /dev/null http://127.0.0.1:3000/
+    @curl --max-time 5 --fail-with-body --silent --show-error --output /dev/null http://127.0.0.1:3000/api/dashboard
+    @echo "development gateway, dashboard, and Collector are reachable"
+
+# 개발: 계정별 공식 API 동기화 상태 확인
+dev-sources:
+    @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:3000/api/sources
     @echo
 
-# 계정별 공식 API 동기화 상태 확인
-sources:
-    @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:8787/api/sources
-    @echo
-
-# Bark notifier만 standalone 설정으로 실행
-notifier:
+# 개발: Bark notifier만 standalone 설정으로 실행
+dev-notifier:
     mise exec -- pnpm notifier
 
-# Docker로 전체 서비스 실행
-up:
+# 프로덕션: Docker로 전체 서비스 빌드 및 실행
+prod-up:
     docker compose --env-file docker/.env up --build -d
 
-# Docker 서비스 종료
-down:
+# 프로덕션: Docker 서비스 종료
+prod-down:
     docker compose --env-file docker/.env down
 
-# Docker 로그 보기
-logs service="":
+# 프로덕션: Docker 로그 보기
+prod-logs service="":
     docker compose --env-file docker/.env logs -f {{service}}
 
 # 단위 테스트, 대시보드 빌드, lint, Compose 설정 검증

@@ -20,6 +20,7 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | `API-PROFILE-002` | Never overwrite example data with an official profile, preventing demo content from appearing synchronized. | [Dashboard: Storage locations](dashboard-guide.md#storage-locations) | Collector unit |
 | `OPS-HISTORY-001` | Rotate snapshots by UTC date and read newest first, protecting date boundaries and ordering. | [Operations: Data storage and retention](operations.md#data-storage-and-retention) | Temporary-file integration |
 | `OPS-RETENTION-001` | Delete only dated files outside retention, preventing loss of recent or unrelated data. | [Operations: Data storage and retention](operations.md#data-storage-and-retention) | Temporary-file integration |
+| `OPS-PROXY-001` | Route `/api` exclusively to Collector and all other PWA and Next.js paths to Dashboard behind one public port. | [Operations: Reverse proxy chains and PWA deployment](operations.md#reverse-proxy-chains-and-pwa-deployment) | Reverse-proxy unit |
 | `DATA-SNAPSHOT-001` | Normalize compact snapshots into the shared account and next-level shape, preventing input-specific models. | [Data flow: Standard flow](village-data-flow.md#standard-flow) | Shared unit |
 | `DATA-UPGRADE-001` | Treat upgrades as active only before a valid finish time, preventing completed work from remaining queued. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
 | `DATA-REFRESH-001` | Mark a village update-required exactly 30 minutes after an upgrade completion that has no newer observation. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
@@ -60,6 +61,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 6. DB history export/import/seed/reseed and schema migrations
 7. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
 8. DB migration backfill of Home Village and Builder Base classification on existing tracked upgrades
+9. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 

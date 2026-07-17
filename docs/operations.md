@@ -6,10 +6,10 @@ Do not mix environment files between runtime modes.
 
 | File | Used by |
 | --- | --- |
-| `docker/.env` | `just up`, `just ui`, `just data up`, and Docker Compose |
-| `apps/dashboard/.env.local` | standalone `just dashboard` |
-| `packages/collector/.env` | standalone `just collector` |
-| `packages/notifier/.env` | standalone `just notifier` |
+| `docker/.env` | `just prod-up`, `just dev`, `just data up`, and Docker Compose |
+| `apps/dashboard/.env.local` | standalone `just dev-dashboard` |
+| `packages/collector/.env` | standalone `just dev-collector` |
+| `packages/notifier/.env` | standalone `just dev-notifier` |
 
 The repository does not use a root `.env`. Copy the example files and replace secrets. Values prefixed with `NEXT_PUBLIC_*` are exposed to the browser and build output.
 
@@ -42,14 +42,45 @@ Only a server key from the official developer site belongs in `CLASH_OF_CLANS_AP
 ## Local execution
 
 ```bash
-just ui                 # DB plus all local development services
-just ui 3001            # use another dashboard port
-just dashboard          # standalone dashboard after creating its env file
-just collector          # standalone Collector
-just notifier           # standalone Notifier
+just dev                 # DB plus all local development services
+just dev 3100            # use another public gateway port; internal ports are automatic
+just dev-dashboard       # standalone Next.js after creating its env file
+just dev-collector       # standalone Collector
+just dev-notifier        # standalone Notifier
+just prod-up             # build and run all services in Docker
+just prod-down           # stop production Docker services
+just prod-logs collector # production service logs
 ```
 
-When opening `just ui` or the Compose development server through Tailscale or another remote origin, set its full origin in `CORS_ORIGIN` and restart the dashboard. The Collector uses the value for API CORS, while the Next development server derives the hostname for `allowedDevOrigins`.
+When opening `just dev` through Tailscale or another remote origin, set its full origin in `CORS_ORIGIN` and restart the development stack. The Collector uses the value for API CORS, while the Next development server derives the hostname for `allowedDevOrigins`.
+
+Development binds only the gateway to the requested fixed port. Next.js and Collector bind to automatically selected loopback ports. Production publishes only gateway port 3000; Dashboard and Collector are reachable by service name only within the Compose network.
+
+## Reverse proxy chains and PWA deployment
+
+For an installed PWA, expose one canonical HTTPS origin and route by path:
+
+<!-- contract: OPS-PROXY-001 -->
+
+```text
+https://coc.example.com/* → gateway:3000
+gateway /api/*            → collector:8787
+gateway everything else   → dashboard:3001
+```
+
+Build the dashboard with:
+
+```dotenv
+NEXT_PUBLIC_SITE_URL=https://coc.example.com
+NEXT_PUBLIC_API_BASE=same-origin
+CORS_ORIGIN=https://coc.example.com
+```
+
+`same-origin` makes browser requests use `/api/*` instead of assuming port 8787. The repository gateway preserves the `/api` prefix because Collector routes include it. An outer reverse proxy only needs to forward the canonical origin to gateway port 3000; it does not need path-specific routing.
+
+Multiple proxy layers are supported. The outermost proxy terminates public HTTPS and sets the original `Host`, `X-Forwarded-Host`, `X-Forwarded-Proto=https`, and client forwarding headers. Intermediate proxies must preserve those values instead of replacing HTTPS with their internal HTTP hop. The repository gateway routes `/api/*` to Collector and everything else—including `/manifest.webmanifest`, `/sw.js`, icons, and `/_next/*`—to Dashboard, and forwards WebSocket upgrades for the development server.
+
+Do not publish the application under a path prefix such as `/coc` without also introducing a matching Next.js `basePath` and service-worker scope. A dedicated hostname is the supported deployment shape. Restart or rebuild Dashboard after changing `NEXT_PUBLIC_*` values because they are embedded in the client bundle.
 
 ## Collection paths
 
@@ -83,7 +114,7 @@ just data export
 just data export --village '#GRG2VGRQ9'
 just data import --path .local/village-history
 just data seed
-just data reseed        # stop just ui first; recreates the development DB
+just data reseed        # stop just dev first; recreates the development DB
 ```
 
 Backups include display name, player tag, color, account tags, resource policy, snapshots, and exports. Import matches existing accounts by player tag without overwriting current settings, restores resource settings only for new accounts, and skips duplicate history records.

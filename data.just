@@ -33,7 +33,7 @@ validate path=".local/village-history":
     docker compose --env-file docker/.env up -d --wait db
     mise exec -- node --env-file=docker/.env packages/database/scripts/village-history.ts validate "{{ path }}"
 
-# 개발 DB를 완전히 다시 만든 뒤 마을별 히스토리로 seed (just ui는 먼저 종료)
+# 개발 DB를 완전히 다시 만든 뒤 마을별 히스토리로 seed (just dev는 먼저 종료)
 [arg("path", long)]
 reseed path=".local/village-history":
     #!/usr/bin/env bash
@@ -46,7 +46,7 @@ reseed path=".local/village-history":
     mise exec -- node --env-file=docker/.env packages/database/scripts/village-history.ts validate "{{ path }}"
     docker_collector="$(docker compose --env-file docker/.env ps -q collector)"
     if [[ -z "$docker_collector" ]] && curl --max-time 1 --silent --fail http://127.0.0.1:8787/health >/dev/null 2>&1; then
-      echo "로컬 collector가 실행 중입니다. just ui를 종료한 뒤 다시 실행하세요."
+      echo "로컬 collector가 실행 중입니다. just dev를 종료한 뒤 다시 실행하세요."
       exit 1
     fi
     docker compose --env-file docker/.env stop collector notifier >/dev/null

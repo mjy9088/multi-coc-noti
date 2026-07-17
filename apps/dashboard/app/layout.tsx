@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -13,7 +13,10 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
     title: messages.Meta.title,
     description: messages.Meta.description,
-    icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+    manifest: "/manifest.webmanifest",
+    applicationName: "Multi Village",
+    appleWebApp: { capable: true, statusBarStyle: "default", title: "Multi Village" },
+    icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/apple-touch-icon.png" },
     openGraph: {
       title: "Multi Village",
       description: messages.Meta.openGraphDescription,
@@ -22,6 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: { card: "summary_large_image", images: ["/og.png"] },
   };
 }
+
+export const viewport: Viewport = { themeColor: "#27333b" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);

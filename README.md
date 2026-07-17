@@ -21,12 +21,12 @@ cp docker/.env.example docker/.env
 # Change ADMIN_TOKEN, POSTGRES_PASSWORD, and BARK_DEVICE_KEY in docker/.env.
 mise install
 just setup
-just ui
+just dev
 ```
 
 Open `http://localhost:3000`, then sign in with `ADMIN_TOKEN` under `Settings → Update Data`. Pasted export JSON identifies an existing village by player tag; only a new tag requires a display name.
 
-`just ui` runs PostgreSQL in Docker and Collector, Notifier, and Next.js as local development processes. Use `just ui 3001` to change the dashboard port, or run everything in Docker with `just up`. Default addresses are `http://localhost:3000` for the dashboard and `http://localhost:8787` for Collector.
+`just dev` runs PostgreSQL in Docker and Gateway, Collector, Notifier, and Next.js as local development processes. Use `just dev 3100` to change the public gateway port, or run everything in Docker with `just prod-up`. Only the gateway uses a fixed host port; Next.js and Collector use automatically selected loopback ports.
 
 ## Documentation
 
@@ -52,12 +52,13 @@ Collector and Notifier communicate through `tracked_upgrades` and `upgrade_notif
 ## Common commands
 
 ```bash
-just ui                 # DB plus local development services
-just up                 # all services in Docker
-just down               # stop Docker services
-just logs collector     # service logs
-just status             # Collector status
-just sources            # official API status by account
+just dev                 # DB plus local development services
+just dev 3100            # use another public development port
+just prod-up             # build and run all production services in Docker
+just prod-down           # stop production Docker services
+just prod-logs collector # production service logs
+just dev-status         # development Collector status
+just dev-sources        # development official API status by account
 just data export        # back up all village history
 just data import --path .local/village-history
 just check              # tests, lint, and Compose validation

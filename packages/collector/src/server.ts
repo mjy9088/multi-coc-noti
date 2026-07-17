@@ -17,6 +17,7 @@ import { cleanupRetention } from "./storage.ts";
 import { normalizePlayerTag, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
+const host = process.env.HOST || "0.0.0.0";
 const profileRefreshInterval = Number(process.env.PROFILE_REFRESH_INTERVAL_SECONDS || 300) * 1000;
 const snapshotRetentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS || 90);
 const adminToken = process.env.ADMIN_TOKEN || "";
@@ -327,4 +328,4 @@ const clean = () => Promise.all([
   cleanupDatabaseLogs({ snapshotDays: snapshotRetentionDays }),
 ]).catch((error: Error) => console.error(`[collector] retention: ${error.message}`));
 await clean(); setInterval(clean, 6 * 60 * 60 * 1000).unref();
-server.listen(port, "0.0.0.0", () => console.log(`[collector] listening on :${port}`));
+server.listen(port, host, () => console.log(`[collector] listening on ${host}:${port}`));

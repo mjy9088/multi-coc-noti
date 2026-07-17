@@ -27,6 +27,26 @@ services:
         NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
         NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+    environment:
+      PORT: 3001
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: services
+    command: ["node", "packages/reverse-proxy/src/server.ts"]
+    environment:
+      PORT: 3000
+      DASHBOARD_UPSTREAM: http://dashboard:3001
+      COLLECTOR_UPSTREAM: http://collector:8787
     ports:
       - "3000:3000"
     healthcheck:
@@ -35,6 +55,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    depends_on:
+      dashboard:
+        condition: service_healthy
+      collector:
+        condition: service_healthy
     restart: unless-stopped
 
   collector:
@@ -55,8 +80,6 @@ services:
       PGUSER: coc
     volumes:
       - coc-data:/data
-    ports:
-      - "8787:8787"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 30s

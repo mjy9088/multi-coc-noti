@@ -6,6 +6,7 @@ import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-avai
 import { useTranslations } from "next-intl";
 import AdminPanel from "./admin-panel";
 import LocaleSwitcher from "./locale-switcher";
+import PwaInstall from "./pwa-install";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -102,6 +103,8 @@ const demoData: DashboardData = {
 };
 const emptyData: DashboardData = { generatedAt: new Date(0).toISOString(), accounts: [] };
 const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE;
+const browserApiBase = () => configuredApiBase === "same-origin" ? "" : configuredApiBase || `${location.protocol}//${location.hostname}:8787`;
 
 function Shield({ level, color }: { level: number; color: string }) {
   return <div className="shield" style={{ "--shield": color } as React.CSSProperties}><span>TH</span>{level}</div>;
@@ -125,7 +128,7 @@ export default function Home() {
   const [quickPasteRequest, setQuickPasteRequest] = useState<{ id: number; text: string; clipboardError: boolean } | null>(null);
   const [quickPasteLoading, setQuickPasteLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const apiBase = typeof window === "undefined" ? "" : process.env.NEXT_PUBLIC_API_BASE || `${location.protocol}//${location.hostname}:8787`;
+  const apiBase = typeof window === "undefined" ? "" : browserApiBase();
   useEffect(() => {
     const saved = localStorage.getItem("multi-village-display-options");
     if (!saved) return;
@@ -150,7 +153,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_BASE || `${location.protocol}//${location.hostname}:8787`;
+    const base = browserApiBase();
     const load = () => fetch(`${base}/api/dashboard`, { cache: "no-store" })
       .then((r) => r.ok ? r.json() : Promise.reject(new Error("offline")))
       .then((next: DashboardData) => { setData(next); setDemo(false); })
@@ -252,10 +255,11 @@ export default function Home() {
       <header className="topbar">
         <div className="brand"><div className="brand-mark">M</div><div><strong>MULTI VILLAGE</strong><span>COMMAND CENTER</span></div></div>
         <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => { setManageVillageId(null); setView("settings"); }}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
+        <PwaInstall />
         <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t("demo") : includesExample ? t("exampleIncluded") : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}<LocaleSwitcher /></div>
       </header>
 
-      {view === "settings" && apiBase && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
+      {view === "settings" && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="dashboard-hero">
           <div className="hero-copy"><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>

@@ -11,6 +11,8 @@
     "settings": "Settings",
     "quickPaste": "Quick Paste",
     "quickPasteReading": "Reading…",
+    "installApp": "Install app",
+    "installIosHelp": "In Safari, tap Share and then choose Add to Home Screen.",
     "demo": "Demo data",
     "synced": "Last sync",
     "exampleIncluded": "Includes example data",

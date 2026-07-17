@@ -4,6 +4,12 @@
 
 The top-level menu contains `Dashboard`, `Settings`, and `Quick Paste`. `History` is not active yet. Dashboard and Settings section tabs remain sticky below the header and scroll horizontally on mobile.
 
+## PWA installation
+
+The dashboard publishes a web app manifest, install icons, and a minimal service worker so supported browsers can install it with standalone display. Chromium shows `Install app` when its install prompt is available. On iOS, the button explains how to use Safari's `Share → Add to Home Screen`; iOS does not expose the Chromium install event.
+
+The service worker deliberately does not cache dashboard API or admin traffic. Fresh village and notification state remains network-dependent, and Bark stays the only notification delivery channel. Installation requires HTTPS outside localhost.
+
 ### Dashboard
 
 <!-- contract: DATA-UPGRADE-001 -->

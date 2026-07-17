@@ -88,6 +88,8 @@ importers:
         specifier: workspace:*
         version: link:../database
 
+  packages/reverse-proxy: {}
+
   packages/shared: {}
 
   packages/upgrade-availability: {}
