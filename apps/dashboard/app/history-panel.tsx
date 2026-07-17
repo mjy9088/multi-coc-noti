@@ -1,7 +1,9 @@
 "use client";
 
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { historyQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
 
@@ -31,39 +33,24 @@ export default function HistoryPanel({
   const t = useTranslations("History");
   const { formatDateTime } = useDashboardFormat();
   const [filters, setFilters] = useState<Filters>({ village: initialVillageId, base: "", active: "", type: "" });
-  const [villages, setVillages] = useState<Village[]>([]);
-  const [upgrades, setUpgrades] = useState<HistoryUpgrade[]>([]);
-  const [nextBefore, setNextBefore] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(
-    async (before?: string) => {
-      setLoading(true);
-      setError("");
-      try {
-        const query = new URLSearchParams({ limit: "50" });
-        for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
-        if (before) query.set("before", before);
-        const response = await fetch(`${apiBase}/api/upgrades?${query}`, { cache: "no-store" });
-        if (!response.ok) throw new Error((await response.json()).error || t("loadFailed"));
-        const result = (await response.json()) as HistoryResponse;
-        setVillages(result.villages);
-        setUpgrades((current) => (before ? [...current, ...result.upgrades] : result.upgrades));
-        setNextBefore(result.nextBefore);
-      } catch (failure) {
-        setError((failure as Error).message || t("loadFailed"));
-      } finally {
-        setLoading(false);
-      }
+  const historyQuery = useInfiniteQuery({
+    queryKey: historyQueryKey(apiBase, filters),
+    queryFn: async ({ pageParam }) => {
+      const query = new URLSearchParams({ limit: "50" });
+      for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
+      if (pageParam) query.set("before", pageParam);
+      const response = await fetch(`${apiBase}/api/upgrades?${query}`, { cache: "no-store" });
+      if (!response.ok) throw new Error((await response.json()).error || t("loadFailed"));
+      return response.json() as Promise<HistoryResponse>;
     },
-    [apiBase, filters, t],
-  );
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load]);
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.nextBefore || undefined,
+  });
+  const pages = historyQuery.data?.pages || [];
+  const villages = pages[0]?.villages || [];
+  const upgrades = pages.flatMap((page) => page.upgrades);
+  const loading = historyQuery.isPending || historyQuery.isFetchingNextPage;
+  const error = historyQuery.error instanceof Error ? historyQuery.error.message : "";
   const setFilter = (key: keyof Filters, value: string) => setFilters((current) => ({ ...current, [key]: value }));
   const villageById = new Map(villages.map((village) => [village.id, village]));
   const labels = {
@@ -122,10 +109,10 @@ export default function HistoryPanel({
       {error && upgrades.length > 0 && (
         <div className="stale-warning" role="status">
           {error}
-          <button onClick={() => void load()}>{t("retry")}</button>
+          <button onClick={() => void historyQuery.refetch()}>{t("retry")}</button>
         </div>
       )}
-      {error && !upgrades.length && <ErrorState compact message={error} retry={() => void load()} />}
+      {error && !upgrades.length && <ErrorState compact message={error} retry={() => void historyQuery.refetch()} />}
       <div className="history-list">
         {upgrades.map((upgrade) => {
           const village = villageById.get(upgrade.accountId);
@@ -153,8 +140,8 @@ export default function HistoryPanel({
         })}
         {!loading && !upgrades.length && <div className="empty">{t("empty")}</div>}
       </div>
-      {nextBefore && (
-        <button className="history-more" disabled={loading} onClick={() => void load(nextBefore)}>
+      {historyQuery.hasNextPage && (
+        <button className="history-more" disabled={loading} onClick={() => void historyQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}
         </button>
       )}

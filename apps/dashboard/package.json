@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@multi-coc/upgrade-availability": "workspace:*",
+    "@tanstack/react-query": "5.101.2",
     "next": "16.2.6",
     "next-intl": "4.13.2",
     "react": "19.2.6",

@@ -9,6 +9,7 @@ import {
   observeAvailability,
   summarizeAvailability,
 } from "@multi-coc/upgrade-availability";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +17,7 @@ import AdminPanel from "./admin-panel";
 import HistoryPanel from "./history-panel";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
+import { dashboardQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
@@ -210,10 +212,8 @@ export default function Home({
   const t = useTranslations("Dashboard");
   const router = useRouter();
   const { formatDateTime, formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
-  const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(now);
-  const [demo, setDemo] = useState(demoEnabled);
   const [query, setQuery] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
   const [refreshOnly, setRefreshOnly] = useState(false);
@@ -237,10 +237,23 @@ export default function Home({
     clipboardError: boolean;
   } | null>(null);
   const [quickPasteLoading, setQuickPasteLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [dashboardLoading, setDashboardLoading] = useState(!demoEnabled);
-  const [dashboardError, setDashboardError] = useState("");
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
+  const queryClient = useQueryClient();
+  const dashboardQuery = useQuery({
+    queryKey: dashboardQueryKey(apiBase),
+    queryFn: async () => {
+      const response = await fetch(`${apiBase}/api/dashboard`, { cache: "no-store" });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
+      return response.json() as Promise<DashboardData>;
+    },
+    enabled: Boolean(apiBase || typeof window !== "undefined"),
+    initialData: demoEnabled ? demoData : undefined,
+    refetchInterval: 30_000,
+  });
+  const data = dashboardQuery.data || emptyData;
+  const demo = demoEnabled && data === demoData;
+  const dashboardLoading = dashboardQuery.isPending;
+  const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : "";
   useEffect(() => {
     const saved = localStorage.getItem("multi-village-display-options");
     if (!saved) return;
@@ -269,41 +282,10 @@ export default function Home({
     localStorage.setItem("multi-village-display-options", JSON.stringify(next));
   };
 
-  // refreshKey intentionally retriggers the request after a manual retry.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an explicit request trigger.
   useEffect(() => {
-    const base = browserApiBase();
-    const load = () => {
-      setDashboardLoading(true);
-      setDashboardError("");
-      return fetch(`${base}/api/dashboard`, { cache: "no-store" })
-        .then(async (response) => {
-          if (!response.ok)
-            throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
-          return response.json() as Promise<DashboardData>;
-        })
-        .then((next) => {
-          setData(next);
-          setDemo(false);
-          setDashboardError("");
-        })
-        .catch((reason: Error) => {
-          if (demoEnabled) {
-            setData(demoData);
-            setDemo(true);
-            setDashboardError("");
-          } else setDashboardError(reason.message || t("dashboardLoadFailed"));
-        })
-        .finally(() => setDashboardLoading(false));
-    };
-    load();
-    const refresh = window.setInterval(load, 30_000);
     const clock = window.setInterval(() => setClockNow(Date.now()), 60_000);
-    return () => {
-      window.clearInterval(refresh);
-      window.clearInterval(clock);
-    };
-  }, [refreshKey, t]);
+    return () => window.clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     if (view !== "dashboard") return;
@@ -476,7 +458,10 @@ export default function Home({
       {view === "settings" && (
         <AdminPanel
           apiBase={apiBase}
-          onChanged={() => setRefreshKey((value) => value + 1)}
+          onChanged={() => {
+            void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+            void queryClient.invalidateQueries({ queryKey: ["upgrade-history"] });
+          }}
           onSectionChange={(section) => router.push(settingsPath(section))}
           onVillageChange={(accountId) => router.push(`/settings/villages/${encodeURIComponent(accountId)}`)}
           initialSection={manageVillageId ? "villages" : initialSettingsSection || "import"}
@@ -487,12 +472,12 @@ export default function Home({
       {view === "history" && <HistoryPanel apiBase={apiBase} initialVillageId={initialHistoryVillageId} />}
       {view !== "settings" && view !== "history" && dashboardLoading && !data.accounts.length && <LoadingState />}
       {view !== "settings" && view !== "history" && dashboardError && !data.accounts.length && (
-        <ErrorState message={dashboardError} retry={() => setRefreshKey((value) => value + 1)} />
+        <ErrorState message={dashboardError || t("dashboardLoadFailed")} retry={() => void dashboardQuery.refetch()} />
       )}
       {view !== "settings" && view !== "history" && dashboardError && data.accounts.length > 0 && (
         <div className="shell stale-warning" role="status">
           {t("staleDataWarning")}
-          <button onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</button>
+          <button onClick={() => void dashboardQuery.refetch()}>{t("retry")}</button>
         </div>
       )}
       {view === "village" && selectedVillageId && selectedVillage && (

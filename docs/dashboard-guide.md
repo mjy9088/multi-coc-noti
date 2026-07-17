@@ -6,6 +6,8 @@ The top-level menu contains `Dashboard`, `History`, `Settings`, and `Quick Paste
 
 Every route provides an immediate loading state and a render-error boundary. Dashboard, History, and authenticated Settings requests also handle expected network failures explicitly: an initial failure replaces empty content with a retry action, while a refresh failure keeps already loaded data visible and marks it as stale. Settings waits for saved-token hydration before deciding whether to show the sign-in form.
 
+The root layout owns one TanStack Query client. Dashboard and History reads use its shared cache, so revisiting a route can render recent data while refreshing instead of rebuilding an empty client-side state. Settings mutations invalidate Dashboard and upgrade-history queries after a successful write. This cache improves client navigation but does not replace the future persistent App Shell/layout split.
+
 Keyboard and programmatically focused buttons use a distinct high-contrast focus color and outline throughout the application. In the Update Data flow, the current Paste or Review card is emphasized; after review begins, the completed Paste card is dimmed as a whole and focus moves to the next required input or enabled Import action. Returning to Paste restores its active treatment.
 
 Settings mutations provide immediate pending feedback on their action and show a fixed, high-contrast success or error toast above page content when the server responds. Success feedback dismisses itself after a short interval; error feedback remains available until dismissed or replaced, and both states are announced to assistive technology.
