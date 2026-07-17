@@ -33,7 +33,7 @@ When adding or changing behavior:
 
 - Update the normative feature document first or in the same change.
 - Add or reuse a contract ID when an automated test protects the behavior.
-- If meaningful automation is not yet feasible, add the behavior to `현재 자동화되지 않은 주요 계약` in `docs/testing.md`; do not add a `contract` declaration without a test.
+- If meaningful automation is not yet feasible, add the behavior to `Major contracts not yet automated` in `docs/testing.md`; do not add a `contract` declaration without a test.
 - Keep multiple tests under one ID only when they protect the same user or operational contract.
 - Remove an ID from the feature document, registry, and tests together only after its documented reason no longer applies.
 

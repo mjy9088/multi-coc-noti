@@ -1,76 +1,70 @@
-# 테스트 계약과 문서 연결
+# Test Contracts and Documentation Links
 
-## 목적
+## Purpose
 
 <!-- contract: TEST-DOC-001 -->
 
-기능 문서의 `<!-- contract: CONTRACT-ID -->` 선언과 회귀 테스트 이름의 대괄호 안 ID는 같은 계약을 가리킨다. 테스트가 실패하면 이 문서에서 사용자 동작 또는 운영 규칙과 근거 문서를 확인한 뒤 판단한다.
+A `<!-- contract: CONTRACT-ID -->` declaration beside a normative requirement and the same ID in square brackets in a regression-test title identify one contract. When a test fails:
 
-- 계약이 여전히 유효하면 구현을 고친다.
-- 제품 요구가 바뀌었다면 근거 문서를 먼저 수정하고 테스트와 구현을 함께 바꾼다.
-- 아래 표의 보호 이유가 사라졌다면 테스트를 제거하고 표에서도 삭제한다.
+- Fix the implementation if the contract remains valid.
+- If product requirements changed, update the source document first and change implementation and tests together.
+- Remove a test and registry row only when the documented reason for the contract no longer applies.
 
-단순한 리팩터링 때문에 계약 테스트의 기대값을 바꾸지 않는다. 한 테스트가 여러 입력을 묶어 검증하더라도 ID는 사용자가 체감하는 하나의 계약을 나타낸다.
+Do not change contract expectations merely because of a refactor. One ID represents one user-visible or operational contract even when its test covers several inputs.
 
-## 계약 목록
+## Contract registry
 
-| 계약 ID | 보호하는 동작과 테스트가 필요한 이유 | 근거 문서 | 자동화 수준 |
+| Contract ID | Protected behavior and reason | Normative source | Automation level |
 | --- | --- | --- | --- |
-| `API-PROFILE-001` | 공식 API 요청에서 태그를 URL 인코딩하고 인증하며 프로필을 내부 형식으로 매핑한다. 실제 계정 정보가 잘못 병합되는 것을 막는다. | [운영 - 데이터 수집 경로](operations.md#데이터-수집-경로) | Collector 단위 |
-| `API-PROFILE-002` | 예제 데이터는 공식 프로필 조회 결과로 덮지 않는다. 데모/예제 데이터가 실제 동기화 데이터처럼 보이는 것을 막는다. | [대시보드 - 저장 위치](dashboard-guide.md#저장-위치) | Collector 단위 |
-| `OPS-RATE-001` | 요청 제한은 같은 키의 윈도 안에서 적용되고 시간이 지나면 초기화된다. 일시 제한이 영구 차단이 되는 것을 막는다. | [운영 - 주요 환경 변수](operations.md#주요-환경-변수) | Collector 단위 |
-| `OPS-HISTORY-001` | 스냅샷은 UTC 날짜별 JSONL로 나뉘고 최신순으로 읽힌다. 날짜 경계에서 이력이 섞이거나 역순이 되는 것을 막는다. | [운영 - 데이터 저장과 보존](operations.md#데이터-저장과-보존) | 임시 파일 통합 |
-| `OPS-RETENTION-001` | 보존 기간이 지난 날짜 파일만 삭제한다. 최신 이력이나 다른 데이터를 지우는 것을 막는다. | [운영 - 데이터 저장과 보존](operations.md#데이터-저장과-보존) | 임시 파일 통합 |
-| `DATA-SNAPSHOT-001` | 간소화 스냅샷을 계정 ID와 다음 레벨이 있는 공통 형식으로 정규화한다. 입력 경로별 데이터 모양이 달라지는 것을 막는다. | [데이터 흐름 - 기본 흐름](village-data-flow.md#기본-흐름) | Shared 단위 |
-| `DATA-UPGRADE-001` | 완료 시각 전까지만 업그레이드를 진행 중으로 취급하고 잘못된 시각은 활성화하지 않는다. 완료 항목이 큐에 남는 것을 막는다. | [대시보드 - Dashboard](dashboard-guide.md#dashboard) | Shared 단위 |
-| `DATA-FORMAT-001` | 업데이트 입력은 JSON 객체·배열과 JSONL을 읽는다. 지원 입력 형식의 호환성이 조용히 깨지는 것을 막는다. | [데이터 흐름 - 기본 흐름](village-data-flow.md#기본-흐름) | Shared 단위 |
-| `DATA-TAGS-001` | 계정 태그는 쉼표 입력을 정리하고 대소문자와 `#`에 관계없이 중복을 제거한다. 같은 그룹의 중복 생성을 막는다. | [대시보드 - 계정 태그와 그룹](dashboard-guide.md#계정-태그와-그룹) | Shared 단위 |
-| `IMPORT-TAG-001` | 플레이어 태그를 표준 표기로 바꾸고 허용되지 않는 문자를 거부한다. 잘못된 계정에 데이터를 연결하는 것을 막는다. | [데이터 흐름 - 서버 검증](village-data-flow.md#서버-검증) | Collector 단위 |
-| `IMPORT-PARSE-001` | 게임 export에서 양쪽 마을의 작업, 완료 시각, 작업자와 연구 슬롯을 추출한다. 대시보드와 알림의 원본 데이터 손실을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | Collector 단위 |
-| `IMPORT-SLOT-001` | 해금되어 있고 쉬는 작업자·연구 시설을 사용 가능으로 표시한다. 시작 가능한 업그레이드 표시의 오판을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | Collector 단위 |
-| `IMPORT-SLOT-002` | 동시 연구 두 개로 고블린 연구원 슬롯을 관측한다. export에 명시되지 않은 이벤트 슬롯을 잃지 않는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | Collector 단위 |
-| `IMPORT-SLOT-003` | 장인기지 작업 세 개가 동시에 진행되면 추가 장인을 관측한다. 실제 작업 수보다 총 장인을 적게 계산하는 것을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | Collector 단위 |
-| `IMPORT-SLOT-004` | 잠긴 시설은 숨기고 업그레이드 중인 시설은 사용 중으로 표시한다. 시작할 수 없는 작업을 가능하다고 안내하는 것을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | Collector 단위 |
-| `IMPORT-VALIDATION-001` | 오래되거나 미래인 export와 비정상적으로 긴 타이머를 거부한다. 잘못된 입력이 현재 상태를 덮는 것을 막는다. | [데이터 흐름 - 서버 검증](village-data-flow.md#서버-검증) | Collector 단위 |
-| `ALERT-COPY-001` | 자원 준비와 완료 알림을 선택한 언어의 구분 가능한 문구로 만든다. 서로 다른 행동이 필요한 알림의 혼동을 막는다. | [알림 정책 - Bark 문구](resource-notification-policy.md#bark-문구) | Notifier 단위 |
-| `ALERT-PLAN-001` | 많이 남음은 완료 시, 충분함은 1분 전, 부족함은 준비 시각과 완료 시에 예약하고 무응답 기본 처리도 보존한다. | [알림 정책 - 알림 스케줄](resource-notification-policy.md#알림-스케줄) | 계획 함수 단위 |
-| `ALERT-DELIVERY-001` | 이미 claim된 알림을 Bark로 보내고 성공을 기록한다. 성공한 알림의 재전송을 막는다. | [운영 - Notifier 분리 배포](operations.md#notifier-분리-배포) | Notifier + 가짜 Bark 통합 |
-| `ALERT-DELIVERY-002` | Bark 전송 실패를 실패 상태로 반환해 다시 처리할 수 있게 한다. 일시 장애로 알림이 영구 유실되는 것을 막는다. | [운영 - Notifier 분리 배포](operations.md#notifier-분리-배포) | Notifier 단위 |
-| `DISPLAY-SLOT-001` | 어느 계정에서든 확인된 고블린 도우미 이벤트를 전체 표시 계산에 사용한다. 계정마다 이벤트 상태가 다르게 보이는 것을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | 표시 계산 단위 |
-| `DISPLAY-SLOT-002` | 이벤트가 관측되면 다른 적격 계정에도 두 번째 연구 슬롯을 제안한다. 아직 쓰지 않은 이벤트 슬롯을 누락하지 않는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | 표시 계산 단위 |
-| `DISPLAY-SLOT-003` | 고블린 장인은 적격 일반 장인이 모두 바쁠 때만 추가한다. 남은 일반 장인이나 미해금 계정에 잘못 제안하는 것을 막는다. | [데이터 흐름 - 업그레이드 가능 상태](village-data-flow.md#업그레이드-가능-상태) | 표시 계산 단위 |
-| `DISPLAY-SLOT-004` | 추론 표시를 끄면 관측된 이벤트가 있어도 원본 슬롯만 표시한다. 사용자 표시 옵션을 무시하는 것을 막는다. | [대시보드 - 표시 옵션](dashboard-guide.md#표시-옵션) | 표시 계산 단위 |
-| `TEST-DOC-001` | 테스트 이름의 계약 ID와 이 표를 양방향으로 비교한다. 문서 없는 테스트나 테스트 없는 계약 행이 생기는 것을 CI에서 막는다. | 이 문서의 [목적](#목적) | 문서 일관성 검사 |
+| `API-PROFILE-001` | Encode and authenticate official API requests and map profiles into the internal shape, preventing incorrect account enrichment. | [Operations: Collection paths](operations.md#collection-paths) | Collector unit |
+| `API-PROFILE-002` | Never overwrite example data with an official profile, preventing demo content from appearing synchronized. | [Dashboard: Storage locations](dashboard-guide.md#storage-locations) | Collector unit |
+| `OPS-RATE-001` | Apply limits within a key's window and reset afterward, preventing temporary throttling from becoming permanent. | [Operations: Important environment variables](operations.md#important-environment-variables) | Collector unit |
+| `OPS-HISTORY-001` | Rotate snapshots by UTC date and read newest first, protecting date boundaries and ordering. | [Operations: Data storage and retention](operations.md#data-storage-and-retention) | Temporary-file integration |
+| `OPS-RETENTION-001` | Delete only dated files outside retention, preventing loss of recent or unrelated data. | [Operations: Data storage and retention](operations.md#data-storage-and-retention) | Temporary-file integration |
+| `DATA-SNAPSHOT-001` | Normalize compact snapshots into the shared account and next-level shape, preventing input-specific models. | [Data flow: Standard flow](village-data-flow.md#standard-flow) | Shared unit |
+| `DATA-UPGRADE-001` | Treat upgrades as active only before a valid finish time, preventing completed work from remaining queued. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
+| `DATA-FORMAT-001` | Accept supported JSON object, array, and JSONL forms, protecting paste and ingest compatibility. | [Data flow: Standard flow](village-data-flow.md#standard-flow) | Shared unit |
+| `DATA-TAGS-001` | Normalize comma-separated tags and remove case-insensitive duplicates and `#`, preventing duplicate groups. | [Dashboard: Account tags and groups](dashboard-guide.md#account-tags-and-groups) | Shared unit |
+| `IMPORT-TAG-001` | Normalize player tags and reject forbidden characters, preventing data from attaching to the wrong account. | [Data flow: Server validation](village-data-flow.md#server-validation) | Collector unit |
+| `IMPORT-PARSE-001` | Extract both villages' active work, completion times, builders, and research slots from game exports. | [Data flow: Upgrade availability](village-data-flow.md#upgrade-availability) | Collector unit |
+| `IMPORT-SLOT-001` | Report unlocked idle workers and facilities as available, protecting upgrade-ready status. | [Data flow: Upgrade availability](village-data-flow.md#upgrade-availability) | Collector unit |
+| `IMPORT-SLOT-002` | Infer a Goblin Researcher from concurrent research timers because exports have no dedicated event key. | [Data flow: Upgrade availability](village-data-flow.md#upgrade-availability) | Collector unit |
+| `IMPORT-SLOT-003` | Infer the additional Builder Base builder from three concurrent jobs, preserving the observed total. | [Data flow: Upgrade availability](village-data-flow.md#upgrade-availability) | Collector unit |
+| `IMPORT-SLOT-004` | Hide locked slots and mark upgrading facilities busy, preventing impossible upgrade suggestions. | [Data flow: Upgrade availability](village-data-flow.md#upgrade-availability) | Collector unit |
+| `IMPORT-VALIDATION-001` | Reject stale/future exports and suspicious timers, preventing invalid input from replacing current state. | [Data flow: Server validation](village-data-flow.md#server-validation) | Collector unit |
+| `ALERT-COPY-001` | Produce distinguishable localized preparation and completion copy, preventing action ambiguity. | [Notification policy: Bark copy](resource-notification-policy.md#bark-copy) | Notifier unit |
+| `ALERT-PLAN-001` | Map abundant, sufficient, insufficient, and unanswered states to the documented schedules. | [Notification policy: Notification schedule](resource-notification-policy.md#notification-schedule) | Planning-function unit |
+| `ALERT-DELIVERY-001` | Deliver already-claimed rows through Bark and record success, preventing successful redelivery. | [Operations: Separate Notifier deployment](operations.md#separate-notifier-deployment) | Notifier plus fake Bark integration |
+| `ALERT-DELIVERY-002` | Return Bark failures to failed/retry handling, preventing permanent loss during transient outages. | [Operations: Separate Notifier deployment](operations.md#separate-notifier-deployment) | Notifier unit |
+| `DISPLAY-SLOT-001` | Use a helper event observed on any account in global display calculations, avoiding inconsistent event state. | [Dashboard: Display options](dashboard-guide.md#display-options) | Display-calculation unit |
+| `DISPLAY-SLOT-002` | Offer an eligible second research slot after any account proves the event active. | [Dashboard: Display options](dashboard-guide.md#display-options) | Display-calculation unit |
+| `DISPLAY-SLOT-003` | Offer Goblin Builder only when all eligible regular builders are busy. | [Dashboard: Display options](dashboard-guide.md#display-options) | Display-calculation unit |
+| `DISPLAY-SLOT-004` | Preserve original slots when inference is disabled, respecting browser preferences. | [Dashboard: Display options](dashboard-guide.md#display-options) | Display-calculation unit |
+| `TEST-DOC-001` | Compare feature declarations, this registry, and test IDs in both directions; reject duplicate declarations. | This [Purpose](#purpose) | Documentation consistency |
 
-`IMPORT-SLOT-*`은 export 한 건의 사실 추출을, `DISPLAY-SLOT-*`은 여러 계정에서 관측한 사실을 화면 표시 옵션에 적용하는 동작을 보호한다. 비슷해 보여도 서로 다른 계층의 계약이므로 둘 다 유지한다.
+`IMPORT-SLOT-*` protects facts extracted from one export. `DISPLAY-SLOT-*` protects applying observations across accounts and browser display options. They operate at different layers and are intentionally both retained.
 
-## 현재 자동화되지 않은 주요 계약
+## Major contracts not yet automated
 
-아래 항목은 문서화되어 있지만 현재 `pnpm test`가 직접 보호하지 않는다. 관련 변경을 리뷰할 때 수동 확인 대상으로 취급하고, 테스트를 추가하면 위 표에 ID와 함께 등록한다.
+These documented behaviors are not directly protected by `pnpm test`. Treat them as manual review requirements until adding tests and registry IDs.
 
-1. 알림 준비 기간 동안 같은 마을의 준비 알림을 원자적으로 중복 억제하고 실패 시 억제를 해제하는 DB 동작
-2. import 직후 무응답을 먼저 저장한 뒤 별도 응답으로 상태와 알림 일정을 갱신하는 전체 흐름
-3. API 관리자 인증, preview/import, 신규 계정 생성, 최신 export 우선 적용
-4. 모바일 Quick Paste, 자동 Review, 포커스 이동, sticky 탭과 화면 순서
-5. 그룹 순서와 태그 그룹 표시, 시작 가능한 업그레이드 우선 표시의 브라우저 동작
-6. DB 이력 export/import/seed/reseed와 스키마 마이그레이션
+1. Atomic same-village preparation-alert suppression and release after delivery failure
+2. The full import flow from initial unanswered storage to a separately saved resource response
+3. Admin authentication, preview/import, new-account creation, and newest-export precedence
+4. Mobile Quick Paste, automatic Review, focus movement, sticky tabs, and responsive ordering
+5. Group ordering, tag groups, and upgrade-ready sorting in the browser
+6. DB history export/import/seed/reseed and schema migrations
 
-우선순위는 알림 중복 방지 DB 통합 테스트, import API 통합 테스트, 핵심 모바일 업데이트 흐름의 브라우저 테스트 순이다. 특히 알림 정책은 중복 또는 누락으로 직접 드러나며 단위 테스트만으로 트랜잭션 동작을 검증할 수 없다.
+Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 
-## 새 테스트를 추가하거나 제거할 때
+## Adding, changing, or removing tests
 
-저장소에 처음 들어온 작업자와 자동화 에이전트가 이 규칙을 놓치지 않도록 루트 [`AGENTS.md`](../AGENTS.md)에도 필수 절차와 실행 명령을 요약한다. 이 문서는 계약의 상세 근거와 목록을 관리하고, `AGENTS.md`는 작업 시작점 역할을 한다.
+Root [`AGENTS.md`](../AGENTS.md) summarizes this workflow so new contributors and automation agents discover it immediately.
 
-1. 기존 계약을 확장하면 같은 ID를 사용하고 계약 설명이 정확한지 확인한다.
-2. 독립적인 사용자 동작이나 운영 규칙이면 새 ID와 표의 행을 먼저 추가한다.
-3. 구현 세부사항만 보호하는 테스트는 ID 대신 테스트 가까이에 리팩터링 중 유지할 이유를 적는다.
-4. 테스트를 제거할 때는 근거 문서의 요구가 사라졌는지 확인하고 계약 행도 함께 제거한다.
-5. CI 실패 시 테스트 이름의 ID로 이 문서를 검색한다.
+1. Reuse an ID only when extending the same contract and its description remains accurate.
+2. Add a new ID first or in the same change for an independent user or operational contract.
+3. For implementation-only tests, explain the refactoring rationale near the test instead of inventing a contract ID.
+4. Remove the source declaration, registry row, and tests together only when the requirement no longer applies.
+5. Search this file for the ID shown in CI output.
 
-`TEST-DOC-001`은 다음 세 집합이 정확히 같은지 검사한다.
-
-- 기능 문서에서 `contract`로 선언한 ID
-- 이 문서의 계약 목록에 등록한 ID
-- 테스트 이름에서 참조한 ID
-
-기능 문서의 계약 ID 중복 선언도 실패한다. 아직 자동화하지 않은 요구사항은 `contract`로 선언하지 않고 위의 자동화 공백 목록에 유지하며, 테스트를 구현하는 변경에서 세 위치를 함께 추가한다.
+`TEST-DOC-001` verifies that feature-document declarations, registry IDs, and test-title IDs are identical sets, and rejects duplicate declarations. Requirements without feasible automation remain in the gap list above; add all three locations when implementing their tests.

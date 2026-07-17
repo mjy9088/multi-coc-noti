@@ -1,95 +1,91 @@
-# 대시보드와 설정 사용법
+# Dashboard and Settings Guide
 
-## 화면 구성
+## Navigation
 
-상단 메뉴는 `Dashboard`, `Settings`, `Quick Paste`로 구성됩니다. `History`는 아직 활성화되지 않았습니다.
-
-대시보드와 설정 화면의 섹션 탭은 헤더 아래에 고정됩니다. 모바일에서는 탭 영역을 가로로 스크롤할 수 있습니다.
+The top-level menu contains `Dashboard`, `Settings`, and `Quick Paste`. `History` is not active yet. Dashboard and Settings section tabs remain sticky below the header and scroll horizontally on mobile.
 
 ### Dashboard
 
 <!-- contract: DATA-UPGRADE-001 -->
 
-`마을 목록`과 `업그레이드 큐` 탭을 누르면 해당 위치로 이동하며, 직접 스크롤해도 현재 섹션에 맞춰 활성 탭이 바뀝니다.
+The `Villages` and `Upgrade queue` tabs scroll to their sections and follow the active section during manual scrolling.
 
-- 상단 요약: 전체 계정 수, 대기 빌더 수, 가장 빠른 업그레이드 완료까지 남은 시간
-- 마을 목록: 검색, 상태 필터, 태그 그룹과 표시 옵션
-- 마을 카드: 본 마을과 장인기지의 사용 가능한 업그레이드 슬롯
-- 업그레이드 큐: 계정별 진행 항목을 완료 시각이 빠른 순서로 표시
+- Summary: account count, idle builders, and time until the next completion
+- Villages: search, status filtering, tag groups, and display options
+- Village cards: available Home Village and Builder Base upgrade slots
+- Upgrade queue: active items ordered by completion time within each account
 
-마을 카드를 누르면 `Settings → Manage villages`로 이동하며 선택한 마을의 설정 폼이 바로 열립니다. 키보드에서는 Enter 또는 Space로 선택할 수 있습니다.
+Selecting a village card opens `Settings → Manage villages` with that village selected. Keyboard users can use Enter or Space.
 
-## 계정 태그와 그룹
+## Account tags and groups
 
 <!-- contract: DATA-TAGS-001 -->
 
-`Settings → Manage villages`에서 계정 태그를 쉼표로 구분해 입력합니다. `#`을 붙여 입력해도 저장할 때 제거되며, 대소문자가 다른 같은 태그는 하나로 합칩니다.
+Enter comma-separated account tags under `Settings → Manage villages`. A leading `#` is removed and case-insensitive duplicates are merged.
 
-- 대시보드에는 `전체 계정` 뒤에 태그별 그룹이 표시됩니다.
-- 한 마을에 여러 태그를 지정할 수 있고, 같은 태그가 있는 마을을 함께 볼 수 있습니다.
-- 태그 없는 마을도 `전체 계정`에는 계속 표시됩니다.
-- 태그는 이름과 플레이어 태그와 함께 검색 대상에 포함됩니다.
+- Tag groups appear after `All accounts`.
+- A village can belong to multiple groups; untagged villages remain in `All accounts`.
+- Search covers display names, player tags, and account tags.
+- Configure order under `Settings → Group order`. PostgreSQL persists the order across browsers; new groups follow configured groups alphabetically.
 
-그룹 순서는 `Settings → Group order`에서 화살표로 지정합니다. 순서는 PostgreSQL에 저장되어 다른 브라우저에도 동일하게 적용됩니다. 새 그룹은 지정된 그룹 뒤에 이름순으로 추가됩니다.
-
-## 표시 옵션
+## Display options
 
 <!-- contract: DISPLAY-SLOT-001 -->
 <!-- contract: DISPLAY-SLOT-002 -->
 <!-- contract: DISPLAY-SLOT-003 -->
 <!-- contract: DISPLAY-SLOT-004 -->
 
-마을 목록의 `표시 옵션`은 현재 브라우저에 저장됩니다.
+Display options are stored in the current browser.
 
-- `고블린 연구원 여유 슬롯 추정`: 한 마을에서 동시 연구 두 개가 관측되면 자격이 되는 다른 마을의 두 번째 연구 슬롯을 표시합니다.
-- `고블린 장인 여유 슬롯 추정`: 일반 장인 수를 넘는 동시 건설이 관측되면 자격이 되는 마을의 추가 장인을 표시합니다.
-- `업그레이드 가능 계정 우선 표시`: 빌더, 연구소, 펫, 장인기지 빌더·연구소 중 하나라도 비어 있는 마을 카드를 먼저 배치합니다.
+- `Infer idle Goblin Researcher`: once two concurrent research jobs prove the event active, show an eligible second slot on other villages.
+- `Infer idle Goblin Builder`: once work beyond the regular builder count proves the event active, show the extra builder only when all eligible regular builders are busy.
+- `Show upgrade-ready accounts first`: prioritize cards with any idle builder, laboratory, pet, Builder Base builder, or Builder Base laboratory slot.
 
-## 데이터 업데이트
+## Updating data
 
-게임에서 `설정 → 기타 설정 → 데이터 내보내기 → 복사`를 실행한 뒤 다음 방법 중 하나를 사용합니다.
+In the game, use `Settings → More Settings → Data Export → Copy`, then paste through Quick Paste, the clipboard button, or the input area.
 
 ### Quick Paste
 
-상단의 `Quick Paste`는 어느 화면에서든 클립보드를 읽고 `Settings → Update Data`로 이동해 자동 검토를 시작합니다. 브라우저의 Clipboard API는 HTTPS 또는 localhost와 사용자 권한이 필요합니다. 권한이 없으면 안내 메시지에 따라 입력창을 길게 눌러 수동으로 붙여넣습니다.
+Quick Paste reads the clipboard from any screen, opens `Settings → Update Data`, and starts review. Clipboard access requires HTTPS or localhost and browser permission; manual paste remains available.
 
-### Update Data 화면
+### Update Data
 
-1. `클립보드 붙여넣기` 버튼을 누르거나 입력창에 JSON을 붙여넣습니다.
-2. 완성된 JSON이 감지되면 350ms 후 자동으로 검토합니다. `내용 확인`은 오류가 발생했을 때 다시 시도하는 용도로 남아 있습니다.
-3. 기존 플레이어 태그면 Import 버튼이 화면 중앙으로 이동하고 자동으로 포커스를 받습니다.
-4. 새 플레이어 태그면 표시 이름을 입력한 뒤 `마을 추가하고 반영`을 누릅니다.
+1. Paste or use `Paste from clipboard`.
+2. Complete JSON triggers review after a 350 ms debounce. `Review` remains available for retrying errors.
+3. For a known player tag, the Import button moves into view and receives focus.
+4. For a new tag, enter a display name and confirm `Add village and import`.
 
-미리보기에는 export 시각, 빌더·슬롯 상태, 감지된 업그레이드의 정확한 완료 시각과 남은 시간이 표시됩니다. 모바일에서는 최종 확인 버튼 영역이 화면 아래에 고정됩니다.
+Preview shows export time, builder and slot status, exact completion timestamps, and remaining durations. The final action area remains fixed at the bottom on mobile.
 
-## Settings 메뉴
+## Settings sections
 
-| 메뉴 | 용도 |
+| Section | Purpose |
 | --- | --- |
-| `Update Data` | 게임 export JSON 검토와 반영 |
-| `Upgrades & alerts` | 활성 업그레이드의 완료 시각과 현재 적용 알림 정책 확인 |
-| `Manage villages` | 표시 이름, 색상, 계정 태그, Pull URL, 수집 API 키와 삭제 |
-| `Group order` | 대시보드 태그 그룹 순서 지정 |
+| `Update Data` | Review and import game-export JSON |
+| `Upgrades & alerts` | Inspect active upgrades and effective Bark policy |
+| `Manage villages` | Edit name, color, tags, Pull URL, API key, resource policy, or delete |
+| `Group order` | Configure dashboard tag-group order |
 
-모바일 `Manage villages`에서는 설정 입력 카드가 마을 목록보다 먼저 표시됩니다. 아래 목록에서 다른 마을을 고르면 설정 카드로 자동 이동합니다.
+On mobile, the Manage villages form appears before the long village list. Selecting another village scrolls back to the form.
 
-## 자원 상태 기반 알림
+## Resource-aware notifications
 
-진행 중인 업그레이드가 있는 JSON은 Import 즉시 무응답 상태로 먼저 반영되고, 완료 후 마을의 다음 업그레이드 자원이 충분한지 묻습니다. 팝업을 닫아도 가져오기는 취소되지 않습니다. 상태는 마을 전체에 하나만 저장되며 `Manage villages`에서 언제든 바꿀 수 있습니다.
+An import containing active upgrades is saved immediately with resource status `unanswered`, then asks whether the village has enough resources for the next upgrade. Closing the prompt does not cancel the import. Resource status is stored once per village and can be changed later.
 
-- 자원 많이 남음: 완료 시 알림
-- 충분함: 완료 1분 전 알림
-- 부족함 또는 무응답: 설정한 자원 준비 시간 전 알림과 완료 알림
+- Abundant: notify at completion.
+- Sufficient: notify one minute before completion.
+- Insufficient or unanswered: notify at the configured preparation time and again at completion.
 
-자원 준비 시간은 마을별 분 단위 값이며 끌 수도 있습니다. 준비 시각이 이미 지났다면 다음 Notifier 주기에 발송하고, 같은 마을의 준비 알림은 설정 시간 안에 중복 발송하지 않습니다. 이미 발송된 알림은 설정 변경 시에도 유지되며, 실패한 Bark 요청은 DB에 오류와 다음 재시도 시각을 기록합니다. 상세 규칙은 [자원 상태 기반 업그레이드 알림 정책](resource-notification-policy.md)을 참고하세요.
+Preparation time is a per-village minute value and can be disabled. Overdue preparation notifications become eligible on the next Notifier cycle. The same village does not receive duplicate preparation alerts within its preparation window. Sent alerts survive policy changes; failed Bark requests record an error and retry time. See the [notification policy](resource-notification-policy.md).
 
-## 저장 위치
+## Storage locations
 
 <!-- contract: API-PROFILE-002 -->
 
-| 설정 | 저장 위치 |
+| Data | Location |
 | --- | --- |
-| 계정, 태그, 그룹 순서, 자원 상태·준비 시간과 알림 큐 | PostgreSQL |
-| 고블린 추정과 업그레이드 가능 우선 표시 | 브라우저 localStorage |
-| 언어 | 쿠키 |
-| 관리자 토큰 | 브라우저 localStorage, 서버의 `ADMIN_TOKEN`과 비교 |
+| Accounts, tags, group order, resource policy, and notification queue | PostgreSQL |
+| Goblin inference and upgrade-ready sorting options | Browser localStorage |
+| Language | Cookie |
+| Admin token | Browser localStorage, checked against server `ADMIN_TOKEN` |
