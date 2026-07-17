@@ -23,6 +23,7 @@
     "@biomejs/biome": "2.5.4",
     "@types/node": "^24.13.3",
     "@types/pg": "^8.20.0",
+    "lefthook": "2.1.10",
     "typescript": "5.9.3"
   }
 }

@@ -87,4 +87,9 @@ Dashboard ESLint remains enabled for Next.js and React-specific rules. The curre
 `apps/dashboard/app/styles/legacy.css` is intentionally excluded to avoid a noisy mechanical rewrite before the planned UI
 redesign.
 
+Installing dependencies also installs the repository's Lefthook-managed Git hook. Before each commit, it applies Biome safe
+fixes to staged supported files, stages those fixes, and runs Next.js ESLint when staged Dashboard JavaScript or TypeScript
+files are present. Full type checks, tests, and builds remain in `pnpm test` and `just check` rather than slowing every
+commit.
+
 `TEST-DOC-001` verifies that feature-document declarations, registry IDs, and test-title IDs are identical sets, and rejects duplicate declarations. Requirements without feasible automation remain in the gap list above; add all three locations when implementing their tests.

@@ -1,0 +1,9 @@
+pre-commit:
+  jobs:
+    - name: biome
+      run: pnpm biome check --write --staged
+      stage_fixed: true
+    - name: next-eslint
+      root: "apps/dashboard/"
+      glob: "apps/dashboard/**/*.{js,jsx,ts,tsx}"
+      run: pnpm exec eslint {staged_files}
