@@ -10,6 +10,7 @@ The top-level menu contains `Dashboard`, `Settings`, and `Quick Paste`. `History
 <!-- contract: DATA-REFRESH-001 -->
 <!-- contract: DISPLAY-SUMMARY-001 -->
 <!-- contract: DISPLAY-FILTER-001 -->
+<!-- contract: DISPLAY-CHART-001 -->
 
 The title and subtitle are followed by the account filters, summary strip, and then the `Villages` and `Upgrade queue` section tabs. The tabs scroll to their sections and follow the active section during manual scrolling.
 
@@ -17,6 +18,7 @@ The title and subtitle are followed by the account filters, summary strip, and t
 - Villages: search, slot-availability filtering, update-required filtering, tag groups, and display options
 - Village cards: available Home Village and Builder Base upgrade slots
 - Upgrade queue: active items ordered by completion time within each account
+- Upgrade outlook: completion counts grouped across the remaining time range, plus active-upgrade and available-slot area charts. Each chart shows Home Village separately and Home Village plus Builder Base as a combined total.
 
 Search, filters, and tag groups apply to the village cards, all summary counts and next-completion time, and the upgrade queue. Slot availability is a single-choice group: all slots, an idle Home Village builder/laboratory/Pet House, or any idle Home Village/Builder Base slot. `Update required` is an independent checkbox and can be combined with the slot choice.
 

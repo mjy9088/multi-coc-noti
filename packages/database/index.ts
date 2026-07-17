@@ -12,7 +12,7 @@ export type UpgradeSource = "export" | "snapshot";
 export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "refresh_required" | "legacy";
 export type TrackedUpgrade = Upgrade & {
   accountId: string; startedAt: string; status: string; source: UpgradeSource;
-  sourceKey: string; notificationOffsets: number[]; resourcePreparationOverrideMinutes: number | null;
+  sourceKey: string; base: "home" | "builder"; notificationOffsets: number[]; resourcePreparationOverrideMinutes: number | null;
 };
 export type DueNotification = {
   id: string; upgradeId: string; kind: NotificationKind; minutesBefore: number; preparationMinutes: number | null;
@@ -137,6 +137,7 @@ export async function clearLegacyIndex(id: string): Promise<void> {
 
 const upgradeFromRow = (row: pg.QueryResultRow): TrackedUpgrade => ({
   id: String(row.id), accountId: String(row.account_id), name: String(row.name), type: row.type as UpgradeType,
+  base: row.base === "builder" ? "builder" : "home",
   level: row.current_level, nextLevel: row.next_level,
   startedAt: new Date(row.started_at).toISOString(), finishAt: new Date(row.finish_at).toISOString(), status: row.status,
   source: row.source as UpgradeSource, sourceKey: String(row.source_key),
@@ -242,13 +243,13 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
       keys.push(sourceKey);
       const existing = (await client.query("SELECT finish_at,status FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, source, sourceKey])).rows[0];
       const { rows } = await client.query(`
-        INSERT INTO tracked_upgrades (account_id,source,source_key,name,type,current_level,next_level,started_at,finish_at,status,last_seen_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10)
+        INSERT INTO tracked_upgrades (account_id,source,source_key,name,type,base,current_level,next_level,started_at,finish_at,status,last_seen_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active',$11)
         ON CONFLICT (account_id,source,source_key) DO UPDATE SET
-          name=EXCLUDED.name,type=EXCLUDED.type,current_level=EXCLUDED.current_level,next_level=EXCLUDED.next_level,
+          name=EXCLUDED.name,type=EXCLUDED.type,base=EXCLUDED.base,current_level=EXCLUDED.current_level,next_level=EXCLUDED.next_level,
           started_at=EXCLUDED.started_at,finish_at=EXCLUDED.finish_at,status='active',last_seen_at=EXCLUDED.last_seen_at,updated_at=now()
         RETURNING *
-      `, [accountId, source, sourceKey, upgrade.name, upgrade.type, upgrade.level, upgrade.nextLevel,
+      `, [accountId, source, sourceKey, upgrade.name, upgrade.type, upgrade.base === "builder" ? "builder" : "home", upgrade.level, upgrade.nextLevel,
         upgrade.startedAt || observedAt, upgrade.finishAt, observedAt]);
       if (!existing || existing.status !== "active" || new Date(existing.finish_at).getTime() !== new Date(upgrade.finishAt).getTime()) trackerChanged = true;
       const duplicates = await client.query(`

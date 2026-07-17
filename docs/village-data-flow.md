@@ -32,6 +32,8 @@ For a new player tag, clearly label the preview as new and require a display nam
 
 The server computes completion as `timestamp + timer` and uses `clash-of-clans-data` mappings to normalize buildings, heroes, pets, research, and Builder Base items.
 
+The unified upgrade tracker preserves each upgrade's `home` or `builder` base classification. Existing tracker rows are backfilled from the newest stored export or snapshot during migration so dashboard totals remain separated after an upgrade.
+
 ## Upgrade availability
 
 <!-- contract: IMPORT-PARSE-001 -->

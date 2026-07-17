@@ -43,6 +43,7 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | `DISPLAY-SLOT-004` | Preserve original slots when inference is disabled, respecting browser preferences. | [Dashboard: Display options](dashboard-guide.md#display-options) | Display-calculation unit |
 | `DISPLAY-SUMMARY-001` | Total idle Home Village builder/laboratory/Pet House slots while keeping Builder Base builder/laboratory slots in a separate total. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `DISPLAY-FILTER-001` | Distinguish Home Village availability from availability in either village so the single-choice slot filter has stable semantics. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
+| `DISPLAY-CHART-001` | Project completion bins, active work, and released slots for Home Village and the combined bases on one timeline. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `TEST-DOC-001` | Compare feature declarations, this registry, and test IDs in both directions; reject duplicate declarations. | This [Purpose](#purpose) | Documentation consistency |
 
 `IMPORT-SLOT-*` protects facts extracted from one export. `DISPLAY-SLOT-*` protects applying observations across accounts and browser display options. They operate at different layers and are intentionally both retained.
@@ -58,6 +59,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 5. Group ordering, tag groups, and upgrade-ready sorting in the browser
 6. DB history export/import/seed/reseed and schema migrations
 7. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
+8. DB migration backfill of Home Village and Builder Base classification on existing tracked upgrades
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 

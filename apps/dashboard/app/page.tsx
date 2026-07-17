@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { applyDisplayOptions, defaultDisplayOptions, matchesAvailabilityFilter, observeAvailability, summarizeAvailability } from "@multi-coc/upgrade-availability";
+import { applyDisplayOptions, buildUpgradeChartData, defaultDisplayOptions, matchesAvailabilityFilter, observeAvailability, summarizeAvailability } from "@multi-coc/upgrade-availability";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import { useTranslations } from "next-intl";
 import AdminPanel from "./admin-panel";
 import LocaleSwitcher from "./locale-switcher";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
+import UpgradeCharts from "./upgrade-charts";
 import { useDashboardFormat } from "./use-dashboard-format";
 
 type Upgrade = {
@@ -15,6 +16,7 @@ type Upgrade = {
   level: number;
   nextLevel?: number;
   type: "building" | "hero" | "pet" | "research";
+  base?: string;
   finishAt: string;
 };
 
@@ -77,7 +79,7 @@ const demoData: DashboardData = {
       lastSeen: new Date(now - 5 * 60_000).toISOString(),
       builders: { free: 0, total: 6 },
       upgrades: [
-        { id: "u4", name: "Monolith", level: 1, nextLevel: 2, type: "building", finishAt: new Date(now + 8.4 * 3600_000).toISOString() },
+        { id: "u4", name: "Multi Mortar", level: 9, nextLevel: 10, type: "building", base: "builder", finishAt: new Date(now + 8.4 * 3600_000).toISOString() },
         { id: "u5", name: "Royal Champion", level: 37, nextLevel: 38, type: "hero", finishAt: new Date(now + 2.1 * 86400_000).toISOString() },
       ],
     },
@@ -241,6 +243,7 @@ export default function Home() {
   }, [availabilityObservations, displayOptions, lowerCase, prioritizeAvailable, selectedTag, visibleAccounts]);
   const allUpgrades = useMemo(() => accounts.flatMap((account) => account.upgrades.map((upgrade) => ({ account, upgrade }))).sort((a, b) => +new Date(a.upgrade.finishAt) - +new Date(b.upgrade.finishAt)), [accounts]);
   const availabilitySummary = summarizeAvailability(accounts, availabilityObservations, displayOptions);
+  const upgradeChartData = useMemo(() => buildUpgradeChartData(allUpgrades.map(({ upgrade }) => upgrade), availabilitySummary.homeVillage, availabilitySummary.builderBase, clockNow), [allUpgrades, availabilitySummary.builderBase, availabilitySummary.homeVillage, clockNow]);
   const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
   const next = allUpgrades[0]?.upgrade;
 
@@ -281,6 +284,8 @@ export default function Home() {
             <div><span>{t("earliest")}</span><strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t("none")}</strong></div>
           </div>
         </section>
+
+        <UpgradeCharts bins={upgradeChartData.bins} timeline={upgradeChartData.timeline} formatTime={(value) => formatQueueDate(new Date(value).toISOString())} labels={{ title: t("upgradeOutlook"), description: t("upgradeOutlookHelp"), completions: t("completionDistribution"), active: t("activeUpgradeTrend"), available: t("availableSlotTrend"), home: t("homeVillage"), all: t("allVillages"), empty: t("empty") }} />
 
         <div className="dashboard-section-tabs section-tabs" role="navigation" aria-label={t("dashboardSections")}>
           <button className={dashboardSection === "villages" ? "active" : ""} onClick={() => scrollToDashboardSection("villages")}>{t("villages")}</button>

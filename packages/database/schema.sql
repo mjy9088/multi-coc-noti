@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS tracked_upgrades (
   source_key text NOT NULL,
   name text NOT NULL,
   type text NOT NULL CHECK (type IN ('building', 'hero', 'pet', 'research')),
+  base text NOT NULL DEFAULT 'home' CHECK (base IN ('home', 'builder')),
   current_level integer NOT NULL DEFAULT 0,
   next_level integer NOT NULL DEFAULT 1,
   started_at timestamptz NOT NULL,
@@ -84,6 +85,9 @@ CREATE TABLE IF NOT EXISTS tracked_upgrades (
 );
 
 ALTER TABLE tracked_upgrades ADD COLUMN IF NOT EXISTS resource_preparation_override_minutes integer;
+ALTER TABLE tracked_upgrades ADD COLUMN IF NOT EXISTS base text NOT NULL DEFAULT 'home';
+ALTER TABLE tracked_upgrades DROP CONSTRAINT IF EXISTS tracked_upgrades_base_check;
+ALTER TABLE tracked_upgrades ADD CONSTRAINT tracked_upgrades_base_check CHECK (base IN ('home', 'builder'));
 ALTER TABLE tracked_upgrades DROP CONSTRAINT IF EXISTS tracked_upgrades_resource_preparation_override_check;
 ALTER TABLE tracked_upgrades ADD CONSTRAINT tracked_upgrades_resource_preparation_override_check
   CHECK (resource_preparation_override_minutes IS NULL OR resource_preparation_override_minutes BETWEEN 0 AND 525600);
@@ -162,10 +166,11 @@ WITH latest AS (
   FROM latest CROSS JOIN LATERAL jsonb_array_elements(COALESCE(latest.normalized->'upgrades', '[]'::jsonb)) AS value
 )
 INSERT INTO tracked_upgrades (
-  account_id, source, source_key, name, type, current_level, next_level,
+  account_id, source, source_key, name, type, base, current_level, next_level,
   started_at, finish_at, status, last_seen_at
 )
 SELECT account_id, 'export', value->>'id', value->>'name', value->>'type',
+  CASE WHEN value->>'base'='builder' THEN 'builder' ELSE 'home' END,
   COALESCE((value->>'level')::integer, 0), COALESCE((value->>'nextLevel')::integer, 1),
   COALESCE(NULLIF(value->>'startedAt', '')::timestamptz, exported_at),
   (value->>'finishAt')::timestamptz,
@@ -176,6 +181,20 @@ WHERE value->>'id' IS NOT NULL
   AND value->>'type' IN ('building', 'hero', 'pet', 'research')
   AND value->>'finishAt' IS NOT NULL
 ON CONFLICT (account_id, source, source_key) DO NOTHING;
+
+-- Older tracker rows predate base classification. Recover it from the newest
+-- export so existing Builder Base work is classified correctly immediately.
+WITH latest AS (
+  SELECT DISTINCT ON (account_id) account_id, normalized
+  FROM village_exports ORDER BY account_id, exported_at DESC
+), export_upgrades AS (
+  SELECT latest.account_id, value
+  FROM latest CROSS JOIN LATERAL jsonb_array_elements(COALESCE(latest.normalized->'upgrades', '[]'::jsonb)) AS value
+)
+UPDATE tracked_upgrades tracked SET base=CASE WHEN export_upgrades.value->>'base'='builder' THEN 'builder' ELSE 'home' END
+FROM export_upgrades
+WHERE tracked.account_id=export_upgrades.account_id AND tracked.source='export'
+  AND tracked.source_key=export_upgrades.value->>'id';
 
 -- Replace pending reminders from the legacy fixed-offset policy. Sent rows stay
 -- immutable so an account setting change never sends the same event twice.
@@ -248,6 +267,18 @@ CREATE TABLE IF NOT EXISTS snapshot_logs (
   source jsonb NOT NULL,
   recorded_at timestamptz NOT NULL DEFAULT now()
 );
+
+WITH latest AS (
+  SELECT DISTINCT ON (account_id) account_id, snapshot
+  FROM snapshot_logs ORDER BY account_id, captured_at DESC
+), snapshot_upgrades AS (
+  SELECT latest.account_id, value
+  FROM latest CROSS JOIN LATERAL jsonb_array_elements(COALESCE(latest.snapshot->'upgrades', '[]'::jsonb)) AS value
+)
+UPDATE tracked_upgrades tracked SET base=CASE WHEN snapshot_upgrades.value->>'base'='builder' THEN 'builder' ELSE 'home' END
+FROM snapshot_upgrades
+WHERE tracked.account_id=snapshot_upgrades.account_id AND tracked.source='snapshot'
+  AND tracked.source_key=snapshot_upgrades.value->>'id';
 
 -- Older versions allowed the same collected document to be inserted more than
 -- once. Keep the first copy so history imports can use a stable conflict key.

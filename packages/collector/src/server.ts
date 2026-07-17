@@ -210,7 +210,7 @@ function previewVillageExport(value: RequestValue) {
     preview: {
       tag: parsed.tag, exportedAt: parsed.exportedAt, townHall: parsed.townHall, builders: parsed.builders,
       upgradeSlots: parsed.upgradeSlots,
-      upgrades: parsed.upgrades.map(({ id, name, type, level, nextLevel, finishAt }) => ({ id, name, type, level, nextLevel, finishAt })),
+      upgrades: parsed.upgrades.map(({ id, name, type, base, level, nextLevel, finishAt }) => ({ id, name, type, base, level, nextLevel, finishAt })),
       unknownDataIds: parsed.unknownDataIds,
       account: account ? { id: account.id, label: account.label, color: account.color } : null,
       isNew: !account,

@@ -3,6 +3,10 @@ export type DisplayOptions = {
   goblinBuilder: boolean;
 };
 
+export type UpgradeChartInput = { finishAt: string; base?: string };
+export type UpgradeTimelinePoint = { at: number; activeHome: number; activeAll: number; availableHome: number; availableAll: number };
+export type CompletionBin = { start: number; end: number; home: number; all: number };
+
 export type BuilderAvailability = {
   free: number;
   total: number;
@@ -92,4 +96,26 @@ export function matchesAvailabilityFilter(account: AvailabilityAccount, filter: 
   const home = displayed.builders.free > 0 || Boolean(displayed.laboratory?.available) || Boolean(account.upgradeSlots?.petHouse?.available);
   if (filter === "home") return home;
   return home || Boolean(account.upgradeSlots?.builderBase?.builders.free) || Boolean(account.upgradeSlots?.builderBase?.laboratory?.available);
+}
+
+export function buildUpgradeChartData(upgrades: UpgradeChartInput[], idleHome: number, idleBuilder: number, now: number, binCount = 8): { timeline: UpgradeTimelinePoint[]; bins: CompletionBin[] } {
+  const isHome = (upgrade: UpgradeChartInput) => upgrade.base !== "builder";
+  const active = upgrades.filter((upgrade) => Number.isFinite(new Date(upgrade.finishAt).getTime()) && new Date(upgrade.finishAt).getTime() > now);
+  const finishTimes = [...new Set(active.map((upgrade) => new Date(upgrade.finishAt).getTime()))].sort((a, b) => a - b);
+  const timeline = [now, ...finishTimes].map((at) => {
+    const completed = active.filter((upgrade) => new Date(upgrade.finishAt).getTime() <= at);
+    const activeAt = active.filter((upgrade) => new Date(upgrade.finishAt).getTime() > at);
+    const completedHome = completed.filter(isHome).length;
+    return { at, activeHome: activeAt.filter(isHome).length, activeAll: activeAt.length, availableHome: idleHome + completedHome, availableAll: idleHome + idleBuilder + completed.length };
+  });
+  const horizon = finishTimes.at(-1) ?? now + 60 * 60_000;
+  const width = Math.max(1, horizon - now);
+  const count = Math.max(1, binCount);
+  const bins = Array.from({ length: count }, (_, index) => {
+    const start = now + width * index / count;
+    const end = now + width * (index + 1) / count;
+    const entries = active.filter((upgrade) => { const finish = new Date(upgrade.finishAt).getTime(); return finish > start && finish <= end; });
+    return { start, end, home: entries.filter(isHome).length, all: entries.length };
+  });
+  return { timeline, bins };
 }
