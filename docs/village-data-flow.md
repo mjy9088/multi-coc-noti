@@ -32,7 +32,7 @@ For a new player tag, clearly label the preview as new and require a display nam
 - Active timers must be numeric and no longer than 180 days.
 - Levels and data IDs outside accepted ranges are rejected.
 
-The server computes completion as `timestamp + timer` and uses `clash-of-clans-data` mappings to normalize buildings, heroes, pets, research, and Builder Base items.
+The independent `@multi-coc/village-export` domain package computes completion as `timestamp + timer` and uses `clash-of-clans-data` mappings to normalize buildings, heroes, pets, research, and Builder Base items. Collector and the Maintenance history CLI both consume this package; parsing is not owned by either transport or persistence.
 
 <!-- contract: IMPORT-COOLDOWN-001 -->
 

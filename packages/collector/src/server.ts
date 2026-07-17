@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import {
@@ -20,14 +19,17 @@ import {
 } from "@multi-coc/database";
 import type { Account, ResourceStatus, VillageSnapshot } from "@multi-coc/shared";
 import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags } from "@multi-coc/shared";
-import type { PlayerProfile } from "./clash-api.ts";
-import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import {
   compareVillageExports,
   normalizePlayerTag,
   parseVillageDetails,
   parseVillageExport,
-} from "./village-export.ts";
+} from "@multi-coc/village-export";
+import type { PlayerProfile } from "./clash-api.ts";
+import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
+import { isAdminAuthorized } from "./http/auth.ts";
+import { type RequestValue, requestJson } from "./http/request.ts";
+import { json as writeJson } from "./http/response.ts";
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "0.0.0.0";
@@ -39,7 +41,6 @@ type OfficialState = {
   lastSuccessAt: string | null;
   lastError: string | null;
 };
-type RequestValue = Record<string, unknown>;
 const officialStates = new Map<string, OfficialState>();
 const officialProfiles = new Map<string, PlayerProfile>();
 let accounts: Account[] = [];
@@ -53,44 +54,16 @@ const cors = {
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
-function equalSecret(a = "", b = ""): boolean {
-  if (!a || !b) return false;
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
-function bearer(request: IncomingMessage): string {
-  return request.headers.authorization?.replace(/^Bearer\s+/i, "") || "";
-}
-
 function requireAdmin(request: IncomingMessage, response: ServerResponse): boolean {
   if (!adminToken) {
     json(response, 503, { error: "ADMIN_TOKEN is not configured" });
     return false;
   }
-  if (!equalSecret(String(bearer(request)), adminToken)) {
+  if (!isAdminAuthorized(request, adminToken)) {
     json(response, 401, { error: "invalid admin token" });
     return false;
   }
   return true;
-}
-
-async function body(request: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += buffer.length;
-    if (size > 2_000_000) throw new Error("payload too large");
-    chunks.push(buffer);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
-async function requestJson(request: IncomingMessage): Promise<RequestValue> {
-  const text = await body(request);
-  return text ? (JSON.parse(text) as RequestValue) : {};
 }
 
 async function refreshAccounts(): Promise<void> {
@@ -503,13 +476,7 @@ const server = createServer(async (request, response) => {
 });
 
 function json(response: ServerResponse, status: number, value: unknown, headers: Record<string, string> = {}): void {
-  response.writeHead(status, {
-    ...cors,
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-    ...headers,
-  });
-  response.end(JSON.stringify(value));
+  writeJson(response, status, value, { ...cors, ...headers });
 }
 
 await Promise.all(accounts.map((account) => refreshOfficialProfile(account)));

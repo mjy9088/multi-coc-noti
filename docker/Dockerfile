@@ -36,7 +36,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/collector/package.json packages/collector/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/notifier/package.json packages/notifier/package.json
+COPY packages/notification-policy/package.json packages/notification-policy/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/village-export/package.json packages/village-export/package.json
 RUN pnpm install --prod --frozen-lockfile --filter @multi-coc/collector... --filter @multi-coc/notifier...
 
 FROM node:24-alpine AS services
@@ -44,9 +46,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=service-deps /app ./
 COPY packages/collector/src packages/collector/src
+COPY packages/database/client.ts packages/database/client.ts
 COPY packages/database/index.ts packages/database/index.ts
+COPY packages/database/migrate.ts packages/database/migrate.ts
 COPY packages/database/schema.sql packages/database/schema.sql
 COPY packages/notifier/src packages/notifier/src
+COPY packages/notification-policy/index.ts packages/notification-policy/index.ts
 COPY packages/shared/index.ts packages/shared/index.ts
+COPY packages/village-export/index.ts packages/village-export/index.ts
 COPY packages/reverse-proxy/src packages/reverse-proxy/src
 CMD ["node", "packages/collector/src/server.ts"]

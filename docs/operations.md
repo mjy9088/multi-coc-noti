@@ -93,6 +93,15 @@ Do not publish the application under a path prefix such as `/coc` without also i
 
 Detected upgrades merge into `tracked_upgrades`. Internal terminal states support notification cleanup, but they are not treated as reliable evidence that a player completed or cancelled an upgrade. Public history exposes only whether each record is still active.
 
+Package dependencies follow the runtime responsibility direction:
+
+- `village-export` owns parsing and normalization of raw game exports. Collector uses it for HTTP import and the separate Maintenance CLI uses it when rebuilding history; Database must not import either application's internals.
+- `notification-policy` owns pure alert scheduling decisions. Database persists the resulting schedule, while Notifier only delivers claimed rows.
+- `shared` contains cross-package data contracts and small domain predicates without infrastructure dependencies.
+- `maintenance` composes Database and domain packages for operator-facing backup, restore, validation, seed, and reseed commands.
+- `database/client.ts` owns the PostgreSQL connection lifecycle and `database/migrate.ts` owns schema application. This boundary is intentionally compatible with a later Drizzle client and generated migration layer.
+- Collector keeps transport-only request parsing, authentication, and response formatting under `src/http`; route handlers and use cases can move behind that boundary incrementally.
+
 ## Data storage
 
 PostgreSQL is the only runtime data store. It stores accounts, group order, raw game exports, the derived upgrade record set, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Collector and Notifier do not write runtime snapshot files.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareVillageExports, normalizePlayerTag, parseVillageExport } from "../src/village-export.ts";
+import { compareVillageExports, normalizePlayerTag, parseVillageExport } from "@multi-coc/village-export";
 
 const now = Date.parse("2026-07-17T01:00:00Z");
 const timestamp = Math.floor(now / 1000) - 60;

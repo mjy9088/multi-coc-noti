@@ -1,15 +1,13 @@
 {
-  "name": "@multi-coc/collector",
+  "name": "@multi-coc/maintenance",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --env-file-if-exists=.env src/server.ts",
-    "test": "node --test test/*.test.ts"
+    "village-history": "node src/village-history.ts"
   },
   "dependencies": {
     "@multi-coc/database": "workspace:*",
-    "@multi-coc/shared": "workspace:*",
     "@multi-coc/village-export": "workspace:*"
   }
 }

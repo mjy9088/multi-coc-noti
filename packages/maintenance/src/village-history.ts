@@ -1,8 +1,8 @@
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseVillageExport } from "../../collector/src/village-export.ts";
-import type { VillageHistoryBundle } from "../index.ts";
-import { closeDatabase, exportVillageHistories, importVillageHistory, migrate } from "../index.ts";
+import type { VillageHistoryBundle } from "@multi-coc/database";
+import { closeDatabase, exportVillageHistories, importVillageHistory, migrate } from "@multi-coc/database";
+import { parseVillageExport } from "@multi-coc/village-export";
 
 type LegacyBundle = {
   format: "multi-coc-village-history";

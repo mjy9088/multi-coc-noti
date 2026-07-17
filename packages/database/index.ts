@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import {
+  planRefreshNotification,
+  planResourceNotifications,
+  resolvePreparationMinutes,
+} from "@multi-coc/notification-policy";
 import type {
   Account,
   HeroEquipment,
@@ -10,10 +14,11 @@ import type {
   VillageHelper,
   VillageSnapshot,
 } from "@multi-coc/shared";
-import pg from "pg";
+import type pg from "pg";
+import { database } from "./client.ts";
 
-const { Pool } = pg;
-let pool: pg.Pool | undefined;
+export { closeDatabase, database } from "./client.ts";
+export { migrate } from "./migrate.ts";
 
 type AccountInput = Omit<
   Account,
@@ -86,25 +91,6 @@ export type VillageHistoryImportResult = {
   created: boolean;
   villageExports: number;
 };
-
-export function database() {
-  if (!pool)
-    pool = process.env.DATABASE_URL
-      ? new Pool({ connectionString: process.env.DATABASE_URL })
-      : new Pool({
-          host: process.env.PGHOST || "127.0.0.1",
-          port: Number(process.env.PGPORT || process.env.POSTGRES_PORT || 5432),
-          database: process.env.PGDATABASE || "multi_coc",
-          user: process.env.PGUSER || "coc",
-          password: process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD || "coc",
-        });
-  return pool;
-}
-
-export async function migrate() {
-  const schema = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
-  await database().query(schema);
-}
 
 const accountFromRow = (row: pg.QueryResultRow): Account => ({
   id: String(row.id),
@@ -300,51 +286,6 @@ function normalizeOffsets(offsets: number[] | undefined): number[] {
       (offsets || [60, 1, 0]).map(Number).filter((value) => Number.isInteger(value) && value >= 0 && value <= 525_600),
     ),
   ].sort((a, b) => b - a);
-}
-
-export type PlannedNotification = {
-  kind: Exclude<NotificationKind, "legacy" | "refresh_required">;
-  minutesBefore: number;
-  preparationMinutes: number | null;
-  scheduledAt: Date;
-};
-
-export function resolvePreparationMinutes(
-  villageMinutes: number | null,
-  overrideMinutes: number | null,
-): number | null {
-  return overrideMinutes === null ? villageMinutes : overrideMinutes === 0 ? null : overrideMinutes;
-}
-
-export function planResourceNotifications(
-  status: ResourceStatus,
-  preparationMinutes: number | null,
-  finishAt: string | Date,
-  now = new Date(),
-): PlannedNotification[] {
-  const finish = new Date(finishAt);
-  if (status === "abundant")
-    return [{ kind: "completion", minutesBefore: 0, preparationMinutes: null, scheduledAt: finish }];
-  if (status === "sufficient") {
-    const scheduledAt = new Date(finish.getTime() - 60_000);
-    return scheduledAt > now ? [{ kind: "one_minute", minutesBefore: 1, preparationMinutes: null, scheduledAt }] : [];
-  }
-  const result: PlannedNotification[] = [
-    { kind: "completion", minutesBefore: 0, preparationMinutes: null, scheduledAt: finish },
-  ];
-  const preparationAt = preparationMinutes == null ? null : new Date(finish.getTime() - preparationMinutes * 60_000);
-  if (preparationMinutes != null && preparationAt && preparationAt > now)
-    result.unshift({
-      kind: "resource_preparation",
-      minutesBefore: preparationMinutes,
-      preparationMinutes,
-      scheduledAt: preparationAt,
-    });
-  return result;
-}
-
-export function planRefreshNotification(finishAt: string | Date): Date {
-  return new Date(new Date(finishAt).getTime() + 24 * 60 * 60_000);
 }
 
 async function rescheduleAccountNotifications(
@@ -968,9 +909,4 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
   } finally {
     client.release();
   }
-}
-
-export async function closeDatabase(): Promise<void> {
-  if (pool) await pool.end();
-  pool = undefined;
 }

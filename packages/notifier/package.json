@@ -8,6 +8,7 @@
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {
-    "@multi-coc/database": "workspace:*"
+    "@multi-coc/database": "workspace:*",
+    "@multi-coc/notification-policy": "workspace:*"
   }
 }

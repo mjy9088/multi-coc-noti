@@ -1,0 +1,13 @@
+{
+  "name": "@multi-coc/notification-policy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.ts",
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@multi-coc/shared": "workspace:*"
+  }
+}

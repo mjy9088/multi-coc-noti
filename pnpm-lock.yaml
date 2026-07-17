@@ -78,12 +78,15 @@ importers:
       '@multi-coc/shared':
         specifier: workspace:*
         version: link:../shared
-      clash-of-clans-data:
-        specifier: 0.16.0
-        version: 0.16.0
+      '@multi-coc/village-export':
+        specifier: workspace:*
+        version: link:../village-export
 
   packages/database:
     dependencies:
+      '@multi-coc/notification-policy':
+        specifier: workspace:*
+        version: link:../notification-policy
       '@multi-coc/shared':
         specifier: workspace:*
         version: link:../shared
@@ -91,17 +94,44 @@ importers:
         specifier: 8.16.3
         version: 8.16.3
 
+  packages/maintenance:
+    dependencies:
+      '@multi-coc/database':
+        specifier: workspace:*
+        version: link:../database
+      '@multi-coc/village-export':
+        specifier: workspace:*
+        version: link:../village-export
+
+  packages/notification-policy:
+    dependencies:
+      '@multi-coc/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/notifier:
     dependencies:
       '@multi-coc/database':
         specifier: workspace:*
         version: link:../database
+      '@multi-coc/notification-policy':
+        specifier: workspace:*
+        version: link:../notification-policy
 
   packages/reverse-proxy: {}
 
   packages/shared: {}
 
   packages/upgrade-availability: {}
+
+  packages/village-export:
+    dependencies:
+      '@multi-coc/shared':
+        specifier: workspace:*
+        version: link:../shared
+      clash-of-clans-data:
+        specifier: 0.16.0
+        version: 0.16.0
 
 packages:
 
