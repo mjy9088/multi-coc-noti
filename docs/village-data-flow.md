@@ -32,6 +32,14 @@ For a new player tag, clearly label the preview as new and require a display nam
 
 The server computes completion as `timestamp + timer` and uses `clash-of-clans-data` mappings to normalize buildings, heroes, pets, research, and Builder Base items.
 
+<!-- contract: IMPORT-COOLDOWN-001 -->
+
+Clock Tower and village-helper cooldown seconds are converted to absolute availability times using the export timestamp. The current game export does not provide Star Bonus or Capital Gold Forge cooldowns, so they must not be estimated.
+
+<!-- contract: IMPORT-DETAIL-001 -->
+
+Village details preserve helper and Hero Equipment identities and levels from game exports. Official profile enrichment adds trophies, league, war stars, donations, and Clan Capital contribution when the server API token is configured. The UI hides sections for data that is not present.
+
 The unified upgrade tracker preserves each upgrade's `home` or `builder` base classification. Existing tracker rows are backfilled from the newest stored export or snapshot during migration so dashboard totals remain separated after an upgrade.
 
 ## Upgrade availability

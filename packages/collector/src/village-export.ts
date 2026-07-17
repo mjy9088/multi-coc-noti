@@ -1,5 +1,5 @@
 import { builder, home } from "clash-of-clans-data";
-import type { Upgrade, UpgradeType } from "@multi-coc/shared";
+import type { HeroEquipment, Upgrade, UpgradeType, VillageCooldowns, VillageHelper } from "@multi-coc/shared";
 
 const PLAYER_TAG = /^#[0289PYLQGRJCUV]{3,15}$/;
 const MAX_TIMER_SECONDS = 180 * 24 * 60 * 60;
@@ -11,6 +11,7 @@ const groups = [
   home().armyBuildings(), home().guardians(), home().townHall(), builder().defenses(), builder().traps(),
   builder().walls(), builder().troops(), builder().heroes(), builder().resourceBuildings(), builder().armyBuildings(),
   builder().builderHall(), builder().otherBuildings(),
+  home().otherBuildings().helpers(),
 ];
 type DataItem = { dataId: number; name: string };
 const names = new Map<number, string>(groups.flatMap((group) => group.get() as unknown as DataItem[]).map((item) => [Number(item.dataId), item.name]));
@@ -36,8 +37,53 @@ export type ParsedVillageExport = {
       laboratory: { available: boolean; active: number; total: number } | null;
     } | null;
   };
+  cooldowns: VillageCooldowns;
+  helpers: VillageHelper[]; heroEquipment: HeroEquipment[];
   unknownDataIds: number[]; raw: RawVillageExport;
 };
+
+export function parseVillageCooldowns(input: unknown, fallbackTimestamp?: number): VillageCooldowns {
+  if (!input || Array.isArray(input) || typeof input !== "object") return { clockTower: null, helpers: [] };
+  const document = input as RawVillageExport;
+  const timestamp = Number(document.timestamp || fallbackTimestamp);
+  if (!Number.isInteger(timestamp) || timestamp <= 0) return { clockTower: null, helpers: [] };
+  const availableAt = (value: unknown) => {
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 && seconds <= MAX_TIMER_SECONDS ? new Date((timestamp + seconds) * 1000).toISOString() : null;
+  };
+  const boosts = document.boosts && !Array.isArray(document.boosts) && typeof document.boosts === "object" ? document.boosts as Record<string, unknown> : {};
+  const clockTower = availableAt(boosts.clocktower_cooldown);
+  const helpers = (Array.isArray(document.helpers) ? document.helpers : []).flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const helper = entry as Record<string, unknown>;
+    const dataId = Number(helper.data);
+    const helperAvailableAt = availableAt(helper.helper_cooldown);
+    return Number.isInteger(dataId) && dataId > 0 && helperAvailableAt ? [{ dataId, availableAt: helperAvailableAt }] : [];
+  });
+  return { clockTower, helpers };
+}
+
+export function parseVillageDetails(input: unknown, fallbackTimestamp?: number): { cooldowns: VillageCooldowns; helpers: VillageHelper[]; heroEquipment: HeroEquipment[] } {
+  const cooldowns = parseVillageCooldowns(input, fallbackTimestamp);
+  if (!input || Array.isArray(input) || typeof input !== "object") return { cooldowns, helpers: [], heroEquipment: [] };
+  const document = input as RawVillageExport;
+  const helperCooldowns = new Map(cooldowns.helpers.map((item) => [item.dataId, item.availableAt]));
+  const helpers = (Array.isArray(document.helpers) ? document.helpers : []).flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const dataId = Number(item.data); const level = Number(item.lvl || 0);
+    return Number.isInteger(dataId) && dataId > 0 && Number.isInteger(level) && level >= 0
+      ? [{ dataId, name: names.get(dataId) || `Helper #${dataId}`, level, availableAt: helperCooldowns.get(dataId) || null }] : [];
+  });
+  const heroEquipment = (Array.isArray(document.equipment) ? document.equipment : []).flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const dataId = Number(item.data); const level = Number(item.lvl || 0);
+    return Number.isInteger(dataId) && dataId > 0 && Number.isInteger(level) && level >= 0
+      ? [{ dataId, name: names.get(dataId) || `Equipment #${dataId}`, level }] : [];
+  });
+  return { cooldowns, helpers, heroEquipment };
+}
 
 export function normalizePlayerTag(value: unknown): string {
   const tag = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -106,6 +152,7 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
     return { available: !(Number(building.timer) > 0) && active === 0, active, total: Math.max(1, active) };
   };
   const townHall = buildings.find((entry) => Number(entry.data) === 1000001);
+  const { cooldowns, helpers, heroEquipment } = parseVillageDetails(document, timestamp);
 
   return {
     tag, exportedAt: new Date(timestamp * 1000).toISOString(), timestamp,
@@ -119,6 +166,6 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
         laboratory: laboratorySlot(builderLaboratory, "builder"),
       } : null,
     },
-    upgrades, unknownDataIds: [...unknownDataIds], raw: document,
+    cooldowns, helpers, heroEquipment, upgrades, unknownDataIds: [...unknownDataIds], raw: document,
   };
 }

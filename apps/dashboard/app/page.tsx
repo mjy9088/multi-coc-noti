@@ -9,6 +9,7 @@ import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
+import VillageDetail from "./village-detail";
 import { useDashboardFormat } from "./use-dashboard-format";
 
 type Upgrade = {
@@ -40,6 +41,10 @@ type Village = {
     petHouse: { available: boolean } | null;
     builderBase: { builders: { free: number; total: number }; laboratory: { available: boolean; active?: number; total?: number } | null } | null;
   };
+  cooldowns?: { clockTower: string | null; helpers: Array<{ dataId: number; availableAt: string }> };
+  helpers?: Array<{ dataId: number; name: string; level: number; availableAt: string | null }>;
+  heroEquipment?: Array<{ dataId: number; name: string; level: number }>;
+  officialStats?: { trophies: number; bestTrophies: number; league: string | null; warStars: number; donations: number; donationsReceived: number; capitalContributions: number };
   upgrades: Upgrade[];
 };
 
@@ -62,6 +67,7 @@ const demoData: DashboardData = {
       lastSeen: new Date(now - 2 * 60_000).toISOString(),
       builders: { free: 1, total: 6, regularTotal: 6 },
       upgradeSlots: { laboratory: { available: false }, petHouse: { available: true }, builderBase: { builders: { free: 1, total: 2 }, laboratory: { available: true } } },
+      cooldowns: { clockTower: new Date(now + 2 * 3600_000).toISOString(), helpers: [{ dataId: 93000000, availableAt: new Date(now + 6 * 3600_000).toISOString() }] },
       upgrades: [
         { id: "u1", name: "Inferno Artillery", level: 2, nextLevel: 3, type: "building", finishAt: new Date(now + 2.7 * 3600_000).toISOString() },
         { id: "u2", name: "Archer Queen", level: 96, nextLevel: 97, type: "hero", finishAt: new Date(now + 1.35 * 86400_000).toISOString() },
@@ -112,7 +118,7 @@ function Shield({ level, color }: { level: number; color: string }) {
 
 export default function Home() {
   const t = useTranslations("Dashboard");
-  const { formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
+  const { formatDateTime, formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
   const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(now);
@@ -122,7 +128,8 @@ export default function Home() {
   const [refreshOnly, setRefreshOnly] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
-  const [view, setView] = useState<"dashboard" | "settings">("dashboard");
+  const [view, setView] = useState<"dashboard" | "village" | "settings">("dashboard");
+  const [selectedVillageId, setSelectedVillageId] = useState<string | null>(null);
   const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
   const [manageVillageId, setManageVillageId] = useState<string | null>(null);
   const [quickPasteRequest, setQuickPasteRequest] = useState<{ id: number; text: string; clipboardError: boolean } | null>(null);
@@ -183,6 +190,12 @@ export default function Home() {
   const openVillageSettings = (accountId: string) => {
     setManageVillageId(accountId);
     setView("settings");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openVillage = (accountId: string) => {
+    setSelectedVillageId(accountId);
+    setView("village");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -254,12 +267,13 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brand"><div className="brand-mark">M</div><div><strong>MULTI VILLAGE</strong><span>COMMAND CENTER</span></div></div>
-        <nav aria-label="Dashboard menu"><button className={view === "dashboard" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => { setManageVillageId(null); setView("settings"); }}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
+        <nav aria-label="Dashboard menu"><button className={view === "dashboard" || view === "village" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => { setManageVillageId(null); setView("settings"); }}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
         <PwaInstall />
         <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t("demo") : includesExample ? t("exampleIncluded") : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}<LocaleSwitcher /></div>
       </header>
 
       {view === "settings" && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
+      {view === "village" && selectedVillageId && liveAccounts.find((account) => account.id === selectedVillageId) && <VillageDetail village={liveAccounts.find((account) => account.id === selectedVillageId)!} now={clockNow} formatDuration={formatDuration} formatDateTime={formatDateTime} onBack={() => setView("dashboard")} onSettings={() => openVillageSettings(selectedVillageId)} />}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="dashboard-hero">
           <div className="hero-copy"><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
@@ -301,7 +315,7 @@ export default function Home() {
           {accounts.map((account) => {
             const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(account, availabilityObservations, displayOptions);
             const displayedUpgradeSlots = account.upgradeSlots ? { ...account.upgradeSlots, laboratory: displayedLaboratory } : undefined;
-            return <article className="village-card village-card-link" key={account.id} style={{ "--accent": account.color } as React.CSSProperties} role="button" tabIndex={0} aria-label={t("manageVillage", { name: account.name })} onClick={() => openVillageSettings(account.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openVillageSettings(account.id); } }}>
+            return <article className="village-card village-card-link" key={account.id} style={{ "--accent": account.color } as React.CSSProperties} role="button" tabIndex={0} aria-label={t("openVillage", { name: account.name })} onClick={() => openVillage(account.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openVillage(account.id); } }}>
               <div className="card-head"><Shield level={account.townHall} color={account.color} /><div><h2>{account.name}</h2><p>{account.tag} · {t("level")} {account.level}</p></div>{account.refreshRequired && <span className="status refresh-needed">{t("refreshRequired")}</span>}</div>
               {!!account.tags?.length && <div className="account-tag-list">{account.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>}
               <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />

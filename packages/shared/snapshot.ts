@@ -30,6 +30,18 @@ export type Account = {
   resourcePreparationMinutes: number | null;
 };
 
+export type VillageCooldowns = {
+  clockTower: string | null;
+  helpers: Array<{ dataId: number; availableAt: string }>;
+};
+
+export type VillageHelper = { dataId: number; name: string; level: number; availableAt: string | null };
+export type HeroEquipment = { dataId: number; name: string; level: number };
+export type OfficialPlayerStats = {
+  trophies: number; bestTrophies: number; league: string | null; warStars: number;
+  donations: number; donationsReceived: number; capitalContributions: number;
+};
+
 export type VillageSnapshot = {
   id: string;
   name: string;
@@ -52,6 +64,10 @@ export type VillageSnapshot = {
       laboratory: { available: boolean; active?: number; total?: number } | null;
     } | null;
   };
+  cooldowns?: VillageCooldowns;
+  helpers?: VillageHelper[];
+  heroEquipment?: HeroEquipment[];
+  officialStats?: OfficialPlayerStats;
   resources: { gold: number; elixir: number; darkElixir: number; capacity: number } | null;
   upgrades: Upgrade[];
 };

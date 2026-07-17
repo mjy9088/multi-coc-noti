@@ -32,6 +32,28 @@ test("[IMPORT-PARSE-001] parses active home and builder upgrades from an in-game
   assert.equal(result.upgrades[0].finishAt, new Date((timestamp + 3600) * 1000).toISOString());
 });
 
+test("[IMPORT-COOLDOWN-001] converts exported Clock Tower and helper cooldowns to absolute times", () => {
+  const result = parseVillageExport({
+    tag: "#2P0J8LQ", timestamp,
+    boosts: { clocktower_cooldown: 3600 },
+    helpers: [{ data: 93000000, helper_cooldown: 7200 }, { data: 93000001 }, { data: 93000002, helper_cooldown: -1 }],
+  }, { now });
+  assert.deepEqual(result.cooldowns, {
+    clockTower: new Date((timestamp + 3600) * 1000).toISOString(),
+    helpers: [{ dataId: 93000000, availableAt: new Date((timestamp + 7200) * 1000).toISOString() }],
+  });
+});
+
+test("[IMPORT-DETAIL-001] maps helper and Hero Equipment levels for village details", () => {
+  const result = parseVillageExport({
+    tag: "#2P0J8LQ", timestamp,
+    helpers: [{ data: 93000000, lvl: 8, helper_cooldown: 60 }],
+    equipment: [{ data: 90000001, lvl: 18 }],
+  }, { now });
+  assert.deepEqual(result.helpers, [{ dataId: 93000000, name: "Builder's Apprentice", level: 8, availableAt: new Date((timestamp + 60) * 1000).toISOString() }]);
+  assert.deepEqual(result.heroEquipment, [{ dataId: 90000001, name: "Rage Vial", level: 18 }]);
+});
+
 test("[IMPORT-SLOT-001] reports unlocked idle upgrade slots as available", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,

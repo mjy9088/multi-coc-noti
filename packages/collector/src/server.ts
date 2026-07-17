@@ -14,7 +14,7 @@ import type { Account, ResourceStatus, VillageSnapshot } from "@multi-coc/shared
 import { fetchPlayerProfile, mergeOfficialProfile } from "./clash-api.ts";
 import type { PlayerProfile } from "./clash-api.ts";
 import { cleanupRetention } from "./storage.ts";
-import { normalizePlayerTag, parseVillageExport } from "./village-export.ts";
+import { normalizePlayerTag, parseVillageDetails, parseVillageExport } from "./village-export.ts";
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "0.0.0.0";
@@ -117,7 +117,8 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     const fileSnapshot = await readJson<VillageSnapshot>(path.join(root, "accounts", account.id, "latest.json"));
     const databaseSnapshot = databaseSnapshots.get(account.id);
     const stored = databaseSnapshot && (!fileSnapshot || new Date(databaseSnapshot.lastSeen) > new Date(fileSnapshot.lastSeen)) ? databaseSnapshot : fileSnapshot;
-    const villageExport = exports.get(account.id)?.normalized;
+    const latestExport = exports.get(account.id);
+    const villageExport = latestExport?.normalized;
     const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
     const latest: VillageSnapshot = stored || {
       id: account.id, name: account.label, tag: account.playerTag, townHall: 0, level: 0, color: account.color,
@@ -168,7 +169,11 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
       } : undefined;
       Object.assign(latest, {
         tag: villageExport.tag, townHall: villageExport.townHall || latest.townHall,
-        builders, upgradeSlots, upgrades: villageExport.upgrades,
+        builders, upgradeSlots, ...parseVillageDetails(latestExport?.raw, Math.floor(new Date(villageExport.exportedAt).getTime() / 1000)),
+        ...(villageExport.cooldowns ? { cooldowns: villageExport.cooldowns } : {}),
+        ...(villageExport.helpers ? { helpers: villageExport.helpers } : {}),
+        ...(villageExport.heroEquipment ? { heroEquipment: villageExport.heroEquipment } : {}),
+        upgrades: villageExport.upgrades,
         lastSeen: villageExport.exportedAt, dataSource: "game-export", online: true,
       });
     }

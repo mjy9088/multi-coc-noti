@@ -1,7 +1,7 @@
 import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import type { Account, ResourceStatus, SnapshotDocument, Upgrade, UpgradeType, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, HeroEquipment, ResourceStatus, SnapshotDocument, Upgrade, UpgradeType, VillageCooldowns, VillageHelper, VillageSnapshot } from "@multi-coc/shared";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
@@ -21,6 +21,9 @@ export type DueNotification = {
 type ExportData = {
   tag: string; exportedAt: string; townHall: number; builders: { total: number; free: number; regularTotal?: number };
   upgradeSlots?: VillageSnapshot["upgradeSlots"];
+  cooldowns?: VillageCooldowns;
+  helpers?: VillageHelper[];
+  heroEquipment?: HeroEquipment[];
   upgrades: Upgrade[]; unknownDataIds: number[]; raw: unknown;
 };
 export type VillageHistoryBundle = {
@@ -364,12 +367,12 @@ export async function latestVillageExport(accountId: string): Promise<{ exported
   return rows[0] ? { exportedAt: new Date(rows[0].exported_at).toISOString(), normalized: rows[0].normalized as ExportData, raw: rows[0].raw as unknown } : null;
 }
 
-export async function listLatestVillageExports(): Promise<Array<{ accountId: string; exportedAt: string; normalized: ExportData }>> {
+export async function listLatestVillageExports(): Promise<Array<{ accountId: string; exportedAt: string; normalized: ExportData; raw: unknown }>> {
   const { rows } = await database().query(`
-    SELECT DISTINCT ON (account_id) account_id,exported_at,normalized
+    SELECT DISTINCT ON (account_id) account_id,exported_at,normalized,raw
     FROM village_exports ORDER BY account_id,exported_at DESC
   `);
-  return rows.map((row: pg.QueryResultRow) => ({ accountId: String(row.account_id), exportedAt: new Date(row.exported_at).toISOString(), normalized: row.normalized as ExportData }));
+  return rows.map((row: pg.QueryResultRow) => ({ accountId: String(row.account_id), exportedAt: new Date(row.exported_at).toISOString(), normalized: row.normalized as ExportData, raw: row.raw as unknown }));
 }
 
 export async function saveVillageExport(accountId: string, parsed: ExportData, options: { resourceStatus?: ResourceStatus } = {}): Promise<{ exportedAt: string; normalized: ExportData; raw: unknown } | null> {
@@ -392,7 +395,7 @@ export async function saveVillageExport(accountId: string, parsed: ExportData, o
       VALUES ($1,$2,$3,$4,$5)
     `, [accountId, parsed.tag, parsed.exportedAt, parsed.raw, {
       tag: parsed.tag, exportedAt: parsed.exportedAt, townHall: parsed.townHall,
-      builders: parsed.builders, upgradeSlots: parsed.upgradeSlots, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
+      builders: parsed.builders, upgradeSlots: parsed.upgradeSlots, cooldowns: parsed.cooldowns, helpers: parsed.helpers, heroEquipment: parsed.heroEquipment, upgrades: parsed.upgrades, unknownDataIds: parsed.unknownDataIds,
     }]);
     const account = parsed.upgrades.length > 0
       ? (await client.query("SELECT resource_status FROM accounts WHERE id=$1 FOR UPDATE", [accountId])).rows[0]

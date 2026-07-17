@@ -1,14 +1,20 @@
-import type { Account, VillageSnapshot } from "@multi-coc/shared";
+import type { Account, OfficialPlayerStats, VillageSnapshot } from "@multi-coc/shared";
 
 const DEFAULT_API_BASE = "https://api.clashofclans.com/v1";
-export type PlayerProfile = { name: string; tag: string; townHall: number; level: number };
+export type PlayerProfile = { name: string; tag: string; townHall: number; level: number; stats: OfficialPlayerStats };
 
 export function mapPlayerProfile(player: Record<string, unknown>): PlayerProfile {
+  const league = player.league && typeof player.league === "object" ? player.league as Record<string, unknown> : null;
   return {
     name: String(player.name || ""),
     tag: String(player.tag || ""),
     townHall: Number(player.townHallLevel || 0),
     level: Number(player.expLevel || 0),
+    stats: {
+      trophies: Number(player.trophies || 0), bestTrophies: Number(player.bestTrophies || 0), league: league ? String(league.name || "") || null : null,
+      warStars: Number(player.warStars || 0), donations: Number(player.donations || 0), donationsReceived: Number(player.donationsReceived || 0),
+      capitalContributions: Number(player.clanCapitalContributions || 0),
+    },
   };
 }
 
@@ -35,5 +41,6 @@ export function mergeOfficialProfile<T extends Partial<VillageSnapshot> & Pick<V
     tag: profile.tag || snapshot.tag,
     townHall: profile.townHall || snapshot.townHall,
     level: profile.level || snapshot.level,
+    officialStats: profile.stats || snapshot.officialStats,
   } as T;
 }
