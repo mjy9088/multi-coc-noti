@@ -88,7 +88,17 @@
     "inferGoblinResearcher": "고블린 연구원 여유 슬롯 추정",
     "inferGoblinBuilder": "고블린 장인 여유 슬롯 추정",
     "prioritizeAvailable": "업그레이드 가능 계정 우선 표시",
-    "language": "언어"
+    "language": "언어",
+    "dashboardLoadFailed": "대시보드 데이터를 불러오지 못했습니다.",
+    "staleDataWarning": "최신 데이터를 가져오지 못해 마지막으로 불러온 내용을 표시합니다.",
+    "retry": "다시 시도"
+  },
+  "RequestState": {
+    "loading": "불러오는 중",
+    "loadingHelp": "최신 데이터를 가져오고 있습니다.",
+    "failed": "페이지를 불러오지 못했습니다",
+    "failedHelp": "연결 상태를 확인하고 다시 시도해 주세요.",
+    "retry": "다시 시도"
   },
   "History": {
     "title": "업그레이드 기록",
@@ -112,6 +122,7 @@
     "empty": "조건에 맞는 업그레이드 기록이 없습니다.",
     "loading": "불러오는 중…",
     "loadMore": "더 보기",
+    "retry": "다시 시도",
     "loadFailed": "업그레이드 기록을 불러오지 못했습니다."
   },
   "Availability": {

@@ -4,6 +4,8 @@
 
 The top-level menu contains `Dashboard`, `History`, `Settings`, and `Quick Paste`. History shows export-detected upgrades across villages with village, base, status, and type filters and cursor-based `Load more`. A village detail action opens History already scoped to that village. Dashboard and Settings section tabs remain sticky below the header and scroll horizontally on mobile.
 
+Every route provides an immediate loading state and a render-error boundary. Dashboard, History, and authenticated Settings requests also handle expected network failures explicitly: an initial failure replaces empty content with a retry action, while a refresh failure keeps already loaded data visible and marks it as stale. Settings waits for saved-token hydration before deciding whether to show the sign-in form.
+
 ## PWA installation
 
 The dashboard publishes a web app manifest, install icons, and a minimal service worker so supported browsers can install it with standalone display. Chromium shows `Install app` when its install prompt is available. On iOS, the button explains how to use Safari's `Share → Add to Home Screen`; iOS does not expose the Chromium install event.

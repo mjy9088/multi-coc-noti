@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
+import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
 
 type ResourceStatus = "abundant" | "sufficient" | "insufficient" | "unanswered";
@@ -27,12 +28,15 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
   const t = useTranslations("Admin");
   const { formatDateTime, formatDuration } = useDashboardFormat();
   const [token, setToken] = useState("");
+  const [authReady, setAuthReady] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
   const [upgradeAlertDrafts, setUpgradeAlertDrafts] = useState<Record<string, UpgradeAlertDraft>>({});
   const [savingUpgradeId, setSavingUpgradeId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
   const [message, setMessage] = useState("");
   const [section, setSection] = useState<AdminSection>(initialSection);
   const [exportText, setExportText] = useState("");
@@ -66,6 +70,7 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
 
   const load = useCallback(async () => {
     if (!token) return;
+    setInitialLoading(true);
     try {
       const [accountResult, upgradeResult, dashboardSettings] = await Promise.all([request("/api/admin/accounts"), request("/api/admin/upgrades"), request("/api/admin/dashboard-settings")]);
       setAccounts(accountResult.accounts); setUpgrades(upgradeResult.upgrades);
@@ -82,12 +87,13 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
         }
         initialAccountApplied.current = true;
       }
-      setGroupOrder(dashboardSettings.groupOrder || []); setError("");
-    } catch (reason) { setError((reason as Error).message); }
+      setGroupOrder(dashboardSettings.groupOrder || []); setError(""); setInitialLoadFailed(false);
+    } catch (reason) { setError((reason as Error).message); setInitialLoadFailed(true); }
+    finally { setInitialLoading(false); }
   }, [initialAccountId, request, token]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setToken(localStorage.getItem("multi-coc-admin-token") || ""), 0);
+    const timer = window.setTimeout(() => { setToken(localStorage.getItem("multi-coc-admin-token") || ""); setAuthReady(true); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
@@ -228,7 +234,10 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
     window.setTimeout(() => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
+  if (!authReady) return <section className="admin-shell"><LoadingState compact /></section>;
   if (!token) return <section className="admin-shell"><div className="admin-login"><p className="eyebrow">ADMIN</p><h1>{t("authentication")}</h1><p>{t("authenticationHelp")}</p>{error && <p className="admin-alert error">{error}</p>}<form onSubmit={(event) => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get("token") || "").trim(); setError(""); setMessage(""); localStorage.setItem("multi-coc-admin-token", value); setToken(value); }}><input name="token" type="password" required autoComplete="current-password" autoFocus /><button>{t("signIn")}</button></form></div></section>;
+  if (initialLoading && !accounts.length) return <section className="admin-shell"><LoadingState compact /></section>;
+  if (initialLoadFailed && !accounts.length) return <section className="admin-shell"><ErrorState compact message={error} retry={() => void load()} /></section>;
 
   return <section className="admin-shell">
     <div className="admin-title"><div><p className="eyebrow">VILLAGE DATA</p><h1>{t("title")}</h1></div><button className="secondary" onClick={() => { localStorage.removeItem("multi-coc-admin-token"); setToken(""); }}>{t("signOut")}</button></div>

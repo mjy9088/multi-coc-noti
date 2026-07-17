@@ -9,6 +9,7 @@ import AdminPanel from "./admin-panel";
 import HistoryPanel from "./history-panel";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
+import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
 import VillageDetail from "./village-detail";
@@ -140,6 +141,8 @@ export default function Home({ initialVillageId = null, initialSettingsSection =
   const [quickPasteRequest, setQuickPasteRequest] = useState<{ id: number; text: string; clipboardError: boolean } | null>(null);
   const [quickPasteLoading, setQuickPasteLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dashboardLoading, setDashboardLoading] = useState(!demoEnabled);
+  const [dashboardError, setDashboardError] = useState("");
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
   useEffect(() => {
     const saved = localStorage.getItem("multi-village-display-options");
@@ -166,15 +169,25 @@ export default function Home({ initialVillageId = null, initialSettingsSection =
 
   useEffect(() => {
     const base = browserApiBase();
-    const load = () => fetch(`${base}/api/dashboard`, { cache: "no-store" })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error("offline")))
-      .then((next: DashboardData) => { setData(next); setDemo(false); })
-      .catch(() => setDemo(demoEnabled));
+    const load = () => {
+      setDashboardLoading(true); setDashboardError("");
+      return fetch(`${base}/api/dashboard`, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
+          return response.json() as Promise<DashboardData>;
+        })
+        .then((next) => { setData(next); setDemo(false); setDashboardError(""); })
+        .catch((reason: Error) => {
+          if (demoEnabled) { setData(demoData); setDemo(true); setDashboardError(""); }
+          else setDashboardError(reason.message || t("dashboardLoadFailed"));
+        })
+        .finally(() => setDashboardLoading(false));
+    };
     load();
     const refresh = window.setInterval(load, 30_000);
     const clock = window.setInterval(() => setClockNow(Date.now()), 60_000);
     return () => { window.clearInterval(refresh); window.clearInterval(clock); };
-  }, [refreshKey]);
+  }, [refreshKey, t]);
 
   useEffect(() => {
     if (view !== "dashboard") return;
@@ -276,9 +289,12 @@ export default function Home({ initialVillageId = null, initialSettingsSection =
 
       {view === "settings" && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} onSectionChange={(section) => router.push(settingsPath(section))} onVillageChange={(accountId) => router.push(`/settings/villages/${encodeURIComponent(accountId)}`)} initialSection={manageVillageId ? "villages" : initialSettingsSection || "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
       {view === "history" && <HistoryPanel apiBase={apiBase} initialVillageId={initialHistoryVillageId} />}
+      {view !== "settings" && view !== "history" && dashboardLoading && !data.accounts.length && <LoadingState />}
+      {view !== "settings" && view !== "history" && dashboardError && !data.accounts.length && <ErrorState message={dashboardError} retry={() => setRefreshKey((value) => value + 1)} />}
+      {view !== "settings" && view !== "history" && dashboardError && data.accounts.length > 0 && <div className="shell stale-warning" role="status">{t("staleDataWarning")}<button onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</button></div>}
       {view === "village" && selectedVillageId && liveAccounts.find((account) => account.id === selectedVillageId) && <VillageDetail village={liveAccounts.find((account) => account.id === selectedVillageId)!} now={clockNow} formatDuration={formatDuration} formatDateTime={formatDateTime} onBack={() => router.push("/")} onHistory={() => router.push(`/history?village=${encodeURIComponent(selectedVillageId)}`)} onSettings={() => openVillageSettings(selectedVillageId)} />}
       {view === "village" && selectedVillageId && !demo && data.accounts.length > 0 && !liveAccounts.some((account) => account.id === selectedVillageId) && <section className="village-route-missing shell"><h1>{t("villageNotFound")}</h1><button onClick={() => router.push("/")}>← {t("backToDashboard")}</button></section>}
-      <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
+      <div className={view === "dashboard" && (!dashboardLoading || data.accounts.length > 0) && (!dashboardError || data.accounts.length > 0) ? "shell" : "shell hidden-view"}>
         <section className="dashboard-hero">
           <div className="hero-copy"><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>
           <div className="account-controls dashboard-filters">

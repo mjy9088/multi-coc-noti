@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useDashboardFormat } from "./use-dashboard-format";
+import { ErrorState, LoadingState } from "./request-state";
 
 type Village = { id: string; name: string; playerTag: string; color: string };
 type HistoryUpgrade = {
@@ -55,7 +56,8 @@ export default function HistoryPanel({ apiBase, initialVillageId = "" }: { apiBa
       <label>{t("status")}<select value={filters.status} onChange={(event) => setFilter("status", event.target.value)}><option value="">{t("all")}</option><option value="active">{t("active")}</option><option value="completed">{t("completed")}</option><option value="cancelled">{t("cancelled")}</option></select></label>
       <label>{t("type")}<select value={filters.type} onChange={(event) => setFilter("type", event.target.value)}><option value="">{t("all")}</option><option value="building">{t("building")}</option><option value="hero">{t("hero")}</option><option value="pet">{t("pet")}</option><option value="research">{t("research")}</option></select></label>
     </div>
-    {error && <p className="history-error">{error}</p>}
+    {error && upgrades.length > 0 && <div className="stale-warning" role="status">{error}<button onClick={() => void load()}>{t("retry")}</button></div>}
+    {error && !upgrades.length && <ErrorState compact message={error} retry={() => void load()} />}
     <div className="history-list">
       {upgrades.map((upgrade) => {
         const village = villageById.get(upgrade.accountId);
@@ -68,6 +70,6 @@ export default function HistoryPanel({ apiBase, initialVillageId = "" }: { apiBa
       {!loading && !upgrades.length && <div className="empty">{t("empty")}</div>}
     </div>
     {nextBefore && <button className="history-more" disabled={loading} onClick={() => void load(nextBefore)}>{loading ? t("loading") : t("loadMore")}</button>}
-    {loading && !upgrades.length && <div className="empty">{t("loading")}</div>}
+    {loading && !upgrades.length && <LoadingState compact />}
   </section>;
 }
