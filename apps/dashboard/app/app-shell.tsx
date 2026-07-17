@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
 import { dashboardQueryKey } from "./query-provider";
@@ -15,14 +15,19 @@ export type QuickPasteRequest = {
   clipboardError: boolean;
 };
 
-const QuickPasteContext = createContext<QuickPasteRequest | null>(null);
+type QuickPasteContextValue = {
+  request: QuickPasteRequest | null;
+  consume: (id: number) => void;
+};
+
+const QuickPasteContext = createContext<QuickPasteContextValue>({ request: null, consume: () => {} });
 
 const browserApiBase = () =>
   process.env.NEXT_PUBLIC_API_BASE === "same-origin"
     ? ""
     : process.env.NEXT_PUBLIC_API_BASE || `${window.location.protocol}//${window.location.hostname}:8787`;
 
-export function useQuickPasteRequest(): QuickPasteRequest | null {
+export function useQuickPasteRequest(): QuickPasteContextValue {
   return useContext(QuickPasteContext);
 }
 
@@ -62,6 +67,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     : pathname.startsWith("/history")
       ? "history"
       : "dashboard";
+  const consumeQuickPaste = useCallback(
+    (id: number) => setQuickPasteRequest((current) => (current?.id === id ? null : current)),
+    [],
+  );
+  const quickPasteContext = useMemo(
+    () => ({ request: quickPasteRequest, consume: consumeQuickPaste }),
+    [consumeQuickPaste, quickPasteRequest],
+  );
 
   const quickPaste = async () => {
     setQuickPasteLoading(true);
@@ -80,7 +93,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <QuickPasteContext value={quickPasteRequest}>
+    <QuickPasteContext value={quickPasteContext}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">M</div>

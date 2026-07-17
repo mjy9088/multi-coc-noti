@@ -74,6 +74,7 @@ export default function AdminPanel({
   initialSection = "import",
   initialAccountId = null,
   quickPasteRequest = null,
+  onQuickPasteApplied,
 }: {
   apiBase: string;
   onChanged: () => void;
@@ -82,6 +83,7 @@ export default function AdminPanel({
   initialSection?: AdminSection;
   initialAccountId?: string | null;
   quickPasteRequest?: QuickPasteRequest;
+  onQuickPasteApplied?: (id: number) => void;
 }) {
   const t = useTranslations("Admin");
   const { formatDateTime, formatDuration } = useDashboardFormat();
@@ -267,13 +269,14 @@ export default function AdminPanel({
     if (!token || !quickPasteRequest || appliedQuickPaste.current === quickPasteRequest.id) return;
     const timer = window.setTimeout(() => {
       appliedQuickPaste.current = quickPasteRequest.id;
+      onQuickPasteApplied?.(quickPasteRequest.id);
       setSection("import");
       onSectionChange?.("import");
       if (quickPasteRequest.text) replaceExportText(quickPasteRequest.text);
       else if (quickPasteRequest.clipboardError) setError(t("clipboardUnavailable"));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [onSectionChange, quickPasteRequest, replaceExportText, t, token]);
+  }, [onQuickPasteApplied, onSectionChange, quickPasteRequest, replaceExportText, t, token]);
 
   useEffect(() => {
     if (!preview || preview.isNew) return;

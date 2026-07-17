@@ -233,7 +233,7 @@ export default function Home({
   const [selectedVillageId] = useState<string | null>(initialVillageId);
   const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
   const [manageVillageId] = useState<string | null>(initialSettingsVillageId);
-  const quickPasteRequest = useQuickPasteRequest();
+  const quickPaste = useQuickPasteRequest();
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
   const queryClient = useQueryClient();
   const dashboardQuery = useQuery({
@@ -408,7 +408,8 @@ export default function Home({
           onVillageChange={(accountId) => router.push(`/settings/villages/${encodeURIComponent(accountId)}`)}
           initialSection={manageVillageId ? "villages" : initialSettingsSection || "import"}
           initialAccountId={manageVillageId}
-          quickPasteRequest={quickPasteRequest}
+          quickPasteRequest={quickPaste.request}
+          onQuickPasteApplied={quickPaste.consume}
         />
       )}
       {view === "history" && initialHistorySection === "upgrades" && (
