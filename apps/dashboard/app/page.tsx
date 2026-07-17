@@ -14,9 +14,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import AdminPanel from "./admin-panel";
+import { useQuickPasteRequest } from "./app-shell";
 import HistoryPanel from "./history-panel";
-import LocaleSwitcher from "./locale-switcher";
-import PwaInstall from "./pwa-install";
 import { dashboardQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
@@ -219,7 +218,7 @@ export default function Home({
   const [refreshOnly, setRefreshOnly] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
-  const [view, setView] = useState<"dashboard" | "village" | "history" | "settings">(
+  const [view] = useState<"dashboard" | "village" | "history" | "settings">(
     initialHistoryVillageId !== undefined
       ? "history"
       : initialVillageId
@@ -230,13 +229,8 @@ export default function Home({
   );
   const [selectedVillageId] = useState<string | null>(initialVillageId);
   const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
-  const [manageVillageId, setManageVillageId] = useState<string | null>(initialSettingsVillageId);
-  const [quickPasteRequest, setQuickPasteRequest] = useState<{
-    id: number;
-    text: string;
-    clipboardError: boolean;
-  } | null>(null);
-  const [quickPasteLoading, setQuickPasteLoading] = useState(false);
+  const [manageVillageId] = useState<string | null>(initialSettingsVillageId);
+  const quickPasteRequest = useQuickPasteRequest();
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
   const queryClient = useQueryClient();
   const dashboardQuery = useQuery({
@@ -311,24 +305,6 @@ export default function Home({
 
   const openVillage = (accountId: string) => {
     router.push(`/villages/${encodeURIComponent(accountId)}`);
-  };
-
-  const quickPaste = async () => {
-    setQuickPasteLoading(true);
-    let text = "";
-    let clipboardError = false;
-    try {
-      text = await navigator.clipboard.readText();
-      if (!text.trim()) throw new Error("empty clipboard");
-    } catch {
-      clipboardError = true;
-    }
-    setQuickPasteRequest((current) => ({ id: (current?.id || 0) + 1, text, clipboardError }));
-    setManageVillageId(null);
-    setView("settings");
-    router.push("/settings/paste");
-    setQuickPasteLoading(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const liveAccounts = useMemo(
@@ -418,43 +394,6 @@ export default function Home({
 
   return (
     <main>
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">M</div>
-          <div>
-            <strong>MULTI VILLAGE</strong>
-            <span>COMMAND CENTER</span>
-          </div>
-        </div>
-        <nav aria-label="Dashboard menu">
-          <button
-            className={view === "dashboard" || view === "village" ? "nav-active" : ""}
-            onClick={() => router.push("/")}
-          >
-            {t("dashboard")}
-          </button>
-          <button className={view === "history" ? "nav-active" : ""} onClick={() => router.push("/history")}>
-            {t("history")}
-          </button>
-          <button className={view === "settings" ? "nav-active" : ""} onClick={() => router.push("/settings/paste")}>
-            {t("settings")}
-          </button>
-          <button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>
-            {quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}
-          </button>
-        </nav>
-        <PwaInstall />
-        <div className="sync">
-          <i className={demo || includesExample ? "warn" : ""} />
-          {demo
-            ? t("demo")
-            : includesExample
-              ? t("exampleIncluded")
-              : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}
-          <LocaleSwitcher />
-        </div>
-      </header>
-
       {view === "settings" && (
         <AdminPanel
           apiBase={apiBase}
