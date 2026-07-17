@@ -134,6 +134,7 @@ Public and collection endpoints:
 | GET | `/health` | Collector, DB, and admin configuration status |
 | GET | `/api/sources` | Official Player API status by account |
 | GET | `/api/dashboard` | Latest villages and group order |
+| GET | `/api/upgrades?limit=100&before=<id>` | Export-detected upgrade records across villages, newest first; filterable by village, base, status, and type |
 | GET | `/api/villages/<uuid>/upgrades?limit=100&before=<id>` | Export-detected upgrade records, newest first; up to 500 |
 
 Admin Bearer authentication is required for account CRUD, resource status, dashboard settings, tracked upgrades, and village-export preview/import under `/api/admin/*`.

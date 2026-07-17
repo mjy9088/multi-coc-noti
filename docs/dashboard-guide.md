@@ -2,7 +2,7 @@
 
 ## Navigation
 
-The top-level menu contains `Dashboard`, `Settings`, and `Quick Paste`. `History` is not active yet. Dashboard and Settings section tabs remain sticky below the header and scroll horizontally on mobile.
+The top-level menu contains `Dashboard`, `History`, `Settings`, and `Quick Paste`. History shows export-detected upgrades across villages with village, base, status, and type filters and cursor-based `Load more`. A village detail action opens History already scoped to that village. Dashboard and Settings section tabs remain sticky below the header and scroll horizontally on mobile.
 
 ## PWA installation
 

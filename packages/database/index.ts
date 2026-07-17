@@ -149,15 +149,21 @@ export async function listTrackedUpgrades({ activeOnly = false } = {}): Promise<
   return rows.map(upgradeFromRow);
 }
 
-export async function listVillageUpgradeHistory(accountId: string, { limit = 100, before }: { limit?: number; before?: string } = {}): Promise<TrackedUpgrade[]> {
+export async function listUpgradeHistory({ accountId, limit = 100, before, base, status, type }: {
+  accountId?: string; limit?: number; before?: string; base?: "home" | "builder"; status?: "active" | "completed" | "cancelled"; type?: UpgradeType;
+} = {}): Promise<TrackedUpgrade[]> {
   const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
   const cursor = before == null ? null : Number(before);
   if (cursor != null && (!Number.isSafeInteger(cursor) || cursor <= 0)) throw new Error("invalid upgrade history cursor");
   const { rows } = await database().query(`
     SELECT * FROM tracked_upgrades
-    WHERE account_id=$1 AND ($2::bigint IS NULL OR id < $2)
-    ORDER BY id DESC LIMIT $3
-  `, [accountId, cursor, boundedLimit]);
+    WHERE ($1::uuid IS NULL OR account_id=$1)
+      AND ($2::bigint IS NULL OR id < $2)
+      AND ($3::text IS NULL OR base=$3)
+      AND ($4::text IS NULL OR status=$4)
+      AND ($5::text IS NULL OR type=$5)
+    ORDER BY id DESC LIMIT $6
+  `, [accountId || null, cursor, base || null, status || null, type || null, boundedLimit]);
   return rows.map(upgradeFromRow);
 }
 

@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import {
   completeDueTrackedUpgrades, createAccount, deleteAccount,
-  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listVillageUpgradeHistory, migrate, saveVillageExport,
+  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listUpgradeHistory, migrate, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
   updateUpgradePreparationOverride,
 } from "@multi-coc/database";
@@ -222,13 +222,26 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/sources") return json(response, 200, { accounts: accounts.map((account) => ({ id: account.id, label: account.label, official: officialStates.get(account.id) })) });
     if (request.method === "GET" && url.pathname === "/api/dashboard") return json(response, 200, await dashboard());
     const villageUpgradeHistoryPath = url.pathname.match(/^\/api\/villages\/([0-9a-f-]{36})\/upgrades$/i);
-    if (request.method === "GET" && villageUpgradeHistoryPath) {
-      const account = accounts.find((item) => item.id === villageUpgradeHistoryPath[1]);
-      if (!account) return json(response, 404, { error: "unknown account" });
+    if (request.method === "GET" && (url.pathname === "/api/upgrades" || villageUpgradeHistoryPath)) {
+      const pathAccount = villageUpgradeHistoryPath ? accounts.find((item) => item.id === villageUpgradeHistoryPath[1]) : null;
+      if (villageUpgradeHistoryPath && !pathAccount) return json(response, 404, { error: "unknown account" });
+      const villageId = pathAccount?.id || url.searchParams.get("village") || undefined;
+      if (villageId && !accounts.some((item) => item.id === villageId)) return json(response, 404, { error: "unknown account" });
       const limit = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("limit") || 100)) || 100));
-      const upgrades = await listVillageUpgradeHistory(account.id, { limit, before: url.searchParams.get("before") || undefined });
+      const base = url.searchParams.get("base") || undefined;
+      const status = url.searchParams.get("status") || undefined;
+      const type = url.searchParams.get("type") || undefined;
+      if (base && !["home", "builder"].includes(base)) throw new Error("invalid upgrade base");
+      if (status && !["active", "completed", "cancelled"].includes(status)) throw new Error("invalid upgrade status");
+      if (type && !["building", "hero", "pet", "research"].includes(type)) throw new Error("invalid upgrade type");
+      const upgrades = await listUpgradeHistory({
+        accountId: villageId, limit, before: url.searchParams.get("before") || undefined,
+        base: base as "home" | "builder" | undefined,
+        status: status as "active" | "completed" | "cancelled" | undefined,
+        type: type as "building" | "hero" | "pet" | "research" | undefined,
+      });
       return json(response, 200, {
-        village: { id: account.id, name: account.label, playerTag: account.playerTag },
+        villages: accounts.map(({ id, label: name, playerTag, color }) => ({ id, name, playerTag, color })),
         upgrades,
         nextBefore: upgrades.length === limit ? upgrades.at(-1)?.id || null : null,
       });

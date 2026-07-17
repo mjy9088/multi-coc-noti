@@ -14,8 +14,8 @@ type DetailVillage = {
   upgrades: Array<{ id: string; name: string; level: number; nextLevel?: number; type: string; base?: string; finishAt: string }>;
 };
 
-export default function VillageDetail({ village, now, formatDuration, formatDateTime, onBack, onSettings }: {
-  village: DetailVillage; now: number; formatDuration: (value: string, reference: number) => string; formatDateTime: (value: string) => string; onBack: () => void; onSettings: () => void;
+export default function VillageDetail({ village, now, formatDuration, formatDateTime, onBack, onHistory, onSettings }: {
+  village: DetailVillage; now: number; formatDuration: (value: string, reference: number) => string; formatDateTime: (value: string) => string; onBack: () => void; onHistory: () => void; onSettings: () => void;
 }) {
   const t = useTranslations("Dashboard");
   const cooldown = (availableAt: string) => <><strong>{new Date(availableAt).getTime() > now ? formatDuration(availableAt, now) : t("availableNow")}</strong><small>{formatDateTime(availableAt)}</small></>;
@@ -24,7 +24,7 @@ export default function VillageDetail({ village, now, formatDuration, formatDate
   const typeCount = (type: string) => village.upgrades.filter((item) => item.type === type).length;
   const stats = village.officialStats;
   return <section className="village-detail shell">
-    <div className="village-detail-actions"><button className="secondary" onClick={onBack}>← {t("backToDashboard")}</button><button onClick={onSettings}>{t("villageSettings")}</button></div>
+    <div className="village-detail-actions"><button className="secondary" onClick={onBack}>← {t("backToDashboard")}</button><span><button className="secondary" onClick={onHistory}>{t("history")}</button><button onClick={onSettings}>{t("villageSettings")}</button></span></div>
     <header className="village-detail-header" style={{ "--accent": village.color } as React.CSSProperties}>
       <div><p className="eyebrow">VILLAGE</p><h1>{village.name}</h1><p>{village.tag} · TH {village.townHall} · {t("level")} {village.level}</p></div>
       <span>{t("updated")} {formatDateTime(village.lastSeen)}</span>

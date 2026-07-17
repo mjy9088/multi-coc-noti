@@ -49,7 +49,7 @@ Village history backups use JSON Lines v2. The first record contains village ide
 
 The importer also accepts legacy v1 JSON bundles, ignores their obsolete snapshot records, and restores their game exports. A duplicate timestamp with identical raw data is idempotent; conflicting raw data at the same village and timestamp is rejected.
 
-Every upgrade detected from an export remains in `tracked_upgrades` after it completes or disappears from a later export. `GET /api/villages/<uuid>/upgrades` returns this newest-first record set with bounded cursor pagination; the history UI can therefore be added without retaining normalized snapshots or reparsing backups during a request.
+Every upgrade detected from an export remains in `tracked_upgrades` after it completes or disappears from a later export. `GET /api/upgrades` returns the global newest-first record set, while `GET /api/villages/<uuid>/upgrades` scopes the same resource to one village. Both support bounded cursor pagination and village, base, status, and type filters, so the history UI does not retain normalized snapshots or reparse backups during a request.
 
 ## Upgrade availability
 
