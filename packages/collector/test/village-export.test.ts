@@ -54,6 +54,16 @@ test("[IMPORT-DETAIL-001] maps helper and Hero Equipment levels for village deta
   assert.deepEqual(result.heroEquipment, [{ dataId: 90000001, name: "Rage Vial", level: 18 }]);
 });
 
+test("[IMPORT-KEY-001] keeps upgrade keys stable when unrelated export entries reorder", () => {
+  const first = parseVillageExport({ tag: "#2P0J8LQ", timestamp, buildings: [
+    { data: 1000008, lvl: 20, timer: 3600 }, { data: 1000010, lvl: 12, timer: 7200 },
+  ] }, { now });
+  const reordered = parseVillageExport({ tag: "#2P0J8LQ", timestamp, buildings: [
+    { data: 1000010, lvl: 12, timer: 7200 }, { data: 1000008, lvl: 20, timer: 3600 },
+  ] }, { now });
+  assert.equal(first.upgrades.find((item) => item.dataId === 1000008)?.id, reordered.upgrades.find((item) => item.dataId === 1000008)?.id);
+});
+
 test("[IMPORT-SLOT-001] reports unlocked idle upgrade slots as available", () => {
   const result = parseVillageExport({
     tag: "#2P0J8LQ", timestamp,

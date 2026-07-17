@@ -8,7 +8,7 @@ let pool: pg.Pool | undefined;
 
 type AccountInput = Omit<Account, "id" | "legacyIndex" | "resourceStatus" | "resourceStatusUpdatedAt" | "resourcePreparationMinutes"> &
   Partial<Pick<Account, "resourceStatus" | "resourcePreparationMinutes">>;
-export type UpgradeSource = "export" | "snapshot";
+export type UpgradeSource = "export";
 export type NotificationKind = "completion" | "one_minute" | "resource_preparation" | "refresh_required" | "legacy";
 export type TrackedUpgrade = Upgrade & {
   accountId: string; startedAt: string; status: string; source: UpgradeSource;
@@ -27,11 +27,10 @@ type ExportData = {
   upgrades: Upgrade[]; unknownDataIds: number[]; raw: unknown;
 };
 export type VillageHistoryBundle = {
-  format: "multi-coc-village-history";
-  version: 1;
+  format: "multi-coc-village-exports";
+  version: 2;
   exportedAt: string;
   account: { id: string; label: string; playerTag: string; color: string; tags?: string[]; resourceStatus?: ResourceStatus; resourceStatusUpdatedAt?: string; resourcePreparationMinutes?: number | null };
-  snapshots: Array<{ capturedAt: string; dataSource: string; snapshot: VillageSnapshot; source: SnapshotDocument }>;
   villageExports: Array<{ playerTag: string; exportedAt: string; raw: unknown; normalized: ExportData }>;
   upgradeSettings: Array<{ source: UpgradeSource; sourceKey: string; notificationOffsets: number[]; resourcePreparationOverrideMinutes?: number | null }>;
 };
@@ -234,7 +233,7 @@ export async function completeDueTrackedUpgrades(now = new Date()): Promise<Trac
   return rows.map(upgradeFromRow);
 }
 
-export async function syncTrackedUpgrades(accountId: string, source: UpgradeSource, upgrades: Upgrade[], observedAt: string, transactionClient?: pg.PoolClient): Promise<void> {
+export async function syncTrackedUpgrades(accountId: string, source: UpgradeSource, upgrades: Upgrade[], observedAt: string, transactionClient?: pg.PoolClient, options: { reschedule?: boolean } = {}): Promise<void> {
   const client = transactionClient || await database().connect();
   const ownsTransaction = !transactionClient;
   try {
@@ -244,7 +243,16 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
     for (const upgrade of upgrades) {
       const sourceKey = upgrade.id;
       keys.push(sourceKey);
-      const existing = (await client.query("SELECT finish_at,status FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, source, sourceKey])).rows[0];
+      let existing = (await client.query("SELECT id,finish_at,status FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, source, sourceKey])).rows[0];
+      if (!existing && source === "export") {
+        existing = (await client.query(`
+          SELECT id,finish_at,status FROM tracked_upgrades
+          WHERE account_id=$1 AND source='export' AND status='active' AND type=$2 AND base=$3
+            AND lower(name)=lower($4) AND next_level=$5 AND finish_at=$6
+          ORDER BY id LIMIT 1
+        `, [accountId, upgrade.type, upgrade.base === "builder" ? "builder" : "home", upgrade.name, upgrade.nextLevel, upgrade.finishAt])).rows[0];
+        if (existing) await client.query("UPDATE tracked_upgrades SET source_key=$2,updated_at=now() WHERE id=$1", [existing.id, sourceKey]);
+      }
       const { rows } = await client.query(`
         INSERT INTO tracked_upgrades (account_id,source,source_key,name,type,base,current_level,next_level,started_at,finish_at,status,last_seen_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active',$11)
@@ -270,7 +278,7 @@ export async function syncTrackedUpgrades(accountId: string, source: UpgradeSour
     if (result.rowCount) trackerChanged = true;
     for (const row of result.rows) await client.query(`DELETE FROM upgrade_notifications
       WHERE upgrade_id=$1 AND status<>'sent' AND ($2<>'completed' OR notification_kind<>'completion')`, [row.id, row.status]);
-    if (trackerChanged) await rescheduleAccountNotifications(client, accountId);
+    if (trackerChanged && options.reschedule !== false) await rescheduleAccountNotifications(client, accountId);
     if (ownsTransaction) await client.query("COMMIT");
   } catch (error) { if (ownsTransaction) await client.query("ROLLBACK"); throw error; } finally { if (ownsTransaction) client.release(); }
 }
@@ -292,8 +300,6 @@ export async function claimDueNotifications(limit = 20, now = new Date()): Promi
         AND (n.status='pending' OR (n.status='processing' AND n.locked_at < $1 - interval '5 minutes'))
         AND (n.notification_kind<>'refresh_required' OR NOT EXISTS (
           SELECT 1 FROM village_exports e WHERE e.account_id=u.account_id AND e.exported_at>u.finish_at
-          UNION ALL
-          SELECT 1 FROM snapshot_logs s WHERE s.account_id=u.account_id AND s.captured_at>u.finish_at
         ))
       ORDER BY n.scheduled_at FOR UPDATE OF n SKIP LOCKED LIMIT $2
     `, [now, limit]);
@@ -441,20 +447,18 @@ export async function exportVillageHistories(selector?: string): Promise<Village
   `, [selected]);
   const bundles: VillageHistoryBundle[] = [];
   for (const row of accountRows) {
-    const [snapshots, exports, settings] = await Promise.all([
-      database().query("SELECT captured_at,data_source,snapshot,source FROM snapshot_logs WHERE account_id=$1 ORDER BY captured_at", [row.id]),
+    const [exports, settings] = await Promise.all([
       database().query("SELECT player_tag,exported_at,raw,normalized FROM village_exports WHERE account_id=$1 ORDER BY exported_at", [row.id]),
-      database().query("SELECT source,source_key,notification_offsets,resource_preparation_override_minutes FROM tracked_upgrades WHERE account_id=$1 ORDER BY source,source_key", [row.id]),
+      database().query("SELECT source,source_key,notification_offsets,resource_preparation_override_minutes FROM tracked_upgrades WHERE account_id=$1 AND source='export' ORDER BY source_key", [row.id]),
     ]);
     bundles.push({
-      format: "multi-coc-village-history", version: 1, exportedAt: new Date().toISOString(),
+      format: "multi-coc-village-exports", version: 2, exportedAt: new Date().toISOString(),
       account: {
         id: String(row.id), label: row.label, playerTag: row.player_tag, color: row.color, tags: (row.tags as string[] || []).map(String),
         resourceStatus: row.resource_status as ResourceStatus,
         resourceStatusUpdatedAt: new Date(row.resource_status_updated_at).toISOString(),
         resourcePreparationMinutes: row.resource_preparation_minutes == null ? null : Number(row.resource_preparation_minutes),
       },
-      snapshots: snapshots.rows.map((item) => ({ capturedAt: new Date(item.captured_at).toISOString(), dataSource: item.data_source, snapshot: item.snapshot as VillageSnapshot, source: item.source as SnapshotDocument })),
       villageExports: exports.rows.map((item) => ({ playerTag: item.player_tag, exportedAt: new Date(item.exported_at).toISOString(), raw: item.raw as unknown, normalized: item.normalized as ExportData })),
       upgradeSettings: settings.rows.map((item) => ({ source: item.source as UpgradeSource, sourceKey: item.source_key, notificationOffsets: normalizeOffsets(item.notification_offsets as number[]), resourcePreparationOverrideMinutes: item.resource_preparation_override_minutes == null ? null : Number(item.resource_preparation_override_minutes) })),
     });
@@ -463,8 +467,8 @@ export async function exportVillageHistories(selector?: string): Promise<Village
 }
 
 export async function importVillageHistory(bundle: VillageHistoryBundle): Promise<VillageHistoryImportResult> {
-  if (bundle.format !== "multi-coc-village-history" || bundle.version !== 1) throw new Error("unsupported village history format");
-  if (!bundle.account?.label || !Array.isArray(bundle.snapshots) || !Array.isArray(bundle.villageExports)) throw new Error("invalid village history bundle");
+  if (bundle.format !== "multi-coc-village-exports" || bundle.version !== 2) throw new Error("unsupported village history format");
+  if (!bundle.account?.label || !Array.isArray(bundle.villageExports)) throw new Error("invalid village history bundle");
   const client = await database().connect();
   try {
     await client.query("BEGIN");
@@ -486,32 +490,21 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       created = true;
     }
     const accountId = String(accountRow.id);
-    const existingUpgradeKeys = new Set((await client.query("SELECT source,source_key FROM tracked_upgrades WHERE account_id=$1", [accountId])).rows.map((row) => `${row.source}:${row.source_key}`));
-    let snapshotCount = 0; let exportCount = 0;
-    for (const item of bundle.snapshots) {
-      const result = await client.query(`
-        INSERT INTO snapshot_logs (account_id,captured_at,data_source,snapshot,source)
-        VALUES ($1,$2,$3,$4,$5) ON CONFLICT (account_id,captured_at,data_source) DO NOTHING
-      `, [accountId, item.capturedAt, item.dataSource, item.snapshot, item.source]);
-      snapshotCount += result.rowCount || 0;
-    }
+    const existingUpgradeIds = new Set((await client.query("SELECT id FROM tracked_upgrades WHERE account_id=$1", [accountId])).rows.map((row) => String(row.id)));
+    let exportCount = 0;
     for (const item of bundle.villageExports) {
+      const existing = (await client.query("SELECT raw=$3::jsonb AS identical FROM village_exports WHERE account_id=$1 AND exported_at=$2", [accountId, item.exportedAt, item.raw])).rows[0];
+      if (existing && !existing.identical) throw new Error(`conflicting export at ${item.exportedAt}`);
       const result = await client.query(`
         INSERT INTO village_exports (account_id,player_tag,exported_at,raw,normalized)
         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (account_id,exported_at) DO NOTHING
       `, [accountId, item.playerTag || playerTag, item.exportedAt, item.raw, item.normalized]);
       exportCount += result.rowCount || 0;
-    }
-    const timeline: Array<{ source: UpgradeSource; observedAt: string; upgrades: Upgrade[] }> = [];
-    const latestExport = await client.query("SELECT exported_at,normalized FROM village_exports WHERE account_id=$1 ORDER BY exported_at DESC LIMIT 1", [accountId]);
-    if (latestExport.rows[0]) timeline.push({ source: "export", observedAt: new Date(latestExport.rows[0].exported_at).toISOString(), upgrades: (latestExport.rows[0].normalized as ExportData).upgrades || [] });
-    const latestSnapshot = await client.query("SELECT captured_at,snapshot FROM snapshot_logs WHERE account_id=$1 ORDER BY captured_at DESC LIMIT 1", [accountId]);
-    if (latestSnapshot.rows[0]) timeline.push({ source: "snapshot", observedAt: new Date(latestSnapshot.rows[0].captured_at).toISOString(), upgrades: (latestSnapshot.rows[0].snapshot as VillageSnapshot).upgrades || [] });
-    for (const item of timeline.sort((a, b) => new Date(a.observedAt).getTime() - new Date(b.observedAt).getTime())) {
-      await syncTrackedUpgrades(accountId, item.source, item.upgrades, item.observedAt, client);
+      await syncTrackedUpgrades(accountId, "export", item.normalized.upgrades || [], item.exportedAt, client, { reschedule: false });
     }
     for (const setting of bundle.upgradeSettings || []) {
-      if (existingUpgradeKeys.has(`${setting.source}:${setting.sourceKey}`)) continue;
+      const target = (await client.query("SELECT id FROM tracked_upgrades WHERE account_id=$1 AND source=$2 AND source_key=$3", [accountId, setting.source, setting.sourceKey])).rows[0];
+      if (!target || existingUpgradeIds.has(String(target.id))) continue;
       const offsets = normalizeOffsets(setting.notificationOffsets);
       await client.query(`
         UPDATE tracked_upgrades SET notification_offsets=$4,resource_preparation_override_minutes=$5,updated_at=now()
@@ -526,7 +519,7 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
     await client.query("UPDATE tracked_upgrades SET status='completed',updated_at=now() WHERE account_id=$1 AND status='active' AND finish_at<=now()", [accountId]);
     await rescheduleAccountNotifications(client, accountId);
     await client.query("COMMIT");
-    return { accountId, label: accountRow.label, created, snapshots: snapshotCount, villageExports: exportCount };
+    return { accountId, label: accountRow.label, created, snapshots: 0, villageExports: exportCount };
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
 

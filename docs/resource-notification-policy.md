@@ -131,7 +131,7 @@ The English locale conveys the same meaning.
 
 <!-- contract: ALERT-REFRESH-001 -->
 
-This reminder is separate from resource policy. When a tracked upgrade completes and no export or snapshot newer than its completion time arrives within 24 hours, enqueue a `refresh_required` Bark notification asking the user to paste current village data. If several upgrades for one village become due in the same Notifier claim, send only one refresh reminder. Any newer village observation makes the reminder ineligible.
+This reminder is separate from resource policy. When a tracked upgrade completes and no game export newer than its completion time arrives within 24 hours, enqueue a `refresh_required` Bark notification asking the user to paste current village data. If several upgrades for one village become due in the same Notifier claim, send only one refresh reminder. Any newer export makes the reminder ineligible.
 
 ## Acceptance criteria
 

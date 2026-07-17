@@ -101,7 +101,8 @@ DROP TABLE IF EXISTS manual_upgrades;
 DELETE FROM tracked_upgrades WHERE source = 'manual';
 ALTER TABLE tracked_upgrades ALTER COLUMN source DROP DEFAULT;
 ALTER TABLE tracked_upgrades DROP CONSTRAINT IF EXISTS tracked_upgrades_source_check;
-ALTER TABLE tracked_upgrades ADD CONSTRAINT tracked_upgrades_source_check CHECK (source IN ('export', 'snapshot'));
+DELETE FROM tracked_upgrades WHERE source='snapshot';
+ALTER TABLE tracked_upgrades ADD CONSTRAINT tracked_upgrades_source_check CHECK (source = 'export');
 
 CREATE TABLE IF NOT EXISTS upgrade_notifications (
   id bigserial PRIMARY KEY,

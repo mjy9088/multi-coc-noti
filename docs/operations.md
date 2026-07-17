@@ -119,7 +119,7 @@ just data seed
 just data reseed        # stop just dev first; recreates the development DB
 ```
 
-Backups include display name, player tag, color, account tags, resource policy, snapshots, and exports. Import matches existing accounts by player tag without overwriting current settings, restores resource settings only for new accounts, and skips duplicate history records.
+Backups are JSON Lines v2: the first line contains village metadata, resource policy, and upgrade alert settings, and each later line contains one raw game export. Import reparses exports to rebuild derived state, matches existing accounts by player tag without overwriting current village settings, restores village settings only for new accounts, skips identical duplicate records, and rejects conflicting records at the same timestamp. Legacy v1 JSON bundles remain importable; their snapshot records are ignored.
 
 ## Separate Notifier deployment
 

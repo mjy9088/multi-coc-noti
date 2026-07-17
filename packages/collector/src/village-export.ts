@@ -110,6 +110,7 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
     const entries = document[section];
     if (entries == null) continue;
     if (!Array.isArray(entries)) throw new Error(`${section} must be an array`);
+    const ordinals = new Map<string, number>();
     (entries as ExportEntry[]).forEach((entry, index) => {
       if (!entry || typeof entry !== "object" || entry.timer == null || Number(entry.timer) <= 0) return;
       const timer = Number(entry.timer);
@@ -120,8 +121,11 @@ export function parseVillageExport(input: unknown, { now = Date.now() } = {}): P
       if (!Number.isInteger(level) || level < 0 || level > 200) throw new Error(`${section}[${index}] has an invalid level`);
       const name = names.get(dataId);
       if (!name) unknownDataIds.add(dataId);
+      const identity = `${dataId}:${level + 1}`;
+      const ordinal = (ordinals.get(identity) || 0) + 1;
+      ordinals.set(identity, ordinal);
       upgrades.push({
-        id: `export:${section}:${dataId}:${index}`,
+        id: `${section}:${dataId}:${level + 1}:${ordinal}`,
         dataId, name: name || `Unknown #${dataId}`, type, base, level, nextLevel: level + 1,
         startedAt: null, finishAt: new Date((timestamp + timer) * 1000).toISOString(), remainingSeconds: timer,
       });

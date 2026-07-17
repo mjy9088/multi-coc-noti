@@ -5,7 +5,7 @@ import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import {
   cleanupDatabaseLogs, clearLegacyIndex, completeDueTrackedUpgrades, createAccount, deleteAccount,
-  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestSnapshotLogs, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveVillageExport,
+  getDashboardSettings, listAccounts, listTrackedUpgrades, listLatestVillageExports, listSnapshotHistoryLogs, migrate, saveVillageExport,
   syncTrackedUpgrades, updateAccount, updateAccountResourceStatus, updateDashboardSettings,
   updateUpgradePreparationOverride,
 } from "@multi-coc/database";
@@ -112,21 +112,17 @@ async function refreshOfficialProfile(account: Account): Promise<void> {
 async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnapshot[]; groupOrder: string[] }> {
   const tracked = await listTrackedUpgrades();
   const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
-  const databaseSnapshots = new Map((await listLatestSnapshotLogs()).map((item) => [item.accountId, item.snapshot]));
   const result = await Promise.all(accounts.map(async (account) => {
-    const fileSnapshot = await readJson<VillageSnapshot>(path.join(root, "accounts", account.id, "latest.json"));
-    const databaseSnapshot = databaseSnapshots.get(account.id);
-    const stored = databaseSnapshot && (!fileSnapshot || new Date(databaseSnapshot.lastSeen) > new Date(fileSnapshot.lastSeen)) ? databaseSnapshot : fileSnapshot;
     const latestExport = exports.get(account.id);
     const villageExport = latestExport?.normalized;
     const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
-    const latest: VillageSnapshot = stored || {
+    const latest: VillageSnapshot = {
       id: account.id, name: account.label, tag: account.playerTag, townHall: 0, level: 0, color: account.color,
       tags: account.tags,
       dataSource: "unavailable", online: false, lastSeen: new Date().toISOString(), builders: { free: 0, total: 0 },
       resources: null, upgrades: [],
     };
-    if (villageExport && (!stored || new Date(villageExport.exportedAt) >= new Date(stored.lastSeen))) {
+    if (villageExport) {
       const knownHomeBuilderTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero")).length;
       const activeHomeBuilderTasks = villageExport.upgrades.filter((upgrade) => upgrade.base === "home" && (upgrade.type === "building" || upgrade.type === "hero") && isUpgradeActive(upgrade)).length;
       const builders = {
@@ -183,7 +179,7 @@ async function dashboard(): Promise<{ generatedAt: string; accounts: VillageSnap
     }).sort((a, b) => +new Date(b.finishAt) - +new Date(a.finishAt))[0];
     return mergeOfficialProfile({ ...latest, id: account.id, color: account.color, tags: account.tags, upgrades,
       refreshRequired: Boolean(refreshCompletion), refreshCompletedAt: refreshCompletion?.finishAt || null,
-      online: Boolean(stored || villageExport) }, officialProfiles.get(account.id));
+      online: Boolean(villageExport) }, officialProfiles.get(account.id));
   }));
   const { groupOrder } = await getDashboardSettings();
   return { generatedAt: new Date().toISOString(), accounts: result, groupOrder };

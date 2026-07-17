@@ -37,10 +37,19 @@ The server computes completion as `timestamp + timer` and uses `clash-of-clans-d
 Clock Tower and village-helper cooldown seconds are converted to absolute availability times using the export timestamp. The current game export does not provide Star Bonus or Capital Gold Forge cooldowns, so they must not be estimated.
 
 <!-- contract: IMPORT-DETAIL-001 -->
+<!-- contract: IMPORT-KEY-001 -->
 
 Village details preserve helper and Hero Equipment identities and levels from game exports. Official profile enrichment adds trophies, league, war stars, donations, and Clan Capital contribution when the server API token is configured. The UI hides sections for data that is not present.
 
-The unified upgrade tracker preserves each upgrade's `home` or `builder` base classification. Existing tracker rows are backfilled from the newest stored export or snapshot during migration so dashboard totals remain separated after an upgrade.
+Export upgrade identities use section, data ID, next level, and an ordinal among identical items. Reordering unrelated entries must not create a new tracked upgrade or detach its notification settings.
+
+The unified upgrade tracker preserves each upgrade's `home` or `builder` base classification. Existing tracker rows are backfilled from the newest stored export during migration so dashboard totals remain separated after an upgrade.
+
+## Export history backup
+
+Village history backups use JSON Lines v2. The first record contains village identity, display metadata, resource policy, and per-upgrade alert overrides; each following record contains one raw game export in chronological order. Restore reparses every raw export and rebuilds the tracked-upgrade projection, so normalized parser output is not treated as durable backup data.
+
+The importer also accepts legacy v1 JSON bundles, ignores their obsolete snapshot records, and restores their game exports. A duplicate timestamp with identical raw data is idempotent; conflicting raw data at the same village and timestamp is rejected.
 
 ## Upgrade availability
 

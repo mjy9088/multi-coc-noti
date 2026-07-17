@@ -28,7 +28,7 @@ The title and subtitle are followed by the account filters, summary strip, and t
 
 Search, filters, and tag groups apply to the village cards, all summary counts and next-completion time, and the upgrade queue. Slot availability is a single-choice group: all slots, an idle Home Village builder/laboratory/Pet House, or any idle Home Village/Builder Base slot. `Update required` is an independent checkbox and can be combined with the slot choice.
 
-A village becomes update-required 30 minutes after a previously tracked upgrade completes when no newer export or snapshot has been received. Its card shows an `Update required` badge. Official Player API synchronization is profile enrichment only and is not shown as a dashboard status or filter.
+A village becomes update-required 30 minutes after a previously tracked upgrade completes when no newer game export has been received. Its card shows an `Update required` badge. Official Player API synchronization is profile enrichment only and is not shown as a dashboard status or filter.
 
 Selecting a village card opens its detail view with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the view also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. It links to `/settings/villages/<uuid>` with that village selected. Keyboard users can use Enter or Space.
 
