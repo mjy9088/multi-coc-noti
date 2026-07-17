@@ -203,6 +203,7 @@
     "goToVillageSettings": "Go to village settings",
     "disabled": "off",
     "saving": "Saving…",
+    "dismissFeedback": "Dismiss notification",
     "source_export": "Game JSON",
     "noTrackedUpgrades": "No upgrades are in progress. Import fresh game JSON to populate this list.",
     "registeredVillages": "Registered villages",

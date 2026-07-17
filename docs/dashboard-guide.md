@@ -8,6 +8,19 @@ Every route provides an immediate loading state and a render-error boundary. Das
 
 Keyboard and programmatically focused buttons use a distinct high-contrast focus color and outline throughout the application. In the Update Data flow, the current Paste or Review card is emphasized; after review begins, the completed Paste card is dimmed as a whole and focus moves to the next required input or enabled Import action. Returning to Paste restores its active treatment.
 
+Settings mutations provide immediate pending feedback on their action and show a fixed, high-contrast success or error toast above page content when the server responds. Success feedback dismisses itself after a short interval; error feedback remains available until dismissed or replaced, and both states are announced to assistive technology.
+
+## UI migration boundary
+
+The current visual design is intentionally isolated rather than treated as a long-term component system:
+
+- `app/styles/foundations.css` contains durable semantic tokens and global browser foundations.
+- `app/styles/primitives.css` contains small reusable interaction components such as mutation feedback.
+- `app/styles/legacy.css` contains the current screen-specific presentation and can be replaced incrementally during a redesign.
+- Settings request and mutation behavior lives in hooks, while feedback rendering lives in a standalone component. A future redesign should reuse these behavior contracts instead of carrying forward legacy selectors.
+
+Add new cross-screen interaction behavior to a primitive or hook. Avoid extending `legacy.css` unless the rule only supports an existing screen during the migration period.
+
 ## PWA installation
 
 The dashboard publishes a web app manifest, install icons, and a minimal service worker so supported browsers can install it with standalone display. Chromium shows `Install app` when its install prompt is available. On iOS, the button explains how to use Safari's `Share → Add to Home Screen`; iOS does not expose the Chromium install event.

@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import FeedbackToast from "./feedback-toast";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import { ErrorState, LoadingState } from "./request-state";
+import { useAdminRequest } from "./use-admin-request";
 import { useDashboardFormat } from "./use-dashboard-format";
+import { useMutationFeedback } from "./use-mutation-feedback";
 
 type ResourceStatus = "abundant" | "sufficient" | "insufficient" | "unanswered";
 type Account = { id: string; label: string; playerTag: string; color: string; tags: string[]; resourceStatus: ResourceStatus; resourceStatusUpdatedAt: string; resourcePreparationMinutes: number | null };
@@ -62,17 +65,11 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
   const appliedQuickPaste = useRef<number | null>(null);
   const confirmImportButton = useRef<HTMLButtonElement | null>(null);
 
-  const request = useCallback(async (path: string, init: RequestInit = {}) => {
-    const response = await fetch(`${apiBase}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init.headers } });
-    const result = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-    if (response.status === 401) {
-      localStorage.removeItem("multi-coc-admin-token");
-      setToken("");
-      throw new Error(t("invalidToken"));
-    }
-    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-    return result;
-  }, [apiBase, t, token]);
+  const handleUnauthorized = useCallback(() => {
+    localStorage.removeItem("multi-coc-admin-token");
+    setToken("");
+  }, []);
+  const request = useAdminRequest(apiBase, token, t("invalidToken"), handleUnauthorized);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -111,6 +108,11 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
     const timer = window.setInterval(() => setClockNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 4_500);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   const reviewExport = useCallback(async (text: string) => {
     const candidate = text.trim();
@@ -177,10 +179,7 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
     } catch { setError(t("clipboardUnavailable")); }
   };
 
-  const run = async (action: () => Promise<unknown>, success: string) => {
-    try { setError(""); const result = await action(); setMessage(success); await load(); onChanged(); return result; }
-    catch (reason) { setMessage(""); setError((reason as Error).message); return null; }
-  };
+  const { mutationPending, run } = useMutationFeedback({ refresh: load, onChanged, setError, setMessage });
 
   const chooseAccount = (item: Account) => {
     setEditing(item);
@@ -253,7 +252,7 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
       <button className={section === "villages" ? "active" : ""} onClick={() => { setSection("villages"); onSectionChange?.("villages"); }}>{t("manageVillages")}</button>
       <button className={section === "groups" ? "active" : ""} onClick={() => { setSection("groups"); onSectionChange?.("groups"); }}>{t("manageGroups")}</button>
     </div>
-    {error && <p className="admin-alert error">{error}</p>}{message && <p className="admin-alert">{message}</p>}
+    <FeedbackToast error={error} message={message} dismissLabel={t("dismissFeedback")} onDismiss={() => { setError(""); setMessage(""); }} />
 
     {section === "import" && <div className="import-flow">
       <article className={`admin-card export-card primary-card import-step ${preview ? "step-complete" : "step-current"}`} aria-current={!preview ? "step" : undefined}><p className="step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>01 · PASTE</p><h2>{t("pasteJson")}</h2><p>{t("pasteJsonHelp")}</p>
@@ -280,13 +279,13 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
     </article>}
 
     {section === "villages" && <div className="village-admin-layout"><article className="admin-card village-list-card"><h2>{t("registeredVillages")}</h2><p>{t("registeredVillagesHelp")}</p><div className="admin-list village-picker">{accounts.map((item) => <button key={item.id} className={editing?.id === item.id ? "selected" : ""} onClick={() => chooseAccount(item)}><i style={{ background: item.color }} /><span><b>{item.label}</b><small>{item.playerTag}{item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}</small></span></button>)}{!accounts.length && <p>{t("noVillages")}</p>}</div></article>
-      <article className="admin-card village-settings-card" id="village-settings-card">{editing ? <><h2>{t("villageSettings")}</h2><p>{editing.playerTag}</p><form className="admin-form" onSubmit={(event) => { event.preventDefault(); run(() => request(`/api/admin/accounts/${editing.id}`, { method: "PATCH", body: JSON.stringify({ ...accountForm, resourcePreparationMinutes: accountForm.resourcePreparationEnabled ? accountForm.resourcePreparationMinutes : null }) }), t("settingsSaved")); }}>
+      <article className="admin-card village-settings-card" id="village-settings-card">{editing ? <><h2>{t("villageSettings")}</h2><p>{editing.playerTag}</p><form className="admin-form" onSubmit={(event) => { event.preventDefault(); void run(() => request(`/api/admin/accounts/${editing.id}`, { method: "PATCH", body: JSON.stringify({ ...accountForm, resourcePreparationMinutes: accountForm.resourcePreparationEnabled ? accountForm.resourcePreparationMinutes : null }) }), t("settingsSaved")); }}>
         <label>{t("displayName")}<input required value={accountForm.label} onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })} /></label><label>{t("color")}<input type="color" value={accountForm.color} onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })} /></label>
         <label className="wide">{t("accountTags")}<input value={accountForm.tags} onChange={(e) => setAccountForm({ ...accountForm, tags: e.target.value })} placeholder={t("accountTagsPlaceholder")} /><small>{t("accountTagsHelp")}</small></label>
         <label className="wide">{t("resourceStatus")}<select value={accountForm.resourceStatus} onChange={(e) => setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })}><option value="abundant">{t("resourceAbundant")}</option><option value="sufficient">{t("resourceSufficient")}</option><option value="insufficient">{t("resourceInsufficient")}</option><option value="unanswered">{t("resourceUnanswered")}</option></select><small>{t("resourceStatusHelp")}</small></label>
         <label className="wide check-label"><input type="checkbox" checked={accountForm.resourcePreparationEnabled} onChange={(e) => setAccountForm({ ...accountForm, resourcePreparationEnabled: e.target.checked })} />{t("resourcePreparationEnabled")}</label>
         {accountForm.resourcePreparationEnabled && <label className="wide">{t("resourcePreparationMinutes")}<input type="number" min="1" max="525600" required value={accountForm.resourcePreparationMinutes} onChange={(e) => setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })} /></label>}
-        <button className="wide">{t("saveSettings")}</button></form><button className="danger standalone-danger" onClick={() => confirm(t("deleteConfirm")) && run(async () => { await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" }); setEditing(null); }, t("deleted"))}>{t("deleteVillage")}</button></> : <div className="empty settings-empty">{t("chooseVillage")}</div>}</article></div>}
+        <button className="wide" disabled={mutationPending}>{mutationPending ? t("saving") : t("saveSettings")}</button></form><button className="danger standalone-danger" disabled={mutationPending} onClick={() => confirm(t("deleteConfirm")) && run(async () => { await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" }); setEditing(null); }, t("deleted"))}>{t("deleteVillage")}</button></> : <div className="empty settings-empty">{t("chooseVillage")}</div>}</article></div>}
 
     {section === "groups" && <article className="admin-card group-order-card"><h2>{t("groupOrder")}</h2><p>{t("groupOrderHelp")}</p><div className="group-order-settings standalone-group-order">{availableGroups.map((tag, index) => <div key={tag}><span>#{tag}</span><span><button type="button" className="secondary" disabled={index === 0} onClick={() => moveGroup(index, -1)} aria-label={t("moveGroupUp", { tag })}>↑</button><button type="button" className="secondary" disabled={index === availableGroups.length - 1} onClick={() => moveGroup(index, 1)} aria-label={t("moveGroupDown", { tag })}>↓</button></span></div>)}{!availableGroups.length && <small>{t("noGroups")}</small>}</div></article>}
     {resourcePrompt && <div className="resource-prompt-backdrop" role="presentation" onClick={() => setResourcePrompt(null)}><div className="resource-prompt" role="dialog" aria-modal="true" aria-labelledby="resource-prompt-title" onClick={(event) => event.stopPropagation()}><h2 id="resource-prompt-title">{t("resourcePromptTitle")}</h2><p>{t("resourcePromptHelp")}</p><div><button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>{t("resourceAbundant")}</button><button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>{t("resourceSufficient")}</button><button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>{t("resourceInsufficient")}</button></div><button className="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>{t("resourceAnswerLater")}</button></div></div>}
