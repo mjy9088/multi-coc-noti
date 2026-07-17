@@ -29,6 +29,8 @@ For a new player tag, clearly label the preview as new and require a display nam
 - Player tags must satisfy Supercell's character rules and exactly match an existing village.
 - Export time may be at most 10 minutes in the future and at most 30 days old.
 - Only exports newer than the latest stored export are applied.
+- Dashboard `lastSeen` and update-required comparisons use the latest `village_exports.exported_at` column as the source
+  of truth, not the duplicated timestamp inside normalized parser output.
 - Active timers must be numeric and no longer than 180 days.
 - Levels and data IDs outside accepted ranges are rejected.
 
