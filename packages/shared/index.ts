@@ -35,8 +35,13 @@ export type VillageCooldowns = {
 export type VillageHelper = { dataId: number; name: string; level: number; availableAt: string | null };
 export type HeroEquipment = { dataId: number; name: string; level: number };
 export type OfficialPlayerStats = {
-  trophies: number; bestTrophies: number; league: string | null; warStars: number;
-  donations: number; donationsReceived: number; capitalContributions: number;
+  trophies: number;
+  bestTrophies: number;
+  league: string | null;
+  warStars: number;
+  donations: number;
+  donationsReceived: number;
+  capitalContributions: number;
 };
 
 export type VillageSnapshot = {
@@ -89,7 +94,12 @@ export function isUpgradeActive(upgrade: Pick<Upgrade, "finishAt">, reference = 
   return Number.isFinite(finish) && finish > reference;
 }
 
-export function isVillageRefreshRequired(lastSeen: string, finishAt: string, now = Date.now(), graceMs = 30 * 60_000): boolean {
+export function isVillageRefreshRequired(
+  lastSeen: string,
+  finishAt: string,
+  now = Date.now(),
+  graceMs = 30 * 60_000,
+): boolean {
   const observed = new Date(lastSeen).getTime();
   const finished = new Date(finishAt).getTime();
   return Number.isFinite(observed) && Number.isFinite(finished) && finished > observed && finished + graceMs <= now;

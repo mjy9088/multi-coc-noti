@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect } from "react";
 import { localeCookie, localeLabels, locales, normalizeLocale } from "./i18n-config";
 
 export default function LocaleSwitcher() {
@@ -10,12 +10,17 @@ export default function LocaleSwitcher() {
   const t = useTranslations("Dashboard");
   const router = useRouter();
 
-  const changeLocale = useCallback((next: (typeof locales)[number]) => {
-    document.documentElement.lang = next;
-    document.cookie = `${localeCookie}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    localStorage.setItem(localeCookie, next);
-    router.refresh();
-  }, [router]);
+  const changeLocale = useCallback(
+    (next: (typeof locales)[number]) => {
+      document.documentElement.lang = next;
+      // Cookie Store is not available in every browser supported by the PWA.
+      // biome-ignore lint/suspicious/noDocumentCookie: document.cookie is the compatibility fallback.
+      document.cookie = `${localeCookie}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      localStorage.setItem(localeCookie, next);
+      router.refresh();
+    },
+    [router],
+  );
 
   useEffect(() => {
     if (document.cookie.split("; ").some((item) => item.startsWith(`${localeCookie}=`))) return;
@@ -25,5 +30,20 @@ export default function LocaleSwitcher() {
     return () => window.clearTimeout(timer);
   }, [changeLocale]);
 
-  return <div className="locale-toggle" aria-label={t("language")}>{locales.map((option) => <button type="button" key={option} className={locale === option ? "selected" : ""} aria-pressed={locale === option} onClick={() => changeLocale(option)} lang={option}>{localeLabels[option]}</button>)}</div>;
+  return (
+    <div className="locale-toggle" aria-label={t("language")}>
+      {locales.map((option) => (
+        <button
+          type="button"
+          key={option}
+          className={locale === option ? "selected" : ""}
+          aria-pressed={locale === option}
+          onClick={() => changeLocale(option)}
+          lang={option}
+        >
+          {localeLabels[option]}
+        </button>
+      ))}
+    </div>
+  );
 }

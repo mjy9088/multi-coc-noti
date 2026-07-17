@@ -1,7 +1,7 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
@@ -10,11 +10,13 @@ const declarationPattern = /<!-- contract: ([A-Z]+(?:-[A-Z]+)*-\d{3}) -->/g;
 
 async function testFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) return testFiles(target);
-    return entry.name.endsWith(".test.ts") ? [target] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const target = path.join(directory, entry.name);
+      if (entry.isDirectory()) return testFiles(target);
+      return entry.name.endsWith(".test.ts") ? [target] : [];
+    }),
+  );
   return nested.flat();
 }
 
@@ -30,7 +32,9 @@ test("[TEST-DOC-001] keeps regression test IDs synchronized with the contract do
     .filter((file) => file.endsWith(".md"))
     .map((file) => path.join(root, "docs", file));
   const documentation = await Promise.all(documentationFiles.map((file) => readFile(file, "utf8")));
-  const declaredIds = documentation.flatMap((source) => [...source.matchAll(declarationPattern)].map((match) => match[1]));
+  const declaredIds = documentation.flatMap((source) =>
+    [...source.matchAll(declarationPattern)].map((match) => match[1]),
+  );
 
   assert.equal(new Set(registryIds).size, registryIds.length, "contract registry IDs must be unique");
   assert.equal(new Set(declaredIds).size, declaredIds.length, "feature document contract declarations must be unique");

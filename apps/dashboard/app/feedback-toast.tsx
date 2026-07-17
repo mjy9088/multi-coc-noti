@@ -11,9 +11,20 @@ export default function FeedbackToast({ error = "", message = "", dismissLabel, 
   const content = error || message;
   if (!content) return null;
 
-  return <div className={`feedback-toast ${error ? "error" : "success"}`} role={error ? "alert" : "status"} aria-live={error ? "assertive" : "polite"} aria-atomic="true">
-    <span className="feedback-toast-icon" aria-hidden="true">{error ? "!" : "✓"}</span>
-    <p>{content}</p>
-    <button type="button" className="feedback-toast-close" onClick={onDismiss} aria-label={dismissLabel}>×</button>
-  </div>;
+  return (
+    <div
+      className={`feedback-toast ${error ? "error" : "success"}`}
+      role={error ? "alert" : "status"}
+      aria-live={error ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
+      <span className="feedback-toast-icon" aria-hidden="true">
+        {error ? "!" : "✓"}
+      </span>
+      <p>{content}</p>
+      <button type="button" className="feedback-toast-close" onClick={onDismiss} aria-label={dismissLabel}>
+        ×
+      </button>
+    </div>
+  );
 }

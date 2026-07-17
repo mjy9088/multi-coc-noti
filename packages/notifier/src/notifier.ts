@@ -1,13 +1,15 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
-import {
-  claimDueNotifications, markNotificationFailed, markNotificationSent,
-} from "@multi-coc/database";
+import { fileURLToPath } from "node:url";
 import type { DueNotification } from "@multi-coc/database";
+import { claimDueNotifications, markNotificationFailed, markNotificationSent } from "@multi-coc/database";
 
 export type NotifierConfig = {
-  intervalMs: number; barkBase: string; deviceKey: string;
-  locale: "ko" | "en"; group: string; icon?: string;
+  intervalMs: number;
+  barkBase: string;
+  deviceKey: string;
+  locale: "ko" | "en";
+  group: string;
+  icon?: string;
 };
 
 export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierConfig {
@@ -23,26 +25,41 @@ export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierCo
   };
 }
 
-export function localizeNotification(notification: DueNotification, locale: "ko" | "en"): { title: string; body: string } {
-  if (notification.kind === "refresh_required") return locale === "en" ? {
-    title: `${notification.accountName}: village update required`,
-    body: `${notification.upgradeName} completed more than 24 hours ago. Paste fresh village data to update available slots.`,
-  } : {
-    title: `${notification.accountName} 마을 업데이트 필요`,
-    body: `${notification.upgradeName} 완료 후 24시간이 지났습니다. 최신 마을 데이터를 붙여넣어 주세요.`,
-  };
+export function localizeNotification(
+  notification: DueNotification,
+  locale: "ko" | "en",
+): { title: string; body: string } {
+  if (notification.kind === "refresh_required")
+    return locale === "en"
+      ? {
+          title: `${notification.accountName}: village update required`,
+          body: `${notification.upgradeName} completed more than 24 hours ago. Paste fresh village data to update available slots.`,
+        }
+      : {
+          title: `${notification.accountName} 마을 업데이트 필요`,
+          body: `${notification.upgradeName} 완료 후 24시간이 지났습니다. 최신 마을 데이터를 붙여넣어 주세요.`,
+        };
   const complete = notification.kind === "completion";
   const resource = notification.kind === "resource_preparation";
-  if (locale === "en") return {
-    title: complete ? `${notification.accountName} upgrade complete` : resource ? `${notification.accountName}: prepare resources` : `${notification.accountName} upgrade reminder`,
-    body: complete
-      ? `${notification.upgradeName} level ${notification.nextLevel} is complete.`
-      : resource
-        ? `Prepare resources now. ${notification.upgradeName} level ${notification.nextLevel} completes in about ${notification.minutesRemaining} minute(s).`
-        : `${notification.upgradeName} level ${notification.nextLevel} completes in 1 minute.`,
-  };
+  if (locale === "en")
+    return {
+      title: complete
+        ? `${notification.accountName} upgrade complete`
+        : resource
+          ? `${notification.accountName}: prepare resources`
+          : `${notification.accountName} upgrade reminder`,
+      body: complete
+        ? `${notification.upgradeName} level ${notification.nextLevel} is complete.`
+        : resource
+          ? `Prepare resources now. ${notification.upgradeName} level ${notification.nextLevel} completes in about ${notification.minutesRemaining} minute(s).`
+          : `${notification.upgradeName} level ${notification.nextLevel} completes in 1 minute.`,
+    };
   return {
-    title: complete ? `${notification.accountName} 업그레이드 완료` : resource ? `${notification.accountName} 자원을 미리 준비하세요!` : `${notification.accountName} 업그레이드 알림`,
+    title: complete
+      ? `${notification.accountName} 업그레이드 완료`
+      : resource
+        ? `${notification.accountName} 자원을 미리 준비하세요!`
+        : `${notification.accountName} 업그레이드 알림`,
     body: complete
       ? `${notification.upgradeName} 레벨 ${notification.nextLevel} 완료`
       : resource
@@ -51,30 +68,50 @@ export function localizeNotification(notification: DueNotification, locale: "ko"
   };
 }
 
-export async function sendBark(notification: DueNotification, config: NotifierConfig, fetchImpl: typeof fetch = fetch): Promise<void> {
+export async function sendBark(
+  notification: DueNotification,
+  config: NotifierConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
   const localized = localizeNotification(notification, config.locale);
   const response = await fetchImpl(new URL(`${config.barkBase}/${encodeURIComponent(config.deviceKey)}`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      title: localized.title, body: localized.body, group: config.group, icon: config.icon,
-      sound: notification.kind === "completion" ? "minuet" : "bell", level: "active",
+      title: localized.title,
+      body: localized.body,
+      group: config.group,
+      icon: config.icon,
+      sound: notification.kind === "completion" ? "minuet" : "bell",
+      level: "active",
     }),
   });
   if (!response.ok) throw new Error(`Bark HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
 }
 
 type NotificationStore = {
-  claim: typeof claimDueNotifications; sent: typeof markNotificationSent; failed: typeof markNotificationFailed;
+  claim: typeof claimDueNotifications;
+  sent: typeof markNotificationSent;
+  failed: typeof markNotificationFailed;
 };
 
-const databaseStore: NotificationStore = { claim: claimDueNotifications, sent: markNotificationSent, failed: markNotificationFailed };
+const databaseStore: NotificationStore = {
+  claim: claimDueNotifications,
+  sent: markNotificationSent,
+  failed: markNotificationFailed,
+};
 
-export async function runOnce(config: NotifierConfig, {
-  fetchImpl = fetch, logger = console, store = databaseStore,
-}: { fetchImpl?: typeof fetch; logger?: Pick<Console, "log" | "error">; store?: NotificationStore } = {}): Promise<{ delivered: number; failed: number }> {
+export async function runOnce(
+  config: NotifierConfig,
+  {
+    fetchImpl = fetch,
+    logger = console,
+    store = databaseStore,
+  }: { fetchImpl?: typeof fetch; logger?: Pick<Console, "log" | "error">; store?: NotificationStore } = {},
+): Promise<{ delivered: number; failed: number }> {
   const notifications = await store.claim();
-  let delivered = 0; let failed = 0;
+  let delivered = 0;
+  let failed = 0;
   for (const notification of notifications) {
     try {
       await sendBark(notification, config, fetchImpl);
@@ -95,7 +132,13 @@ export function startNotifier(config = notifierConfig()): NodeJS.Timeout {
   const run = async () => {
     if (running) return;
     running = true;
-    try { await runOnce(config); } catch (error) { console.error(`[notifier] ${(error as Error).message}`); } finally { running = false; }
+    try {
+      await runOnce(config);
+    } catch (error) {
+      console.error(`[notifier] ${(error as Error).message}`);
+    } finally {
+      running = false;
+    }
   };
   run();
   return setInterval(run, config.intervalMs);

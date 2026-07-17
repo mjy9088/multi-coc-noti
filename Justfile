@@ -135,8 +135,9 @@ prod-down:
 prod-logs service="":
     docker compose --env-file docker/.env logs -f {{service}}
 
-# 단위 테스트, 대시보드 빌드, lint, Compose 설정 검증
+# 포맷, 단위 테스트, 대시보드 빌드, lint, Compose 설정 검증
 check:
+    mise exec -- pnpm run format:check
     mise exec -- pnpm run test
     mise exec -- pnpm run lint
     docker compose --env-file docker/.env.example config --quiet

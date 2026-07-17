@@ -79,4 +79,12 @@ Root [`AGENTS.md`](../AGENTS.md) summarizes this workflow so new contributors an
 4. Remove the source declaration, registry row, and tests together only when the requirement no longer applies.
 5. Search this file for the ID shown in CI output.
 
+## Formatting and linting
+
+Run `pnpm format` to apply Biome formatting, import organization, and safe fixes across supported source files. Run
+`pnpm format:check` for the non-writing CI check. Biome handles repository-wide formatting and general static analysis;
+Dashboard ESLint remains enabled for Next.js and React-specific rules. The current
+`apps/dashboard/app/styles/legacy.css` is intentionally excluded to avoid a noisy mechanical rewrite before the planned UI
+redesign.
+
 `TEST-DOC-001` verifies that feature-document declarations, registry IDs, and test-title IDs are identical sets, and rejects duplicate declarations. Requirements without feasible automation remain in the gap list above; add all three locations when implementing their tests.

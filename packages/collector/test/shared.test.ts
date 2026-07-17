@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { isUpgradeActive, isVillageRefreshRequired, normalizeAccountTags } from "../../shared/index.ts";
 
 test("[DATA-UPGRADE-001] treats an upgrade as active only before its finish time", () => {

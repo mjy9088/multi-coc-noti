@@ -30,5 +30,11 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
-  return <html lang={locale}><body className={`${geistSans.variable} ${geistMono.variable}`}><NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider></body></html>;
+  return (
+    <html lang={locale}>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+      </body>
+    </html>
+  );
 }
