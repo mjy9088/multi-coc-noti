@@ -31,7 +31,7 @@ Manage the setting and resource state under `Settings → Manage villages`. Exis
 When an export contains active upgrades:
 
 1. Paste JSON or use Quick Paste and review the preview.
-2. Import first saves the export with state `unanswered` and schedules notifications.
+2. Import first saves the export with state `unanswered` and schedules only notifications whose intended time has not passed.
 3. After saving, prompt for `abundant`, `sufficient`, or `insufficient`.
 4. A response is saved separately and future notifications are recalculated.
 5. Dismissal retains the already imported export and `unanswered` state.
@@ -54,11 +54,11 @@ Notify one minute before completion only; do not also send a completion alert.
 
 When preparation is enabled, schedule `resource_preparation` at completion minus the configured preparation time and schedule `completion` at completion. When preparation is disabled, schedule completion only.
 
-## Immediate preparation alert
+## Passed preparation alert
 
-If the remaining upgrade time is less than or equal to the preparation estimate when an export or setting is applied, make the preparation row eligible immediately. The next Notifier cycle sends it; the HTTP request never calls Bark directly.
+If the preparation time has already passed when an export or setting is applied, do not create a late preparation notification. This prevents pasting village JSON from immediately triggering Bark. Completion notifications remain scheduled according to the resource state.
 
-Example: with 40 minutes remaining, a 60-minute estimate, and state `insufficient`, the intended preparation time has passed, so delivery is immediately eligible.
+Example: with 40 minutes remaining, a 60-minute estimate, and state `insufficient`, omit the preparation notification and retain the completion notification.
 
 ## Preparation-alert deduplication
 
@@ -82,7 +82,7 @@ Changes under Manage villages recalculate only unsent notifications for that vil
 - `sufficient` retains only the one-minute notification.
 - `abundant` retains only completion.
 - `insufficient` and `unanswered` retain completion and optionally preparation.
-- If preparation time has passed, schedule immediately after checking suppression.
+- If preparation time has passed, omit the unsent preparation notification.
 
 ## Data model
 
@@ -129,6 +129,6 @@ This reminder is separate from resource policy. When a tracked upgrade completes
 - Distinguish unanswered in DB while scheduling it like insufficient.
 - Match all four states to the schedule above.
 - Disabling preparation removes only preparation alerts.
-- An overdue preparation row is eligible on the next Notifier cycle.
+- An overdue preparation notification is not newly scheduled when JSON or settings are applied.
 - Suppress same-village preparation alerts within the preparation window.
 - Recalculate only unsent rows after state or preparation changes.

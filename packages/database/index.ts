@@ -164,9 +164,10 @@ export function planResourceNotifications(status: ResourceStatus, preparationMin
     return scheduledAt > now ? [{ kind: "one_minute", minutesBefore: 1, preparationMinutes: null, scheduledAt }] : [];
   }
   const result: PlannedNotification[] = [{ kind: "completion", minutesBefore: 0, preparationMinutes: null, scheduledAt: finish }];
-  if (preparationMinutes != null) result.unshift({
+  const preparationAt = preparationMinutes == null ? null : new Date(finish.getTime() - preparationMinutes * 60_000);
+  if (preparationMinutes != null && preparationAt && preparationAt > now) result.unshift({
     kind: "resource_preparation", minutesBefore: preparationMinutes, preparationMinutes,
-    scheduledAt: new Date(Math.max(now.getTime(), finish.getTime() - preparationMinutes * 60_000)),
+    scheduledAt: preparationAt,
   });
   return result;
 }
