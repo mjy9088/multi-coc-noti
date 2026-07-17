@@ -32,6 +32,8 @@ A village becomes update-required 30 minutes after a previously tracked upgrade 
 
 Selecting a village card opens `Settings → Manage villages` with that village selected. Keyboard users can use Enter or Space.
 
+On mobile, focusing search, import, authentication, and settings fields must not trigger browser auto-zoom. Text inputs use a mobile-safe font size while pinch zoom remains available.
+
 ## Account tags and groups
 
 <!-- contract: DATA-TAGS-001 -->

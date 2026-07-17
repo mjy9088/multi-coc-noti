@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#27333b" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#27333b" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
