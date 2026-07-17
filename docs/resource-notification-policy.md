@@ -24,7 +24,7 @@ Each village has `resourcePreparationMinutes`.
 - It applies only to `insufficient` and `unanswered`.
 - Disabling preparation alerts does not remove completion alerts.
 
-Manage the setting and resource state under `Settings → Manage villages`. Existing and new villages migrate to `unanswered` with 60 minutes enabled, preserving behavior similar to the old 60-minute reminder until the user responds. The old one-minute reminder applies only to `sufficient`.
+Manage the setting and resource state under `/settings/villages/<uuid>`. Existing and new villages migrate to `unanswered` with 60 minutes enabled, preserving behavior similar to the old 60-minute reminder until the user responds. The old one-minute reminder applies only to `sufficient`.
 
 ## Game-export update flow
 
@@ -75,7 +75,7 @@ Example: a successful 45-minute preparation alert for village A at 10:00 suppres
 
 ## Editing state and settings
 
-Changes under Manage villages recalculate only unsent notifications for that village.
+Changes under `/settings/villages/<uuid>` recalculate only unsent notifications for that village.
 
 - Never delete or reverse successful delivery records.
 - Disabling preparation cancels unsent preparation rows.
@@ -88,7 +88,7 @@ Changes under Manage villages recalculate only unsent notifications for that vil
 
 <!-- contract: ALERT-OVERRIDE-001 -->
 
-Under `Settings → Upgrades & alerts`, each active upgrade can inherit its village's preparation time, disable only its own preparation alert, or use a custom number of minutes. The override affects only `resource_preparation`; completion, one-minute, and stale-data notifications continue to follow the village resource policy.
+Under `/settings/upgrades`, each active upgrade can inherit its village's preparation time, disable only its own preparation alert, or use a custom number of minutes. The override affects only `resource_preparation`; completion, one-minute, and stale-data notifications continue to follow the village resource policy.
 
 Saving an override recalculates unsent notifications for that village without changing successful delivery records. A tracked upgrade keeps its override when a newer observation updates the same source key. Each row also links directly to the corresponding village settings.
 

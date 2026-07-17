@@ -39,6 +39,7 @@
     "manageVillage": "{name} 마을 설정 열기",
     "openVillage": "{name} 마을 상세 보기",
     "backToDashboard": "대시보드로 돌아가기",
+    "villageNotFound": "마을을 찾을 수 없습니다.",
     "villageSettings": "마을 설정",
     "upgradeAvailability": "업그레이드 가능 상태",
     "cooldowns": "쿨타임",

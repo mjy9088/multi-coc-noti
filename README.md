@@ -28,7 +28,7 @@ just setup
 just dev
 ```
 
-Open `http://localhost:3000`, then sign in with `ADMIN_TOKEN` under `Settings → Update Data`. Pasted export JSON identifies an existing village by player tag; only a new tag requires a display name.
+Open `http://localhost:3000/settings/paste`, then sign in with `ADMIN_TOKEN`. Pasted export JSON identifies an existing village by player tag; only a new tag requires a display name.
 
 `just dev` runs PostgreSQL in Docker and Gateway, Collector, Notifier, and Next.js as local development processes. Use `just dev 3100` to change the public gateway port, or run everything in Docker with `just prod-up`. Only the gateway uses a fixed host port; Next.js and Collector use automatically selected loopback ports.
 

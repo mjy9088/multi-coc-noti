@@ -39,6 +39,7 @@
     "manageVillage": "Open settings for {name}",
     "openVillage": "View details for {name}",
     "backToDashboard": "Back to dashboard",
+    "villageNotFound": "Village not found.",
     "villageSettings": "Village settings",
     "upgradeAvailability": "Upgrade availability",
     "cooldowns": "Cooldowns",

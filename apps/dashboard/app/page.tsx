@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { applyDisplayOptions, buildUpgradeChartData, defaultDisplayOptions, matchesAvailabilityFilter, observeAvailability, summarizeAvailability } from "@multi-coc/upgrade-availability";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import AdminPanel from "./admin-panel";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
@@ -49,6 +50,8 @@ type Village = {
 };
 
 type DashboardData = { generatedAt: string; accounts: Village[]; groupOrder?: string[] };
+type SettingsSection = "import" | "alerts" | "villages" | "groups";
+const settingsPath = (section: SettingsSection) => `/settings/${section === "import" ? "paste" : section === "alerts" ? "upgrades" : section}`;
 
 const now = Date.now();
 const demoData: DashboardData = {
@@ -116,8 +119,9 @@ function Shield({ level, color }: { level: number; color: string }) {
   return <div className="shield" style={{ "--shield": color } as React.CSSProperties}><span>TH</span>{level}</div>;
 }
 
-export default function Home() {
+export default function Home({ initialVillageId = null, initialSettingsSection = null, initialSettingsVillageId = null }: { initialVillageId?: string | null; initialSettingsSection?: SettingsSection | null; initialSettingsVillageId?: string | null } = {}) {
   const t = useTranslations("Dashboard");
+  const router = useRouter();
   const { formatDateTime, formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
   const [data, setData] = useState<DashboardData>(demoEnabled ? demoData : emptyData);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -128,10 +132,10 @@ export default function Home() {
   const [refreshOnly, setRefreshOnly] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
-  const [view, setView] = useState<"dashboard" | "village" | "settings">("dashboard");
-  const [selectedVillageId, setSelectedVillageId] = useState<string | null>(null);
+  const [view, setView] = useState<"dashboard" | "village" | "settings">(initialVillageId ? "village" : initialSettingsSection || initialSettingsVillageId ? "settings" : "dashboard");
+  const [selectedVillageId] = useState<string | null>(initialVillageId);
   const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
-  const [manageVillageId, setManageVillageId] = useState<string | null>(null);
+  const [manageVillageId, setManageVillageId] = useState<string | null>(initialSettingsVillageId);
   const [quickPasteRequest, setQuickPasteRequest] = useState<{ id: number; text: string; clipboardError: boolean } | null>(null);
   const [quickPasteLoading, setQuickPasteLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -188,15 +192,11 @@ export default function Home() {
   };
 
   const openVillageSettings = (accountId: string) => {
-    setManageVillageId(accountId);
-    setView("settings");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    router.push(`/settings/villages/${encodeURIComponent(accountId)}`);
   };
 
   const openVillage = (accountId: string) => {
-    setSelectedVillageId(accountId);
-    setView("village");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    router.push(`/villages/${encodeURIComponent(accountId)}`);
   };
 
   const quickPaste = async () => {
@@ -211,6 +211,7 @@ export default function Home() {
     setQuickPasteRequest((current) => ({ id: (current?.id || 0) + 1, text, clipboardError }));
     setManageVillageId(null);
     setView("settings");
+    router.push("/settings/paste");
     setQuickPasteLoading(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -267,13 +268,14 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brand"><div className="brand-mark">M</div><div><strong>MULTI VILLAGE</strong><span>COMMAND CENTER</span></div></div>
-        <nav aria-label="Dashboard menu"><button className={view === "dashboard" || view === "village" ? "nav-active" : ""} onClick={() => setView("dashboard")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => { setManageVillageId(null); setView("settings"); }}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
+        <nav aria-label="Dashboard menu"><button className={view === "dashboard" || view === "village" ? "nav-active" : ""} onClick={() => router.push("/")}>{t("dashboard")}</button><button disabled title={t("history")}>{t("history")}</button><button className={view === "settings" ? "nav-active" : ""} onClick={() => router.push("/settings/paste")}>{t("settings")}</button><button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>{quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}</button></nav>
         <PwaInstall />
         <div className="sync"><i className={demo || includesExample ? "warn" : ""} />{demo ? t("demo") : includesExample ? t("exampleIncluded") : `${t("synced")} ${formatRelative(data.generatedAt, clockNow)}`}<LocaleSwitcher /></div>
       </header>
 
-      {view === "settings" && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} initialSection={manageVillageId ? "villages" : "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
-      {view === "village" && selectedVillageId && liveAccounts.find((account) => account.id === selectedVillageId) && <VillageDetail village={liveAccounts.find((account) => account.id === selectedVillageId)!} now={clockNow} formatDuration={formatDuration} formatDateTime={formatDateTime} onBack={() => setView("dashboard")} onSettings={() => openVillageSettings(selectedVillageId)} />}
+      {view === "settings" && <AdminPanel apiBase={apiBase} onChanged={() => setRefreshKey((value) => value + 1)} onSectionChange={(section) => router.push(settingsPath(section))} onVillageChange={(accountId) => router.push(`/settings/villages/${encodeURIComponent(accountId)}`)} initialSection={manageVillageId ? "villages" : initialSettingsSection || "import"} initialAccountId={manageVillageId} quickPasteRequest={quickPasteRequest} />}
+      {view === "village" && selectedVillageId && liveAccounts.find((account) => account.id === selectedVillageId) && <VillageDetail village={liveAccounts.find((account) => account.id === selectedVillageId)!} now={clockNow} formatDuration={formatDuration} formatDateTime={formatDateTime} onBack={() => router.push("/")} onSettings={() => openVillageSettings(selectedVillageId)} />}
+      {view === "village" && selectedVillageId && !demo && data.accounts.length > 0 && !liveAccounts.some((account) => account.id === selectedVillageId) && <section className="village-route-missing shell"><h1>{t("villageNotFound")}</h1><button onClick={() => router.push("/")}>← {t("backToDashboard")}</button></section>}
       <div className={view === "dashboard" ? "shell" : "shell hidden-view"}>
         <section className="dashboard-hero">
           <div className="hero-copy"><p className="eyebrow">{t("eyebrow")}</p><h1>{t("title")}</h1><p className="subcopy">{t("subtitle")}</p></div>

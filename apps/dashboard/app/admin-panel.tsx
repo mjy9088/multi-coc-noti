@@ -23,7 +23,7 @@ const adminLoadedAt = Date.now();
 type AdminSection = "import" | "alerts" | "villages" | "groups";
 type QuickPasteRequest = { id: number; text: string; clipboardError: boolean } | null;
 
-export default function AdminPanel({ apiBase, onChanged, initialSection = "import", initialAccountId = null, quickPasteRequest = null }: { apiBase: string; onChanged: () => void; initialSection?: AdminSection; initialAccountId?: string | null; quickPasteRequest?: QuickPasteRequest }) {
+export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVillageChange, initialSection = "import", initialAccountId = null, quickPasteRequest = null }: { apiBase: string; onChanged: () => void; onSectionChange?: (section: AdminSection) => void; onVillageChange?: (accountId: string) => void; initialSection?: AdminSection; initialAccountId?: string | null; quickPasteRequest?: QuickPasteRequest }) {
   const t = useTranslations("Admin");
   const { formatDateTime, formatDuration } = useDashboardFormat();
   const [token, setToken] = useState("");
@@ -141,11 +141,12 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
     const timer = window.setTimeout(() => {
       appliedQuickPaste.current = quickPasteRequest.id;
       setSection("import");
+      onSectionChange?.("import");
       if (quickPasteRequest.text) replaceExportText(quickPasteRequest.text);
       else if (quickPasteRequest.clipboardError) setError(t("clipboardUnavailable"));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [quickPasteRequest, replaceExportText, t, token]);
+  }, [onSectionChange, quickPasteRequest, replaceExportText, t, token]);
 
   useEffect(() => {
     if (!preview || preview.isNew) return;
@@ -172,6 +173,7 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
   const chooseAccount = (item: Account) => {
     setEditing(item);
     setAccountForm({ label: item.label, color: item.color, tags: (item.tags || []).join(", "), resourceStatus: item.resourceStatus, resourcePreparationEnabled: item.resourcePreparationMinutes != null, resourcePreparationMinutes: item.resourcePreparationMinutes || 60 });
+    onVillageChange?.(item.id);
     if (window.matchMedia("(max-width: 760px)").matches) window.setTimeout(() => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
@@ -222,7 +224,7 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
 
   const openVillageSettings = (account: Account | undefined) => {
     if (!account) return;
-    chooseAccount(account); setSection("villages");
+    chooseAccount(account); setSection("villages"); onSectionChange?.("villages");
     window.setTimeout(() => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
@@ -231,10 +233,10 @@ export default function AdminPanel({ apiBase, onChanged, initialSection = "impor
   return <section className="admin-shell">
     <div className="admin-title"><div><p className="eyebrow">VILLAGE DATA</p><h1>{t("title")}</h1></div><button className="secondary" onClick={() => { localStorage.removeItem("multi-coc-admin-token"); setToken(""); }}>{t("signOut")}</button></div>
     <div className="admin-sections section-tabs" role="navigation" aria-label={t("settingsSections")}>
-      <button className={section === "import" ? "active" : ""} onClick={() => setSection("import")}>{t("updateData")}</button>
-      <button className={section === "alerts" ? "active" : ""} onClick={() => setSection("alerts")}>{t("upgradeAlerts")}</button>
-      <button className={section === "villages" ? "active" : ""} onClick={() => setSection("villages")}>{t("manageVillages")}</button>
-      <button className={section === "groups" ? "active" : ""} onClick={() => setSection("groups")}>{t("manageGroups")}</button>
+      <button className={section === "import" ? "active" : ""} onClick={() => { setSection("import"); onSectionChange?.("import"); }}>{t("updateData")}</button>
+      <button className={section === "alerts" ? "active" : ""} onClick={() => { setSection("alerts"); onSectionChange?.("alerts"); }}>{t("upgradeAlerts")}</button>
+      <button className={section === "villages" ? "active" : ""} onClick={() => { setSection("villages"); onSectionChange?.("villages"); }}>{t("manageVillages")}</button>
+      <button className={section === "groups" ? "active" : ""} onClick={() => { setSection("groups"); onSectionChange?.("groups"); }}>{t("manageGroups")}</button>
     </div>
     {error && <p className="admin-alert error">{error}</p>}{message && <p className="admin-alert">{message}</p>}
 

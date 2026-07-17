@@ -30,9 +30,19 @@ Search, filters, and tag groups apply to the village cards, all summary counts a
 
 A village becomes update-required 30 minutes after a previously tracked upgrade completes when no newer export or snapshot has been received. Its card shows an `Update required` badge. Official Player API synchronization is profile enrichment only and is not shown as a dashboard status or filter.
 
-Selecting a village card opens its detail view with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the view also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. It links to `Settings → Manage villages` with that village selected. Keyboard users can use Enter or Space.
+Selecting a village card opens its detail view with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the view also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. It links to `/settings/villages/<uuid>` with that village selected. Keyboard users can use Enter or Space.
 
-The current detail view is client-side dashboard state, not a dedicated Next.js route. It has no `/villages/<id>` deep link and a browser reload returns to the dashboard. Route design, direct navigation, and the snapshot/API shape needed to support it are intentionally deferred to a separate change.
+Village navigation uses stable UUID resource paths:
+
+- `/villages/<uuid>`: village detail, including direct navigation and reload
+- `/settings`: redirects to `/settings/paste`
+- `/settings/paste`: Update Data
+- `/settings/upgrades`: Upgrades & alerts
+- `/settings/villages`: Manage villages without a selected village
+- `/settings/villages/<uuid>`: settings with that village selected
+- `/settings/groups`: Group order
+
+Settings tab selection is represented by the URL, so tab changes, direct navigation, reload, and browser history preserve the selected section. Selecting a village updates the URL to its UUID resource path. The village route currently loads the existing `/api/dashboard` aggregate snapshot and selects the matching village in the browser. A future data-shape review may introduce a village-specific endpoint, but route identity must remain the account UUID and missing UUIDs must not silently display another village.
 
 On mobile, focusing search, import, authentication, and settings fields must not trigger browser auto-zoom. Text inputs use a mobile-safe font size while pinch zoom remains available.
 
@@ -40,12 +50,12 @@ On mobile, focusing search, import, authentication, and settings fields must not
 
 <!-- contract: DATA-TAGS-001 -->
 
-Enter comma-separated account tags under `Settings → Manage villages`. A leading `#` is removed and case-insensitive duplicates are merged.
+Enter comma-separated account tags under `/settings/villages/<uuid>`. A leading `#` is removed and case-insensitive duplicates are merged.
 
 - Tag groups appear after `All accounts`.
 - A village can belong to multiple groups; untagged villages remain in `All accounts`.
 - Search covers display names, player tags, and account tags.
-- Configure order under `Settings → Group order`. PostgreSQL persists the order across browsers; new groups follow configured groups alphabetically.
+- Configure order under `/settings/groups`. PostgreSQL persists the order across browsers; new groups follow configured groups alphabetically.
 
 ## Display options
 
@@ -66,7 +76,7 @@ In the game, use `Settings → More Settings → Data Export → Copy`, then pas
 
 ### Quick Paste
 
-Quick Paste reads the clipboard from any screen, opens `Settings → Update Data`, and starts review. Clipboard access requires HTTPS or localhost and browser permission; manual paste remains available.
+Quick Paste reads the clipboard from any screen, navigates to `/settings/paste`, and starts review. Clipboard access requires HTTPS or localhost and browser permission; manual paste remains available.
 
 ### Update Data
 
@@ -79,12 +89,12 @@ Preview shows export time, builder and slot status, exact completion timestamps,
 
 ## Settings sections
 
-| Section | Purpose |
-| --- | --- |
-| `Update Data` | Review and import game-export JSON |
-| `Upgrades & alerts` | Inspect active upgrades, override preparation alerts, or open the corresponding village settings |
-| `Manage villages` | Edit name, color, tags, resource policy, or delete |
-| `Group order` | Configure dashboard tag-group order |
+| Section | Route | Purpose |
+| --- | --- | --- |
+| `Update Data` | `/settings/paste` | Review and import game-export JSON |
+| `Upgrades & alerts` | `/settings/upgrades` | Inspect active upgrades, override preparation alerts, or open the corresponding village settings |
+| `Manage villages` | `/settings/villages` or `/settings/villages/<uuid>` | Edit name, color, tags, resource policy, or delete |
+| `Group order` | `/settings/groups` | Configure dashboard tag-group order |
 
 On mobile, the Manage villages form appears before the long village list. Selecting another village scrolls back to the form.
 

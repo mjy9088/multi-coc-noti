@@ -64,7 +64,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 7. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
 8. DB migration backfill of Home Village and Builder Base classification on existing tracked upgrades
 9. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
-10. Village card → detail view → selected village settings navigation, hidden empty detail sections, official-stat rendering, and cooldown transition to available
+10. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 

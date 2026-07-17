@@ -60,7 +60,7 @@ Pet and research work does not consume Home Village builders. Hide locked facili
 
 ## Screen priorities
 
-Settings contains `Update Data`, `Upgrades & alerts`, `Manage villages`, and the separate `Group order` section. New villages are created only through JSON paste. Mobile layouts keep section tabs and the import action sticky, place the Manage villages form before the list, and return to the form after village selection.
+Settings routes are `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`. New villages are created only through JSON paste. Mobile layouts keep section tabs and the import action sticky, place the Manage villages form before the list, and return to the form after village selection.
 
 ## Identifier rules
 

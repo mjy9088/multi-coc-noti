@@ -150,6 +150,8 @@ Public and collection endpoints:
 
 Admin Bearer authentication is required for account CRUD, resource status, dashboard settings, tracked upgrades, and village-export preview/import under `/api/admin/*`.
 
+Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` snapshot. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. There is no public `/api/villages/<uuid>` endpoint yet; evaluate that boundary before expanding route-specific payloads or snapshot history.
+
 Use a TLS reverse proxy and restrict `CORS_ORIGIN` in production. Clipboard-based Quick Paste requires HTTPS outside localhost.
 
 ## Localization
