@@ -33,11 +33,13 @@ The repository does not use a root `.env`. Copy the example files and replace se
 | `BARK_GROUP` | `Clash Upgrades` | Bark notification group |
 | `NOTIFICATION_LOCALE` | `ko` | Bark copy language: `ko` or `en` |
 | `NOTIFIER_INTERVAL_SECONDS` | `10` | DB queue polling interval |
-| `NEXT_PUBLIC_API_BASE` | current host on `:8787` | Collector URL used by the browser |
+| `NEXT_PUBLIC_API_BASE` | mode-dependent | Collector URL used by the browser; use `same-origin` for `just dev`, `just prod-up`, PWA, and chained reverse proxies |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | Public metadata URL |
 | `NEXT_PUBLIC_DEMO_MODE` | `false` | Enable demo fallback after Collector failure |
 
 Only a server key from the official developer site belongs in `CLASH_OF_CLANS_API_TOKEN`.
+
+`NEXT_PUBLIC_API_BASE` is embedded in the browser bundle. Integrated modes require `same-origin` because only gateway port 3000 is public and development chooses non-fixed loopback ports for Collector and Next.js. A blank value retains the standalone-dashboard fallback to the current hostname on port 8787 and is not suitable for `just dev` or `just prod-up`.
 
 ## Local execution
 
@@ -89,7 +91,7 @@ Do not publish the application under a path prefix such as `/coc` without also i
 | Path | Identity/authentication | Purpose |
 | --- | --- | --- |
 | Game export | JSON player tag plus admin auth | Routine upgrade and slot refresh |
-| Official Player API | Global server token | Enrich name, tag, Town Hall, and experience level |
+| Official Player API | Global server token | Enrich name, tag, Town Hall, experience level, trophies, league, war stars, donations, and Clan Capital contribution |
 
 Detected upgrades merge into `tracked_upgrades`. Duplicate timers for the same village, item, and next level are cancelled; missing active entries become complete or cancelled according to completion time.
 

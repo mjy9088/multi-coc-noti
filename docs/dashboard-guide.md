@@ -30,7 +30,9 @@ Search, filters, and tag groups apply to the village cards, all summary counts a
 
 A village becomes update-required 30 minutes after a previously tracked upgrade completes when no newer export or snapshot has been received. Its card shows an `Update required` badge. Official Player API synchronization is profile enrichment only and is not shown as a dashboard status or filter.
 
-Selecting a village card opens its detail page with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the page also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. The detail page links to `Settings → Manage villages` with that village selected. Keyboard users can use Enter or Space.
+Selecting a village card opens its detail view with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the view also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. It links to `Settings → Manage villages` with that village selected. Keyboard users can use Enter or Space.
+
+The current detail view is client-side dashboard state, not a dedicated Next.js route. It has no `/villages/<id>` deep link and a browser reload returns to the dashboard. Route design, direct navigation, and the snapshot/API shape needed to support it are intentionally deferred to a separate change.
 
 On mobile, focusing search, import, authentication, and settings fields must not trigger browser auto-zoom. Text inputs use a mobile-safe font size while pinch zoom remains available.
 
