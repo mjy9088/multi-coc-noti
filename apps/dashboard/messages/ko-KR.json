@@ -102,7 +102,7 @@
   },
   "History": {
     "title": "업그레이드 기록",
-    "description": "마을 export에서 감지된 진행 중·완료·취소 업그레이드를 확인합니다.",
+    "description": "마을 export에서 감지된 업그레이드와 현재 진행 여부를 확인합니다.",
     "village": "마을",
     "base": "기지",
     "status": "상태",
@@ -112,8 +112,7 @@
     "home": "본 기지",
     "builderBase": "장인 기지",
     "active": "진행 중",
-    "completed": "완료",
-    "cancelled": "취소",
+    "inactive": "종료됨",
     "building": "건물",
     "hero": "영웅",
     "pet": "펫",

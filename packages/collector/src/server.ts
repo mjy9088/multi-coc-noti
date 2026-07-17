@@ -382,22 +382,22 @@ const server = createServer(async (request, response) => {
         return json(response, 404, { error: "unknown account" });
       const limit = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("limit") || 100)) || 100));
       const base = url.searchParams.get("base") || undefined;
-      const status = url.searchParams.get("status") || undefined;
+      const activeValue = url.searchParams.get("active");
       const type = url.searchParams.get("type") || undefined;
       if (base && !["home", "builder"].includes(base)) throw new Error("invalid upgrade base");
-      if (status && !["active", "completed", "cancelled"].includes(status)) throw new Error("invalid upgrade status");
+      if (activeValue != null && !["true", "false"].includes(activeValue)) throw new Error("invalid active filter");
       if (type && !["building", "hero", "pet", "research"].includes(type)) throw new Error("invalid upgrade type");
       const upgrades = await listUpgradeHistory({
         accountId: villageId,
         limit,
         before: url.searchParams.get("before") || undefined,
         base: base as "home" | "builder" | undefined,
-        status: status as "active" | "completed" | "cancelled" | undefined,
+        active: activeValue == null ? undefined : activeValue === "true",
         type: type as "building" | "hero" | "pet" | "research" | undefined,
       });
       return json(response, 200, {
         villages: accounts.map(({ id, label: name, playerTag, color }) => ({ id, name, playerTag, color })),
-        upgrades,
+        upgrades: upgrades.map(({ status, ...upgrade }) => ({ ...upgrade, active: status === "active" })),
         nextBefore: upgrades.length === limit ? upgrades.at(-1)?.id || null : null,
       });
     }

@@ -265,14 +265,14 @@ export async function listUpgradeHistory({
   limit = 100,
   before,
   base,
-  status,
+  active,
   type,
 }: {
   accountId?: string;
   limit?: number;
   before?: string;
   base?: "home" | "builder";
-  status?: "active" | "completed" | "cancelled";
+  active?: boolean;
   type?: UpgradeType;
 } = {}): Promise<TrackedUpgrade[]> {
   const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
@@ -285,11 +285,11 @@ export async function listUpgradeHistory({
     WHERE ($1::uuid IS NULL OR account_id=$1)
       AND ($2::bigint IS NULL OR id < $2)
       AND ($3::text IS NULL OR base=$3)
-      AND ($4::text IS NULL OR status=$4)
+      AND ($4::boolean IS NULL OR (status='active')=$4)
       AND ($5::text IS NULL OR type=$5)
     ORDER BY id DESC LIMIT $6
   `,
-    [accountId || null, cursor, base || null, status || null, type || null, boundedLimit],
+    [accountId || null, cursor, base || null, active ?? null, type || null, boundedLimit],
   );
   return rows.map(upgradeFromRow);
 }

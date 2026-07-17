@@ -91,7 +91,7 @@ Do not publish the application under a path prefix such as `/coc` without also i
 | Game export | JSON player tag plus admin auth | Routine upgrade and slot refresh |
 | Official Player API | Global server token | Enrich name, tag, Town Hall, experience level, trophies, league, war stars, donations, and Clan Capital contribution |
 
-Detected upgrades merge into `tracked_upgrades`. Duplicate timers for the same village, item, and next level are cancelled; missing active entries become complete or cancelled according to completion time.
+Detected upgrades merge into `tracked_upgrades`. Internal terminal states support notification cleanup, but they are not treated as reliable evidence that a player completed or cancelled an upgrade. Public history exposes only whether each record is still active.
 
 ## Data storage
 

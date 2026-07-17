@@ -16,10 +16,10 @@ type HistoryUpgrade = {
   nextLevel: number;
   startedAt: string;
   finishAt: string;
-  status: "active" | "completed" | "cancelled";
+  active: boolean;
 };
 type HistoryResponse = { villages: Village[]; upgrades: HistoryUpgrade[]; nextBefore: string | null };
-type Filters = { village: string; base: string; status: string; type: string };
+type Filters = { village: string; base: string; active: string; type: string };
 
 export default function HistoryPanel({
   apiBase,
@@ -30,7 +30,7 @@ export default function HistoryPanel({
 }) {
   const t = useTranslations("History");
   const { formatDateTime } = useDashboardFormat();
-  const [filters, setFilters] = useState<Filters>({ village: initialVillageId, base: "", status: "", type: "" });
+  const [filters, setFilters] = useState<Filters>({ village: initialVillageId, base: "", active: "", type: "" });
   const [villages, setVillages] = useState<Village[]>([]);
   const [upgrades, setUpgrades] = useState<HistoryUpgrade[]>([]);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
@@ -71,9 +71,6 @@ export default function HistoryPanel({
     hero: t("hero"),
     pet: t("pet"),
     research: t("research"),
-    active: t("active"),
-    completed: t("completed"),
-    cancelled: t("cancelled"),
   };
 
   return (
@@ -105,11 +102,10 @@ export default function HistoryPanel({
         </label>
         <label>
           {t("status")}
-          <select value={filters.status} onChange={(event) => setFilter("status", event.target.value)}>
+          <select value={filters.active} onChange={(event) => setFilter("active", event.target.value)}>
             <option value="">{t("all")}</option>
-            <option value="active">{t("active")}</option>
-            <option value="completed">{t("completed")}</option>
-            <option value="cancelled">{t("cancelled")}</option>
+            <option value="true">{t("active")}</option>
+            <option value="false">{t("inactive")}</option>
           </select>
         </label>
         <label>
@@ -147,7 +143,9 @@ export default function HistoryPanel({
                 </p>
               </div>
               <div className="history-result">
-                <b className={`history-status ${upgrade.status}`}>{labels[upgrade.status]}</b>
+                <b className={`history-status ${upgrade.active ? "active" : "inactive"}`}>
+                  {t(upgrade.active ? "active" : "inactive")}
+                </b>
                 <time>{formatDateTime(upgrade.finishAt)}</time>
               </div>
             </article>
