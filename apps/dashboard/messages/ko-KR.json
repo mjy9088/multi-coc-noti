@@ -158,6 +158,8 @@
     "pasteJsonHelp": "JSON의 플레이어 태그로 마을을 자동 식별합니다. 완성된 JSON은 자동으로 검토됩니다.",
     "reviewData": "내용 확인",
     "reviewingData": "확인 중…",
+    "stepNow": "현재 단계",
+    "stepDone": "완료",
     "autoReviewHelp": "붙여넣기가 끝나면 자동으로 확인합니다.",
     "pasteClipboard": "클립보드 붙여넣기",
     "clipboardUnavailable": "클립보드를 읽을 수 없습니다. 브라우저 권한을 허용하거나 입력창을 길게 눌러 붙여넣어 주세요.",

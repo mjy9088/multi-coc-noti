@@ -56,7 +56,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 1. Atomic same-village preparation-alert suppression and release after delivery failure
 2. The full import flow from initial unanswered storage to a separately saved resource response
 3. Admin authentication, preview/import, new-account creation, and newest-export precedence
-4. Mobile Quick Paste, automatic Review, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
+4. Mobile Quick Paste, automatic Review, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
 5. Group ordering, tag groups, and upgrade-ready sorting in the browser
 6. DB export-history backup/import/seed/reseed and schema migrations
 7. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication

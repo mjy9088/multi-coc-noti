@@ -6,6 +6,8 @@ The top-level menu contains `Dashboard`, `History`, `Settings`, and `Quick Paste
 
 Every route provides an immediate loading state and a render-error boundary. Dashboard, History, and authenticated Settings requests also handle expected network failures explicitly: an initial failure replaces empty content with a retry action, while a refresh failure keeps already loaded data visible and marks it as stale. Settings waits for saved-token hydration before deciding whether to show the sign-in form.
 
+Keyboard and programmatically focused buttons use a distinct high-contrast focus color and outline throughout the application. In the Update Data flow, the current Paste or Review card is emphasized; after review begins, the completed Paste card is dimmed as a whole and focus moves to the next required input or enabled Import action. Returning to Paste restores its active treatment.
+
 ## PWA installation
 
 The dashboard publishes a web app manifest, install icons, and a minimal service worker so supported browsers can install it with standalone display. Chromium shows `Install app` when its install prompt is available. On iOS, the button explains how to use Safari's `Share → Add to Home Screen`; iOS does not expose the Chromium install event.

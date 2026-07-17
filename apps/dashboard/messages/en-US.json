@@ -158,6 +158,8 @@
     "pasteJsonHelp": "The player tag identifies the village automatically. Complete JSON is reviewed automatically.",
     "reviewData": "Review data",
     "reviewingData": "Reviewing…",
+    "stepNow": "NOW",
+    "stepDone": "DONE",
     "autoReviewHelp": "Review starts automatically when pasting is complete.",
     "pasteClipboard": "Paste clipboard",
     "clipboardUnavailable": "The clipboard could not be read. Allow browser access or long-press the input to paste manually.",

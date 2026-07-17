@@ -250,12 +250,12 @@ export default function AdminPanel({ apiBase, onChanged, onSectionChange, onVill
     {error && <p className="admin-alert error">{error}</p>}{message && <p className="admin-alert">{message}</p>}
 
     {section === "import" && <div className="import-flow">
-      <article className="admin-card export-card primary-card"><p className="step-label">01 · PASTE</p><h2>{t("pasteJson")}</h2><p>{t("pasteJsonHelp")}</p>
+      <article className={`admin-card export-card primary-card import-step ${preview ? "step-complete" : "step-current"}`} aria-current={!preview ? "step" : undefined}><p className="step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>01 · PASTE</p><h2>{t("pasteJson")}</h2><p>{t("pasteJsonHelp")}</p>
         <textarea value={exportText} onChange={(event) => replaceExportText(event.target.value)} placeholder='{"tag":"#...","timestamp":...}' autoFocus spellCheck={false} autoCapitalize="off" aria-busy={previewLoading} />
         <div className="review-action" aria-live="polite"><small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small><span><button type="button" className="secondary" onClick={pasteFromClipboard}>{t("pasteClipboard")}</button><button type="button" disabled={!exportText.trim() || previewLoading} onClick={() => reviewExport(exportText)}>{previewLoading ? t("reviewingData") : t("reviewData")}</button></span></div>
       </article>
 
-      {preview && <article className="admin-card preview-card"><p className="step-label">02 · REVIEW</p><div className="preview-heading"><div><h2>{preview.account?.label || t("newVillage")}</h2><p>{preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}</p></div><span className={preview.isNew ? "new-badge" : "match-badge"}>{preview.isNew ? t("newBadge") : t("matchedBadge")}</span></div>
+      {preview && <article className="admin-card preview-card import-step step-current" aria-current="step"><p className="step-label" data-step-state={t("stepNow")}>02 · REVIEW</p><div className="preview-heading"><div><h2>{preview.account?.label || t("newVillage")}</h2><p>{preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}</p></div><span className={preview.isNew ? "new-badge" : "match-badge"}>{preview.isNew ? t("newBadge") : t("matchedBadge")}</span></div>
         <div className="preview-stats compact"><div><span>{t("inProgress")}</span><b>{preview.upgrades.length}</b></div><div><span>{t("unknownItems")}</span><b>{preview.unknownDataIds.length}</b></div></div>
         <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
         {preview.isNew && <label className="new-label">{t("displayName")}<input required autoFocus value={newLabel} onChange={(event) => setNewLabel(event.target.value)} placeholder={t("displayNamePlaceholder")} /><small>{t("newVillageHelp")}</small></label>}
