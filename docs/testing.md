@@ -18,6 +18,7 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | --- | --- | --- | --- |
 | `API-PROFILE-001` | Encode and authenticate official API requests and map profiles into the internal shape, preventing incorrect account enrichment. | [Operations: Collection paths](operations.md#collection-paths) | Collector unit |
 | `API-PROFILE-002` | Never overwrite example data with an official profile, preventing demo content from appearing synchronized. | [Dashboard: Storage locations](dashboard-guide.md#storage-locations) | Collector unit |
+| `API-PROFILE-003` | Preserve the configured Display Name during official profile enrichment instead of replacing it with the in-game name. | [Dashboard](dashboard-guide.md#dashboard) | Collector unit |
 | `OPS-PROXY-001` | Route `/api` exclusively to Collector and all other PWA and Next.js paths to Dashboard behind one public port. | [Operations: Reverse proxy chains and PWA deployment](operations.md#reverse-proxy-chains-and-pwa-deployment) | Reverse-proxy unit |
 | `DATA-UPGRADE-001` | Treat upgrades as active only before a valid finish time, preventing completed work from remaining queued. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
 | `DATA-REFRESH-001` | Mark a village update-required exactly 30 minutes after an upgrade completion that has no newer observation. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |

@@ -63,6 +63,11 @@ A village becomes update-required 30 minutes after a previously tracked upgrade 
 
 Selecting a village card opens its detail view with current upgrade slots, base/type upgrade summaries, active upgrades, export-supported cooldowns, helper levels, and Hero Equipment levels. When official profile enrichment is configured, the view also shows trophies, league, war stars, donations, and Clan Capital contribution. Sections without data are hidden. It links to `/settings/villages/<uuid>` with that village selected. Keyboard users can use Enter or Space.
 
+<!-- contract: API-PROFILE-003 -->
+
+Village cards, queues, detail views, filters, and history use the configured account Display Name. Official profile enrichment
+must not replace it with the current in-game village name.
+
 Village navigation uses stable UUID resource paths:
 
 - `/villages/<uuid>`: village detail, including direct navigation and reload

@@ -51,7 +51,6 @@ export function mergeOfficialProfile<T extends Partial<VillageSnapshot> & Pick<V
   if (!profile || snapshot.dataSource === "example") return snapshot;
   return {
     ...snapshot,
-    name: profile.name || snapshot.name,
     tag: profile.tag || snapshot.tag,
     townHall: profile.townHall || snapshot.townHall,
     level: profile.level || snapshot.level,
