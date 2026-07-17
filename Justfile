@@ -73,6 +73,7 @@ ui port="3000":
     notifier_pid=$!
     (
       cd apps/dashboard
+      export NEXT_DASHBOARD_ENV_FILE=../../docker/.env
       exec mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
     ) &
     dashboard_pid=$!

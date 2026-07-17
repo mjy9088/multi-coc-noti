@@ -49,6 +49,8 @@ just collector          # standalone Collector
 just notifier           # standalone Notifier
 ```
 
+When opening `just ui` or the Compose development server through Tailscale or another remote origin, set its full origin in `CORS_ORIGIN` and restart the dashboard. The Collector uses the value for API CORS, while the Next development server derives the hostname for `allowedDevOrigins`.
+
 ## Collection paths
 
 <!-- contract: API-PROFILE-001 -->
