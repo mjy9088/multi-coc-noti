@@ -1,3 +1,5 @@
+-- One-time compatibility upgrade for databases created before the Drizzle
+-- migration journal. Fresh databases never execute this file.
 -- Migrate the early user-managed integer index to an internal UUID without
 -- dropping account, upgrade, or export data. legacy_index is cleared by the
 -- collector after any index-named data directory has been moved to the UUID.

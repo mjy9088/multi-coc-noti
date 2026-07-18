@@ -8,8 +8,10 @@
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {
+    "@hono/node-server": "1.19.9",
     "@multi-coc/database": "workspace:*",
     "@multi-coc/shared": "workspace:*",
-    "@multi-coc/village-export": "workspace:*"
+    "@multi-coc/village-export": "workspace:*",
+    "hono": "4.10.7"
   }
 }

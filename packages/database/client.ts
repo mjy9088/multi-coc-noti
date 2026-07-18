@@ -1,4 +1,6 @@
+import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { schema } from "./schema.ts";
 
 const { Pool } = pg;
 let pool: pg.Pool | undefined;
@@ -15,6 +17,12 @@ export function database(): pg.Pool {
           password: process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD || "coc",
         });
   return pool;
+}
+
+export type DrizzleDatabase = ReturnType<typeof drizzle<typeof schema>>;
+
+export function drizzleDatabase(): DrizzleDatabase {
+  return drizzle(database(), { schema, casing: "snake_case" });
 }
 
 export async function closeDatabase(): Promise<void> {

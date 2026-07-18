@@ -46,10 +46,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=service-deps /app ./
 COPY packages/collector/src packages/collector/src
-COPY packages/database/client.ts packages/database/client.ts
-COPY packages/database/index.ts packages/database/index.ts
-COPY packages/database/migrate.ts packages/database/migrate.ts
-COPY packages/database/schema.sql packages/database/schema.sql
+COPY packages/database packages/database
 COPY packages/notifier/src packages/notifier/src
 COPY packages/notification-policy/index.ts packages/notification-policy/index.ts
 COPY packages/shared/index.ts packages/shared/index.ts

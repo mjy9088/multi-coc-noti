@@ -99,12 +99,24 @@ Package dependencies follow the runtime responsibility direction:
 - `notification-policy` owns pure alert scheduling decisions. Database persists the resulting schedule, while Notifier only delivers claimed rows.
 - `shared` contains cross-package data contracts and small domain predicates without infrastructure dependencies.
 - `maintenance` composes Database and domain packages for operator-facing backup, restore, validation, seed, and reseed commands.
-- `database/client.ts` owns the PostgreSQL connection lifecycle and `database/migrate.ts` owns schema application. This boundary is intentionally compatible with a later Drizzle client and generated migration layer.
-- Collector keeps transport-only request parsing, authentication, and response formatting under `src/http`; route handlers and use cases can move behind that boundary incrementally.
+- `database/client.ts` owns the PostgreSQL connection lifecycle and exposes the Drizzle client, `database/schema.ts` is the
+  typed schema, and `database/migrate.ts` serializes migration execution. Aggregate repositories use the typed client while
+  cross-aggregate use cases own transactions. Generated Drizzle migrations are authoritative for fresh databases and all
+  future changes. An unjournaled existing database runs the legacy idempotent upgrade once, records the generated initial
+  migration as its baseline, and then follows the same migration journal.
+  `database/legacy-schema.sql` exists only for that one-time adoption path and is not the source for new schema changes.
+- Collector uses Hono only as its HTTP adapter. Public and admin route modules live under `src/http/routes`, application
+  work lives under `src/use-cases`, account/profile cache lifecycle belongs to `CollectorState`, and `server.ts` only
+  composes startup, migrations, timers, listening, and graceful shutdown.
 
 ## Data storage
 
 PostgreSQL is the only runtime data store. It stores accounts, group order, raw game exports, the derived upgrade record set, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Collector and Notifier do not write runtime snapshot files.
+
+<!-- contract: DB-MIGRATION-001 -->
+
+Migration must create a fresh database from generated Drizzle SQL and must preserve application data when adopting an
+existing unjournaled schema. Both paths converge on the same Drizzle migration journal before services start.
 
 ## Backup and restore
 
@@ -117,6 +129,11 @@ just data reseed        # stop just dev first; recreates the development DB
 ```
 
 Backups are JSON Lines v2: the first line contains village metadata, resource policy, and upgrade alert settings, and each later line contains one raw game export. Import reparses exports to rebuild derived state, matches existing accounts by player tag without overwriting current village settings, restores village settings only for new accounts, skips identical duplicate records, and rejects conflicting records at the same timestamp. Legacy v1 JSON bundles remain importable; their snapshot records are ignored.
+
+<!-- contract: DB-HISTORY-001 -->
+
+At the Database boundary, exporting and restoring a village must preserve its raw exports and rebuild its tracked-upgrade
+projection in one transaction; a failed or conflicting restore must not leave a partial village history.
 
 ## Separate Notifier deployment
 
@@ -133,6 +150,11 @@ docker run -d --name coc-notifier --restart unless-stopped \
 ```
 
 Notifier atomically claims due rows. Success records `sent`; failure records the error and next retry time. Leases and DB constraints prevent duplicate claims across processes.
+
+<!-- contract: DB-NOTIFICATION-001 -->
+
+Database claiming must give a due notification to only one worker. A resource reminder claim reserves the village-level
+suppression window atomically, and recording delivery failure releases that reservation before scheduling a retry.
 
 ## API
 

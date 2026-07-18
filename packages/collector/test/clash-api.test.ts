@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchPlayerProfile, mergeOfficialProfile } from "../src/clash-api.ts";
+import { fetchPlayerProfile, mergeOfficialProfile } from "../src/services/clash-api.ts";
 
 const account = { id: "account-uuid", playerTag: "#2ABC" };
 

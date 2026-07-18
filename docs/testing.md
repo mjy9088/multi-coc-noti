@@ -47,6 +47,9 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | `DISPLAY-SUMMARY-001` | Total idle Home Village builder/laboratory/Pet House slots while keeping Builder Base builder/laboratory slots in a separate total. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `DISPLAY-FILTER-001` | Distinguish Home Village availability from availability in either village so the single-choice slot filter has stable semantics. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `DISPLAY-CHART-001` | Project completion bins, active work, and released slots for Home Village and the combined bases on one timeline. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
+| `DB-MIGRATION-001` | Create fresh databases from generated migrations and baseline existing schemas without losing data. | [Operations: Data storage](operations.md#data-storage) | PostgreSQL integration |
+| `DB-HISTORY-001` | Restore raw export history and rebuild its tracked-upgrade projection atomically. | [Operations: Backup and restore](operations.md#backup-and-restore) | PostgreSQL integration |
+| `DB-NOTIFICATION-001` | Claim notifications exclusively and release resource suppression when delivery fails. | [Operations: Separate Notifier deployment](operations.md#separate-notifier-deployment) | PostgreSQL integration |
 | `TEST-DOC-001` | Compare feature declarations, this registry, and test IDs in both directions; reject duplicate declarations. | This [Purpose](#purpose) | Documentation consistency |
 
 `IMPORT-SLOT-*` protects facts extracted from one export. `DISPLAY-SLOT-*` protects applying observations across accounts and browser display options. They operate at different layers and are intentionally both retained.
@@ -55,19 +58,18 @@ Do not change contract expectations merely because of a refactor. One ID represe
 
 These documented behaviors are not directly protected by `pnpm test`. Treat them as manual review requirements until adding tests and registry IDs.
 
-1. Atomic same-village preparation-alert suppression and release after delivery failure
-2. The full import flow from initial unanswered storage to a separately saved resource response
-3. Admin authentication, preview/import, new-account creation, and newest-export precedence
-4. Mobile Quick Paste, automatic Review, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
-5. Group ordering, tag groups, and upgrade-ready sorting in the browser
-6. DB export-history backup/import/seed/reseed and schema migrations
-7. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
-8. DB migration backfill of Home Village and Builder Base classification on existing tracked upgrades
-9. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
-10. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
-11. REST upgrade-history filtering and pagination, the global History screen, `Load more`, and village-detail prefiltered navigation
-12. Route loading/error boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
-13. URL-backed Upgrade/Sync History sections, sync-history village filtering and pagination, and export/import timestamp plus state-summary rendering
+1. The full import flow from initial unanswered storage to a separately saved resource response
+2. Admin authentication, preview/import, new-account creation, and newest-export precedence
+3. Mobile Quick Paste, automatic Review, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
+4. Group ordering, tag groups, and upgrade-ready sorting in the browser
+5. Maintenance CLI JSONL compatibility plus seed/reseed behavior
+6. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
+7. DB migration backfill of Home Village and Builder Base classification on existing tracked upgrades
+8. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
+9. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
+10. REST upgrade-history filtering and pagination, the global History screen, `Load more`, and village-detail prefiltered navigation
+11. Route loading/error boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
+12. URL-backed Upgrade/Sync History sections, sync-history village filtering and pagination, and export/import timestamp plus state-summary rendering
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.
 

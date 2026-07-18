@@ -4,9 +4,18 @@
   "private": true,
   "type": "module",
   "exports": "./index.ts",
+  "scripts": {
+    "schema:check": "drizzle-kit generate --config drizzle.config.ts --name schema-check",
+    "test": "node --test test/*.integration.test.ts",
+    "test:integration": "node --test test/*.integration.test.ts"
+  },
   "dependencies": {
     "@multi-coc/notification-policy": "workspace:*",
     "@multi-coc/shared": "workspace:*",
+    "drizzle-orm": "0.45.2",
     "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.10"
   }
 }
