@@ -61,6 +61,7 @@ Development binds only the gateway to the requested fixed port. Next.js and Coll
 For an installed PWA, expose one canonical HTTPS origin and route by path:
 
 <!-- contract: OPS-PROXY-001 -->
+<!-- contract: OPS-PROXY-002 -->
 
 ```text
 https://coc.example.com/* → gateway:3000
@@ -79,6 +80,10 @@ CORS_ORIGIN=https://coc.example.com
 `same-origin` makes browser requests use `/api/*` instead of assuming port 8787. The repository gateway preserves the `/api` prefix because Collector routes include it. An outer reverse proxy only needs to forward the canonical origin to gateway port 3000; it does not need path-specific routing.
 
 Multiple proxy layers are supported. The outermost proxy terminates public HTTPS and sets the original `Host`, `X-Forwarded-Host`, `X-Forwarded-Proto=https`, and client forwarding headers. Intermediate proxies must preserve those values instead of replacing HTTPS with their internal HTTP hop. The repository gateway routes `/api/*` to Collector and everything else—including `/manifest.webmanifest`, `/sw.js`, icons, and `/_next/*`—to Dashboard, and forwards WebSocket upgrades for the development server.
+
+Browser navigation, cancellation, and HMR reconnection routinely close HTTP and WebSocket tunnels before an upstream has
+finished writing. The repository gateway must close both halves of those tunnels without treating `EPIPE`, `ECONNRESET`,
+or premature stream closure as a process-level failure, and must continue accepting later requests.
 
 Do not publish the application under a path prefix such as `/coc` without also introducing a matching Next.js `basePath` and service-worker scope. A dedicated hostname is the supported deployment shape. Restart or rebuild Dashboard after changing `NEXT_PUBLIC_*` values because they are embedded in the client bundle.
 
