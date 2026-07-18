@@ -32,9 +32,12 @@ Open `http://localhost:3000/settings/paste`, then sign in with `ADMIN_TOKEN`. Pa
 
 `just dev` runs PostgreSQL in Docker and Gateway, Collector, Notifier, and Next.js as local development processes. Use `just dev 3100` to change the public gateway port, or run everything in Docker with `just prod-up`. Only the gateway uses a fixed host port; Next.js and Collector use automatically selected loopback ports.
 
+Run the separate Next.js component and route-layout catalogue with `just dev-ui` and open `http://localhost:3100`.
+
 ## Documentation
 
 - [Dashboard and settings guide](docs/dashboard-guide.md): charts, village details, PWA installation, tag groups, Quick Paste, alerts, and mobile workflows
+- [UI architecture and screen inventory](docs/ui/README.md): screen priorities, component ownership, interaction patterns, and the design-system migration plan
 - [Village data update flow](docs/village-data-flow.md): export validation, identifiers, slot calculation, and safeguards
 - [Resource-aware notification policy](docs/resource-notification-policy.md): resource states, preparation time, scheduling, and deduplication
 - [Operations guide](docs/operations.md): environment, commands, retention, backup, deployment, and API
@@ -45,9 +48,11 @@ Open `http://localhost:3000/settings/paste`, then sign in with `ADMIN_TOKEN`. Pa
 | Path | Responsibility |
 | --- | --- |
 | `apps/dashboard` | Responsive Next.js dashboard and admin UI |
+| `apps/ui-lab` | Next.js catalogue for shared UI tokens, components, and persistent-layout route checks |
 | `packages/collector` | Game exports, official Player API enrichment, and HTTP API |
 | `packages/notifier` | PostgreSQL notification queue consumer and Bark delivery |
 | `packages/database` | Schema and account, upgrade, notification, and history stores |
+| `packages/ui` | Shared semantic tokens and owned React UI primitives |
 | `packages/shared` | Shared dashboard data model and account-tag utilities |
 | `packages/upgrade-availability` | Display-slot calculation, including Goblin Builder and Researcher inference |
 | `packages/reverse-proxy` | Single public gateway: `/api/*` to Collector and all other traffic to Next.js |

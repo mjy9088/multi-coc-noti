@@ -1,0 +1,26 @@
+* {
+  box-sizing: border-box;
+}
+
+button,
+a,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+html {
+  background: var(--ui-color-canvas);
+}
+
+body {
+  margin: 0;
+  color: var(--ui-color-text);
+  background: var(--ui-color-canvas);
+  font-family: var(--font-geist-sans, sans-serif), "Apple SD Gothic Neo", sans-serif;
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}

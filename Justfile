@@ -104,6 +104,10 @@ dev port="3000":
 dev-dashboard port="3000":
     cd apps/dashboard && mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
 
+# 디자인 시스템: Next.js UI Lab 실행
+dev-ui port="3100":
+    cd apps/ui-lab && mise exec -- ./node_modules/.bin/next dev --port "{{port}}"
+
 # 개발: Collector만 standalone 설정으로 실행
 dev-collector:
     mise exec -- pnpm collector

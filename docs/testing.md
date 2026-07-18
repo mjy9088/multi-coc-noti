@@ -61,7 +61,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 
 1. The full import flow from initial unanswered storage to a separately saved resource response
 2. Admin authentication, preview/import, new-account creation, and newest-export precedence
-3. Mobile Quick Paste, automatic Review, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
+3. Mobile fast import from clipboard through Review and save, preservation of input after failure, appropriate route/Dialog presentation, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
 4. Group ordering, tag groups, and upgrade-ready sorting in the browser
 5. Maintenance CLI JSONL compatibility plus seed/reseed behavior
 6. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication

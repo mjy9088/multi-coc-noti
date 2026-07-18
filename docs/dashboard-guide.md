@@ -28,12 +28,16 @@ Settings mutations provide immediate pending feedback on their action and show a
 
 The current visual design is intentionally isolated rather than treated as a long-term component system:
 
-- `app/styles/foundations.css` contains durable semantic tokens and global browser foundations.
+- `packages/ui/src/styles` contains durable semantic tokens, global browser foundations, and owned primitive styles shared
+  by Dashboard and UI Lab.
 - `app/styles/primitives.css` contains small reusable interaction components such as mutation feedback.
 - `app/styles/legacy.css` contains the current screen-specific presentation and can be replaced incrementally during a redesign.
 - Settings request and mutation behavior lives in hooks, while feedback rendering lives in a standalone component. A future redesign should reuse these behavior contracts instead of carrying forward legacy selectors.
 
 Add new cross-screen interaction behavior to a primitive or hook. Avoid extending `legacy.css` unless the rule only supports an existing screen during the migration period.
+
+The phased token, component-library, feature-decomposition, and visual-testing work is tracked in the
+[UI architecture and screen inventory](ui/README.md).
 
 ## PWA installation
 

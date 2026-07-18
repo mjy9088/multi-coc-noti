@@ -9,15 +9,18 @@
   },
   "scripts": {
     "dev": "pnpm --filter @multi-coc/dashboard dev",
+    "dev:ui": "pnpm --filter @multi-coc/ui-lab dev",
     "build": "pnpm --filter @multi-coc/dashboard build",
+    "build:ui": "pnpm --filter @multi-coc/ui-lab build",
+    "test:ui": "pnpm --filter @multi-coc/ui-lab test:e2e",
     "start": "pnpm --filter @multi-coc/dashboard start",
     "collector": "pnpm --filter @multi-coc/collector start",
     "notifier": "pnpm --filter @multi-coc/notifier start",
     "format": "biome check --write",
     "format:check": "biome ci",
-    "typecheck": "tsc --noEmit && pnpm --filter @multi-coc/dashboard typecheck",
-    "test": "pnpm typecheck && pnpm --filter @multi-coc/database test && pnpm --filter @multi-coc/reverse-proxy test && pnpm --filter @multi-coc/upgrade-availability test && pnpm --filter @multi-coc/village-export test && pnpm --filter @multi-coc/notification-policy test && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build",
-    "lint": "biome lint && pnpm --filter @multi-coc/dashboard lint"
+    "typecheck": "tsc --noEmit && pnpm --filter @multi-coc/ui typecheck && pnpm --filter @multi-coc/ui-lab typecheck && pnpm --filter @multi-coc/dashboard typecheck",
+    "test": "pnpm typecheck && pnpm --filter @multi-coc/database test && pnpm --filter @multi-coc/reverse-proxy test && pnpm --filter @multi-coc/upgrade-availability test && pnpm --filter @multi-coc/village-export test && pnpm --filter @multi-coc/notification-policy test && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build && pnpm build:ui",
+    "lint": "biome lint && pnpm --filter @multi-coc/dashboard lint && pnpm --filter @multi-coc/ui-lab lint"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",

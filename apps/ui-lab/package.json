@@ -1,5 +1,5 @@
 {
-  "name": "@multi-coc/dashboard",
+  "name": "@multi-coc/ui-lab",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -9,18 +9,17 @@
     "start": "next start",
     "typegen": "next typegen",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint . --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern .next",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@multi-coc/ui": "workspace:*",
-    "@multi-coc/upgrade-availability": "workspace:*",
-    "@tanstack/react-query": "5.101.2",
     "next": "16.2.6",
-    "next-intl": "4.13.2",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

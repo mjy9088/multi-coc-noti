@@ -13,5 +13,5 @@
     "types": ["node"]
   },
   "include": ["packages/**/*.ts"],
-  "exclude": ["apps/dashboard", "node_modules"]
+  "exclude": ["apps/dashboard", "apps/ui-lab", "packages/ui", "node_modules"]
 }

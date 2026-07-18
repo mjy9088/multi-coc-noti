@@ -1,4 +1,4 @@
 @import "tailwindcss";
-@import "./styles/foundations.css";
+@import "@multi-coc/ui/styles.css";
 @import "./styles/primitives.css";
 @import "./styles/legacy.css";

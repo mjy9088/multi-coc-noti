@@ -1,0 +1,98 @@
+.ui-button {
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-small);
+  cursor: pointer;
+  box-shadow: var(--ui-shadow-small);
+  transition:
+    color var(--ui-motion-fast) var(--ui-ease-standard),
+    background var(--ui-motion-fast) var(--ui-ease-standard),
+    border-color var(--ui-motion-fast) var(--ui-ease-standard),
+    transform var(--ui-motion-fast) var(--ui-ease-standard);
+}
+
+.ui-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ui-button:focus-visible {
+  outline: 3px solid var(--ui-color-focus);
+  outline-offset: 2px;
+}
+
+.ui-button-primary {
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text-inverse);
+}
+
+.ui-button-primary:hover:not(:disabled) {
+  background: var(--ui-color-accent-hover);
+}
+
+.ui-button-secondary {
+  border-color: var(--ui-color-border);
+  background: var(--ui-color-surface-raised);
+  color: var(--ui-color-text);
+}
+
+.ui-button-secondary:hover:not(:disabled),
+.ui-button-quiet:hover:not(:disabled) {
+  background: var(--ui-color-surface-inset);
+}
+
+.ui-button-quiet {
+  background: transparent;
+  color: var(--ui-color-text-secondary);
+  box-shadow: none;
+}
+
+.ui-button-danger {
+  background: var(--ui-color-danger);
+  color: var(--ui-color-text-inverse);
+}
+
+.ui-button-danger:hover:not(:disabled) {
+  background: var(--ui-color-danger-hover);
+}
+
+.ui-button-small {
+  min-height: var(--ui-control-small);
+  padding: 0 var(--ui-space-3);
+  font-size: 0.75rem;
+}
+
+.ui-button-medium {
+  min-height: var(--ui-control-medium);
+  padding: 0 var(--ui-space-4);
+  font-size: 0.875rem;
+}
+
+.ui-button-large {
+  min-height: var(--ui-control-large);
+  padding: 0 var(--ui-space-5);
+  font-size: 1rem;
+}
+
+.ui-button-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-spin 0.7s linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-button {
+    transition: none;
+  }
+
+  .ui-button-spinner {
+    animation-duration: 1.4s;
+  }
+}

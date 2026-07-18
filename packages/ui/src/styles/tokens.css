@@ -1,0 +1,79 @@
+:root {
+  color-scheme: light;
+
+  --ui-color-canvas: #f5f3ec;
+  --ui-color-surface: #fffdf8;
+  --ui-color-surface-raised: #ffffff;
+  --ui-color-surface-inset: #ebe8df;
+  --ui-color-overlay: #17202ab8;
+  --ui-color-text: #17202a;
+  --ui-color-text-secondary: #4f5964;
+  --ui-color-text-muted: #6e7781;
+  --ui-color-text-inverse: #ffffff;
+  --ui-color-border-subtle: #e8e4dc;
+  --ui-color-border: #dedbd2;
+  --ui-color-border-strong: #aaa59a;
+  --ui-color-focus: #185f9d;
+  --ui-color-accent: #397a5d;
+  --ui-color-accent-hover: #2f684f;
+  --ui-color-accent-soft: #e7f2ec;
+  --ui-color-danger: #9b463d;
+  --ui-color-danger-hover: #843b34;
+  --ui-color-danger-soft: #f7e8e3;
+  --ui-color-warning: #8a651d;
+  --ui-color-warning-soft: #f6edcf;
+  --ui-color-info: #2e638d;
+  --ui-color-info-soft: #e4eef6;
+  --ui-color-disabled: #a6acb2;
+
+  --ui-space-1: 0.25rem;
+  --ui-space-2: 0.5rem;
+  --ui-space-3: 0.75rem;
+  --ui-space-4: 1rem;
+  --ui-space-5: 1.5rem;
+  --ui-space-6: 2rem;
+  --ui-space-7: 3rem;
+
+  --ui-control-small: 2rem;
+  --ui-control-medium: 2.5rem;
+  --ui-control-large: 3rem;
+  --ui-radius-small: 0.375rem;
+  --ui-radius-medium: 0.625rem;
+  --ui-radius-large: 1rem;
+  --ui-shadow-small: 0 1px 2px #17202a14;
+  --ui-shadow-medium: 0 10px 30px #17202a14;
+  --ui-shadow-overlay: 0 18px 50px #17202a2e;
+  --ui-motion-fast: 120ms;
+  --ui-motion-normal: 220ms;
+  --ui-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ui-content-width: 74rem;
+
+  /* Compatibility aliases used by Dashboard during incremental migration. */
+  --ink: var(--ui-color-text);
+  --muted: var(--ui-color-text-muted);
+  --paper: var(--ui-color-canvas);
+  --line: var(--ui-color-border);
+  --green: #4c9a79;
+  --feedback-success: var(--ui-color-accent);
+  --feedback-success-bg: var(--ui-color-accent-soft);
+  --feedback-error: var(--ui-color-danger);
+  --feedback-error-bg: var(--ui-color-danger-soft);
+  --feedback-shadow: var(--ui-shadow-overlay);
+}
+
+@theme inline {
+  --color-canvas: var(--ui-color-canvas);
+  --color-surface: var(--ui-color-surface);
+  --color-surface-raised: var(--ui-color-surface-raised);
+  --color-surface-inset: var(--ui-color-surface-inset);
+  --color-text: var(--ui-color-text);
+  --color-text-secondary: var(--ui-color-text-secondary);
+  --color-text-muted: var(--ui-color-text-muted);
+  --color-border: var(--ui-color-border);
+  --color-focus: var(--ui-color-focus);
+  --color-accent: var(--ui-color-accent);
+  --color-danger: var(--ui-color-danger);
+  --radius-ui-sm: var(--ui-radius-small);
+  --radius-ui: var(--ui-radius-medium);
+  --radius-ui-lg: var(--ui-radius-large);
+}
