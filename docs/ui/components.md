@@ -26,6 +26,23 @@ Current variants:
 Before broad Dashboard migration, add icon composition, pending accessible copy guidance, and component-level accessibility
 coverage.
 
+### Actions, forms, and containers
+
+UI Lab now catalogues the owned `IconButton`, `Field`, `Label`, `Description`, `FieldError`, `Input`, `Textarea`, `Select`,
+`Checkbox`, `Card`, `Badge`, and `Separator` APIs. Field controls derive stable accessible relationships from their parent
+`Field`; icon-only actions require a label.
+
+### Request and navigation states
+
+`Spinner`, `RequestState`, `EmptyState`, `StaleNotice`, and `Skeleton` cover loading, failure, cached, empty, and
+layout-preserving placeholder states. `Tabs` and `Tab` use Radix keyboard behavior; feature routes still own URL state.
+
+### Dialog and Toast
+
+The owned Radix-backed Dialog composition handles modal focus and responsive sheet presentation. `ToastProvider`,
+`useToast`, and the global viewport support semantic intent, stable-ID replacement, actions, persistent errors, and timed
+success/information feedback. Dashboard has not migrated its legacy overlays or feedback to these APIs yet.
+
 ## Legacy reusable UI
 
 These elements work today but are not stable design-system APIs.
@@ -59,12 +76,12 @@ They are migration evidence, not component APIs.
 Settings currently contains hand-authored modal markup. Preserve the workflow, but replace its overlay, focus, escape, and
 background interaction behavior with the planned Dialog primitive.
 
-## Planned primitives
+## Implemented primitive scope
 
 ### Actions
 
 - `IconButton`: accessible label is mandatory; icon-only dimensions and tooltip policy are consistent.
-- `ButtonGroup` only if repeated grouping behavior proves necessary.
+- `ButtonGroup` remains intentionally absent until repeated grouping behavior proves necessary.
 
 ### Forms
 
@@ -90,8 +107,8 @@ background interaction behavior with the planned Dialog primitive.
 
 - `Dialog`, `DialogContent`, `DialogTitle`, `DialogDescription`, and action/footer composition;
 - `Toast`, `ToastViewport`, and a provider/hook for global mutation feedback;
-- a fast import composition using form, review, and feedback primitives; use Dialog only if workflow validation supports it;
-- confirmation Dialog compositions for destructive actions.
+- a fast import composition and destructive confirmations remain product-level work; use Dialog only when workflow
+  validation supports it.
 
 See [Overlays and feedback](overlays-and-feedback.md) for behavioral requirements.
 

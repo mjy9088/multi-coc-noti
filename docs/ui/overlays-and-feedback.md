@@ -12,7 +12,7 @@ Save results are Toasts. Destructive confirmation and the resource-status questi
 primarily a workflow requirement, not a predetermined component: a Dialog is the leading candidate only while it makes the
 common import path faster and keeps review information usable.
 
-## Dialog primitive — planned
+## Dialog primitive — implemented, Dashboard migration pending
 
 Implement the owned API using an accessible headless primitive rather than custom document-level event handling.
 
@@ -91,7 +91,7 @@ Village deletion uses explicit village identity, a danger action, and a non-dest
 Do not turn ordinary Settings pages into Dialogs. Use Dialog only for bounded tasks or decisions; persistent, linkable
 configuration remains route content.
 
-## Toast system — planned
+## Toast system — implemented, Dashboard migration pending
 
 The Toast provider belongs in the persistent App Shell so feedback survives route-content replacement without moving page
 layout.

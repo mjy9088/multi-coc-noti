@@ -183,6 +183,22 @@ input {
   gap: var(--ui-space-3);
 }
 
+.lab-form-grid,
+.lab-state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--ui-space-4);
+  margin-bottom: var(--ui-space-4);
+}
+
+.lab-muted,
+.lab-tab-panel {
+  margin: var(--ui-space-2) 0 0;
+  color: var(--ui-color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .lab-swatches {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));

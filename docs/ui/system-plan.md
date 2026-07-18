@@ -17,7 +17,8 @@ inventory live alongside this plan under `docs/ui/`.
 - `app/styles/primitives.css` contains only mutation feedback styling.
 - `app/styles/legacy.css` is approximately 36 KB and owns about 168 distinct selectors across every screen.
 - `admin-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
-- Tailwind CSS 4, the local `cn()` helper, typed variants, and the first owned Button primitive are available.
+- Tailwind CSS 4, the local `cn()` helper, typed variants, and the owned actions, forms, containers, request states, Tabs,
+  Dialog, and Toast primitives are available and catalogued in UI Lab.
 - `apps/ui-lab` is a Next.js App Router catalogue with a persistent layout and multiple routes, but there is not yet an
   isolated accessibility or visual regression suite.
 

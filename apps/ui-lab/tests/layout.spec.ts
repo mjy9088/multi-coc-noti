@@ -29,3 +29,27 @@ test("persistent App Router layout keeps state and DOM identity across catalogue
   await expect(page).toHaveURL(/\/patterns$/);
   await expect(page.locator("#layout-note")).toHaveValue("route state stays here");
 });
+
+test("owned interactive primitives expose keyboard and feedback behavior", async ({ page }) => {
+  await page.goto("/components");
+
+  const upgradesTab = page.getByRole("tab", { name: "Upgrades" });
+  await upgradesTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Syncs" })).toHaveAttribute("data-state", "active");
+  await expect(page.getByText("Showing syncs content.")).toBeVisible();
+
+  const dialogTrigger = page.getByRole("button", { name: "Open resource question" });
+  await dialogTrigger.click();
+  const dialog = page.getByRole("dialog", { name: "Resources for the next upgrade?" });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(dialogTrigger).toBeFocused();
+
+  await page.getByRole("button", { name: "Persistent error" }).click();
+  const toastAlert = page.getByRole("alert").filter({ hasText: "Could not save settings" });
+  await expect(toastAlert).toBeVisible();
+  await toastAlert.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved after retry" })).toBeVisible();
+});
