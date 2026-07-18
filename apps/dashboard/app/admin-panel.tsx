@@ -1,8 +1,8 @@
 "use client";
 
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogTitle, useToast } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import FeedbackToast from "./feedback-toast";
 import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import { useAdminRequest } from "./use-admin-request";
@@ -86,6 +86,7 @@ export default function AdminPanel({
   onQuickPasteApplied?: (id: number) => void;
 }) {
   const t = useTranslations("Admin");
+  const { dismiss, toast } = useToast();
   const { formatDateTime, formatDuration } = useDashboardFormat();
   const [token, setToken] = useState("");
   const [authReady, setAuthReady] = useState(false);
@@ -209,6 +210,22 @@ export default function AdminPanel({
     const timer = window.setTimeout(() => setMessage(""), 4_500);
     return () => window.clearTimeout(timer);
   }, [message]);
+  useEffect(() => {
+    const id = "admin-mutation-feedback";
+    if (!token || initialLoadFailed) {
+      dismiss(id);
+      return;
+    }
+    if (error) {
+      toast({ id, intent: "error", title: error, duration: null });
+      return;
+    }
+    if (message) {
+      toast({ id, intent: "success", title: message });
+      return;
+    }
+    dismiss(id);
+  }, [dismiss, error, initialLoadFailed, message, toast, token]);
 
   const reviewExport = useCallback(
     async (text: string) => {
@@ -505,16 +522,6 @@ export default function AdminPanel({
           {t("manageGroups")}
         </button>
       </div>
-      <FeedbackToast
-        error={error}
-        message={message}
-        dismissLabel={t("dismissFeedback")}
-        onDismiss={() => {
-          setError("");
-          setMessage("");
-        }}
-      />
-
       {section === "import" && (
         <div className="import-flow">
           <article
@@ -952,18 +959,22 @@ export default function AdminPanel({
           </div>
         </article>
       )}
-      {resourcePrompt && (
-        <div className="resource-prompt-backdrop" role="presentation" onClick={() => setResourcePrompt(null)}>
-          <div
-            className="resource-prompt"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="resource-prompt-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 id="resource-prompt-title">{t("resourcePromptTitle")}</h2>
-            <p>{t("resourcePromptHelp")}</p>
-            <div>
+      <Dialog
+        open={Boolean(resourcePrompt)}
+        onOpenChange={(open) => {
+          if (!open && !resourceResponding) setResourcePrompt(null);
+        }}
+      >
+        <DialogContent
+          className="resource-dialog"
+          closeLabel={t("resourceAnswerLater")}
+          onEscapeKeyDown={(event) => resourceResponding && event.preventDefault()}
+          onPointerDownOutside={(event) => resourceResponding && event.preventDefault()}
+        >
+          <DialogTitle>{t("resourcePromptTitle")}</DialogTitle>
+          <DialogDescription>{t("resourcePromptHelp")}</DialogDescription>
+          <DialogBody className="resource-dialog-body">
+            <div className="resource-dialog-options">
               <button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
                 {t("resourceAbundant")}
               </button>
@@ -977,9 +988,9 @@ export default function AdminPanel({
             <button className="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>
               {t("resourceAnswerLater")}
             </button>
-          </div>
-        </div>
-      )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

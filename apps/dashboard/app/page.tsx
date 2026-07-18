@@ -10,6 +10,7 @@ import {
   summarizeAvailability,
 } from "@multi-coc/upgrade-availability";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -197,10 +198,6 @@ export default function Home({
 
   const openVillageSettings = (accountId: string) => {
     router.push(`/settings/villages/${encodeURIComponent(accountId)}`);
-  };
-
-  const openVillage = (accountId: string) => {
-    router.push(`/villages/${encodeURIComponent(accountId)}`);
   };
 
   const liveAccounts = useMemo(
@@ -508,20 +505,12 @@ export default function Home({
                 ? { ...account.upgradeSlots, laboratory: displayedLaboratory }
                 : undefined;
               return (
-                <article
+                <Link
                   className="village-card village-card-link"
                   key={account.id}
+                  href={`/villages/${encodeURIComponent(account.id)}`}
                   style={{ "--accent": account.color } as React.CSSProperties}
-                  role="button"
-                  tabIndex={0}
                   aria-label={t("openVillage", { name: account.name })}
-                  onClick={() => openVillage(account.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openVillage(account.id);
-                    }
-                  }}
                 >
                   <div className="card-head">
                     <Shield level={account.townHall} color={account.color} />
@@ -549,7 +538,7 @@ export default function Home({
                       {t("updated")} {formatRelative(account.lastSeen, clockNow)}
                     </span>
                   </div>
-                </article>
+                </Link>
               );
             })}
             {!accounts.length && <div className="empty villages-empty">{t("noMatches")}</div>}

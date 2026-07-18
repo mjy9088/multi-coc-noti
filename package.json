@@ -19,14 +19,18 @@
     "format": "biome check --write",
     "format:check": "biome ci",
     "typecheck": "tsc --noEmit && pnpm --filter @multi-coc/ui typecheck && pnpm --filter @multi-coc/ui-lab typecheck && pnpm --filter @multi-coc/dashboard typecheck",
-    "test": "pnpm typecheck && pnpm --filter @multi-coc/database test && pnpm --filter @multi-coc/reverse-proxy test && pnpm --filter @multi-coc/upgrade-availability test && pnpm --filter @multi-coc/village-export test && pnpm --filter @multi-coc/notification-policy test && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build && pnpm build:ui",
-    "lint": "biome lint && pnpm --filter @multi-coc/dashboard lint && pnpm --filter @multi-coc/ui-lab lint"
+    "test": "pnpm test:ui-contracts && pnpm typecheck && pnpm --filter @multi-coc/database test && pnpm --filter @multi-coc/reverse-proxy test && pnpm --filter @multi-coc/upgrade-availability test && pnpm --filter @multi-coc/village-export test && pnpm --filter @multi-coc/notification-policy test && pnpm --filter @multi-coc/collector test && pnpm --filter @multi-coc/notifier test && pnpm build && pnpm build:ui",
+    "test:ui-contracts": "node --test scripts/*ui-contracts.test.mjs",
+    "lint": "biome lint && pnpm lint:ui-contracts && pnpm --filter @multi-coc/dashboard lint && pnpm --filter @multi-coc/ui-lab lint",
+    "lint:ui-contracts": "node scripts/lint-ui-contracts.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
     "@types/node": "^24.13.3",
     "@types/pg": "^8.20.0",
+    "eslint": "9.39.4",
     "lefthook": "2.1.10",
+    "postcss": "8.5.19",
     "typescript": "5.9.3"
   }
 }

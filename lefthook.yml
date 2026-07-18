@@ -7,3 +7,6 @@ pre-commit:
       root: "apps/dashboard/"
       glob: "apps/dashboard/**/*.{js,jsx,ts,tsx}"
       run: pnpm exec eslint {staged_files}
+    - name: ui-contracts
+      glob: "{apps,packages}/**/*.css"
+      run: pnpm lint:ui-contracts -- {staged_files}

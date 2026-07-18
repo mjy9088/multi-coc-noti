@@ -44,6 +44,17 @@ themselves.
 intrinsic minimum sizes; feature CSS owns the column proportions, gap, responsive collapse, and each pane's internal
 overflow.
 
+### Enforced layout contracts
+
+`pnpm lint:ui-contracts` turns settled layout solutions into actionable CSS diagnostics. Do not reimplement bottom-sticky
+actions, let top-corner-only sheets float above their bottom edge, omit a sticky surface strategy, configure only one sticky
+bleed axis, top-align a named multi-pane layout, use sub-1rem form controls, introduce magic stacking or visual values, or
+build a feature-local overlay. Surface-colored containers must publish their context, and scroll containers must opt out of
+intrinsic minimum sizing. JSX checks also reject click handlers on non-interactive elements, unlabeled symbol-only buttons,
+and feature-local feedback imports. Diagnostics point to `ActionBar`, `ui-sticky-surface`, paired bleed variables,
+`SplitLayout`, semantic tokens, `Button`/`Link`, `IconButton`, `Dialog`, or `useToast` as appropriate. See
+[Test contracts: Formatting and linting](../testing.md#formatting-and-linting) for the narrowly scoped suppression syntax.
+
 ### Request and navigation states
 
 `Spinner`, `RequestState`, `EmptyState`, `StaleNotice`, and `Skeleton` cover loading, failure, cached, empty, and
@@ -53,18 +64,12 @@ layout-preserving placeholder states. `Tabs` and `Tab` use Radix keyboard behavi
 
 The owned Radix-backed Dialog composition handles modal focus and responsive sheet presentation. `ToastProvider`,
 `useToast`, and the global viewport support semantic intent, stable-ID replacement, actions, persistent errors, and timed
-success/information feedback. Dashboard has not migrated its legacy overlays or feedback to these APIs yet.
+success/information feedback. Dashboard mounts the provider at its persistent app boundary; Settings mutation feedback and
+the resource-status prompt now use the shared Toast and Dialog paths.
 
 ## Legacy reusable UI
 
 These elements work today but are not stable design-system APIs.
-
-### FeedbackToast
-
-Current location: `apps/dashboard/app/feedback-toast.tsx` and `app/styles/primitives.css`.
-
-It shows one success or error message for Settings mutations. Replace it with owned Toast primitives and a global provider;
-do not extend its current prop API.
 
 ### LoadingState and ErrorState
 
@@ -82,11 +87,6 @@ sticky mobile behavior while migrating presentation to owned Tabs/Navigation com
 
 The existing screens repeat card, badge, input, select, checkbox, metric, and action-row patterns through legacy selectors.
 They are migration evidence, not component APIs.
-
-### Resource-status prompt
-
-Settings currently contains hand-authored modal markup. Preserve the workflow, but replace its overlay, focus, escape, and
-background interaction behavior with the planned Dialog primitive.
 
 ## Implemented primitive scope
 

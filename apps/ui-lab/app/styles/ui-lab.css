@@ -25,7 +25,7 @@ input {
 
 .lab-header {
   position: sticky;
-  z-index: 20;
+  z-index: var(--ui-layer-app-sticky);
   top: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -61,6 +61,7 @@ input {
 }
 
 .lab-nav {
+  min-width: 0;
   grid-column: 1 / -1;
   display: flex;
   gap: var(--ui-space-2);
@@ -108,7 +109,7 @@ input {
   border-radius: var(--ui-radius-small);
   background: var(--ui-color-surface-raised);
   padding: 0 var(--ui-space-3);
-  font-size: 0.75rem;
+  font-size: 1rem;
 }
 
 .lab-main {
@@ -225,6 +226,8 @@ input {
 }
 
 .lab-swatch span {
+  --ui-surface-context: var(--ui-color-surface);
+
   border-radius: var(--ui-radius-small);
   background: var(--ui-color-surface);
   padding: 0.2rem 0.4rem;
@@ -248,6 +251,7 @@ input {
 /* Shared Flow and Composition workbench */
 
 .flow-nav {
+  min-width: 0;
   display: flex;
   gap: var(--ui-space-2);
   margin-bottom: var(--ui-space-4);
@@ -279,6 +283,8 @@ input {
 }
 
 .flow-controls {
+  --ui-surface-context: var(--ui-color-surface);
+
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ui-space-3);
@@ -291,7 +297,7 @@ input {
 
 .flow-controls .ui-input {
   min-height: var(--ui-control-medium);
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 .flow-stage-shell {
   margin-top: var(--ui-space-4);
@@ -452,6 +458,7 @@ input {
   font-size: 1.2rem;
 }
 .flow-filter-bar {
+  min-width: 0;
   display: flex;
   gap: var(--ui-space-2);
   overflow-x: auto;
@@ -522,6 +529,8 @@ input {
   margin-bottom: var(--ui-space-4);
 }
 .composition-review section {
+  --ui-surface-context: var(--ui-color-surface);
+
   display: grid;
   gap: var(--ui-space-2);
   border: 1px solid var(--ui-color-border);
@@ -587,7 +596,7 @@ input {
   --ui-sticky-surface-inline-bleed: var(--ui-space-5);
   --ui-sticky-surface-block-end-bleed: var(--ui-space-5);
 
-  z-index: 2;
+  z-index: var(--ui-layer-local-raised);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-overlay);
 }
@@ -603,6 +612,7 @@ input {
   left: 50%;
   width: min(36rem, calc(100% - 2rem));
   max-height: calc(100% - 2rem);
+  min-height: 0;
   overflow-y: auto;
   transform: translate(-50%, -50%);
   border-radius: var(--ui-radius-large);
@@ -614,13 +624,14 @@ input {
   right: var(--ui-space-4);
   bottom: var(--ui-space-4);
   width: min(34rem, calc(100% - 2rem));
+  min-height: 0;
   overflow-y: auto;
   border-radius: var(--ui-radius-large);
   padding: var(--ui-space-5);
 }
 .composition-backdrop {
   position: absolute;
-  z-index: 1;
+  z-index: var(--ui-layer-local-base);
   inset: 0;
   background: var(--ui-color-overlay);
 }
@@ -630,12 +641,13 @@ input {
 }
 .composition-import-list {
   max-height: 18rem;
+  min-height: 0;
   overflow-y: auto;
   padding-right: var(--ui-space-1);
 }
-.composition-list-header {
+.composition-list-header.ui-sticky-surface {
   position: sticky;
-  z-index: 3;
+  z-index: var(--ui-layer-local-sticky);
   top: 0;
   display: flex;
   gap: var(--ui-space-3);
@@ -684,6 +696,8 @@ input {
   background: var(--ui-color-accent);
 }
 .composition-table {
+  --ui-surface-context: var(--ui-color-surface);
+
   display: grid;
   overflow: hidden;
   border: 1px solid var(--ui-color-border);
@@ -725,6 +739,7 @@ input {
 }
 .composition-scroll-list {
   max-height: 34rem;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: var(--ui-space-1);
@@ -763,13 +778,15 @@ input {
 }
 .composition-picker-backdrop {
   position: absolute;
-  z-index: 10;
+  z-index: var(--ui-layer-local-backdrop);
   inset: 0;
   background: var(--ui-color-overlay);
 }
 .composition-mobile-detail-sheet {
+  --ui-surface-context: var(--ui-color-surface);
+
   position: absolute;
-  z-index: 11;
+  z-index: var(--ui-layer-local-overlay);
   right: 0;
   bottom: 0;
   left: 0;
@@ -783,6 +800,7 @@ input {
   box-shadow: var(--ui-shadow-overlay);
 }
 .composition-mobile-detail-sheet > .flow-pane {
+  --ui-sticky-surface-inline-bleed: clamp(1rem, 4vw, 2rem);
   --ui-sticky-surface-block-end-bleed: 0px;
 
   height: 100%;
@@ -804,9 +822,9 @@ input {
   display: grid;
   gap: var(--ui-space-5);
 }
-.composition-sticky-filters {
+.composition-sticky-filters.ui-sticky-surface {
   position: sticky;
-  z-index: 4;
+  z-index: var(--ui-layer-local-sticky);
   top: 0;
   border: 1px solid var(--ui-color-border);
   border-radius: var(--ui-radius-medium);
@@ -838,14 +856,14 @@ input {
   display: none;
 }
 .composition-timeline i {
-  z-index: 1;
+  z-index: var(--ui-layer-local-base);
   width: 0.65rem;
   height: 0.65rem;
   margin-top: 1rem;
   border: 2px solid var(--ui-color-surface);
   border-radius: 50%;
   background: var(--ui-color-accent);
-  box-shadow: 0 0 0 1px var(--ui-color-accent);
+  box-shadow: var(--ui-shadow-marker);
 }
 
 .composition-stage[data-viewport="mobile"] .composition-review {

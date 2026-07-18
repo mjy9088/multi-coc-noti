@@ -14,7 +14,6 @@ inventory live alongside this plan under `docs/ui/`.
 ## Current state
 
 - `packages/ui/src/styles` now contains the initial shared semantic colors, browser foundations, and Button styles.
-- `app/styles/primitives.css` contains only mutation feedback styling.
 - `app/styles/legacy.css` is approximately 36 KB and owns about 168 distinct selectors across every screen.
 - `admin-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
 - Tailwind CSS 4, the local `cn()` helper, typed variants, and the owned actions, forms, containers, request states, Tabs,
@@ -28,6 +27,12 @@ inventory live alongside this plan under `docs/ui/`.
 - `apps/ui-lab/app/globals.css` is only the global CSS entry point. Lab-only shell, workbench, and disposable composition
   styling lives in `app/styles/ui-lab.css`; production-worthy component styles still move to `packages/ui` rather than
   being imported from UI Lab.
+- The PostCSS-based UI contract linter prevents feature CSS from bypassing established sticky, sheet, overlay, mobile form,
+  stacking-layer, surface-context, intrinsic-scroll-size, and visual-token solutions. Local ESLint rules enforce semantic
+  click targets, accessible symbol buttons, and the shared feedback path; diagnostics direct authors to the owned primitive
+  or semantic token.
+- Dashboard mounts the shared Toast provider at its persistent layout boundary. Settings mutation feedback uses it, and its
+  resource-status prompt uses the owned Dialog primitive.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual

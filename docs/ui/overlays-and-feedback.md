@@ -93,7 +93,7 @@ Village deletion uses explicit village identity, a danger action, and a non-dest
 Do not turn ordinary Settings pages into Dialogs. Use Dialog only for bounded tasks or decisions; persistent, linkable
 configuration remains route content.
 
-## Toast system — implemented, Dashboard migration pending
+## Toast system — implemented and mounted in Dashboard
 
 The Toast provider belongs in the persistent App Shell so feedback survives route-content replacement without moving page
 layout.
@@ -118,8 +118,8 @@ Behavior:
 - identical repeated events are updated or deduplicated rather than producing an unbounded stack;
 - route navigation does not clear feedback prematurely.
 
-Initial migration should replace `FeedbackToast` without changing the documented Settings feedback contract. Afterwards,
-Quick Paste, deletion, group ordering, alert overrides, and village saving should use the same global system.
+Settings mutation feedback now uses the global system for Quick Paste, deletion, group ordering, alert overrides, and
+village saving. New features must publish through the same provider rather than introduce a local toast viewport.
 
 ## Inline feedback versus Toast
 
