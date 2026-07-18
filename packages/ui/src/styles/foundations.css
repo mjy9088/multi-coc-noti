@@ -10,6 +10,8 @@ summary,
 }
 
 html {
+  --ui-surface-context: var(--ui-color-canvas);
+
   background: var(--ui-color-canvas);
 }
 

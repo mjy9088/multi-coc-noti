@@ -23,6 +23,11 @@ inventory live alongside this plan under `docs/ui/`.
   isolated accessibility or visual regression suite.
 - UI Lab includes fixture-only Import, Settings, Dashboard, and History flow simulators. Their scenario, viewport, latency,
   and result controls are for interaction design review and never call product APIs.
+- UI Lab also includes disposable composition studies for the same four areas. They compare information hierarchy and
+  container choices against written success criteria without turning a provisional layout into a pixel contract.
+- `apps/ui-lab/app/globals.css` is only the global CSS entry point. Lab-only shell, workbench, and disposable composition
+  styling lives in `app/styles/ui-lab.css`; production-worthy component styles still move to `packages/ui` rather than
+  being imported from UI Lab.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual

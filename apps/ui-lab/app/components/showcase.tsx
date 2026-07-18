@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ActionBar,
   Badge,
   Button,
   Card,
@@ -25,6 +26,7 @@ import {
   Separator,
   Skeleton,
   Spinner,
+  SplitLayout,
   StaleNotice,
   Tab,
   Tabs,
@@ -106,6 +108,28 @@ export default function ComponentsShowcase() {
             <Button pending>Saving…</Button>
             <Button disabled>Unavailable</Button>
           </div>
+        </section>
+        <section className="lab-section">
+          <h2>Action bar</h2>
+          <p>Persistent actions use an opaque surface so scrolling content never shows through.</p>
+          <ActionBar sticky>
+            <Button tone="quiet">Reset</Button>
+            <Button>Save settings</Button>
+          </ActionBar>
+        </section>
+        <section className="lab-section wide">
+          <h2>Equal-height split layout</h2>
+          <p>Sibling panes share the row height even when their content lengths differ.</p>
+          <SplitLayout className="lab-split-demo">
+            <Card>
+              <strong>Primary pane</strong>
+              <p>Longer forms or results determine the shared row height.</p>
+              <p>Both pane boundaries remain aligned.</p>
+            </Card>
+            <Card>
+              <strong>Secondary pane</strong>
+            </Card>
+          </SplitLayout>
         </section>
         <section className="lab-section">
           <h2>Badges</h2>

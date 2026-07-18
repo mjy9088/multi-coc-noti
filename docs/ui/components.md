@@ -32,6 +32,18 @@ UI Lab now catalogues the owned `IconButton`, `Field`, `Label`, `Description`, `
 `Checkbox`, `Card`, `Badge`, and `Separator` APIs. Field controls derive stable accessible relationships from their parent
 `Field`; icon-only actions require a label.
 
+`ActionBar` groups final actions. Its sticky variant inherits the nearest `--ui-surface-context` through transparent
+wrappers and owns a stacking context, top boundary, shadow, and safe-area padding so scrolled content never shows through
+or obscures the final controls. Owned surfaces define this context automatically; a feature-defined surface with a custom
+background must define it alongside that background. A padded scroll container exposes its inline and bottom padding
+through `--ui-sticky-surface-inline-bleed` and `--ui-sticky-surface-block-end-bleed`; the sticky background then covers those
+gutters as well as the action row. Other sticky regions use `ui-sticky-surface` instead of selecting a canvas or panel color
+themselves.
+
+`SplitLayout` is the base for adjacent panes. It makes each direct child fill the shared grid-row height and resets its
+intrinsic minimum sizes; feature CSS owns the column proportions, gap, responsive collapse, and each pane's internal
+overflow.
+
 ### Request and navigation states
 
 `Spinner`, `RequestState`, `EmptyState`, `StaleNotice`, and `Skeleton` cover loading, failure, cached, empty, and

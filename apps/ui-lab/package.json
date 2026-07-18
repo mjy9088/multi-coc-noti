@@ -9,7 +9,7 @@
     "start": "next start",
     "typegen": "next typegen",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint . --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern .next --ignore-pattern .next-playwright",
     "test:e2e": "playwright test"
   },
   "dependencies": {

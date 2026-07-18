@@ -27,6 +27,8 @@ Required behavior:
 - clicking the backdrop may close only when losing entered data is harmless;
 - pending actions cannot be submitted twice;
 - narrow screens respect safe areas and leave controls reachable above the software keyboard;
+- a bottom sheet with only its top corners rounded sits flush against the viewport bottom; safe-area spacing appears once
+  inside its controls rather than as an outer gap or duplicated container padding;
 - long Korean and English text wraps without horizontal overflow;
 - reduced-motion users do not receive unnecessary entrance/exit animation.
 

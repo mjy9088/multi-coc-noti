@@ -10,6 +10,7 @@ const routes = [
   ["/components", "Components"],
   ["/patterns", "Route patterns"],
   ["/flows/import", "Flow lab"],
+  ["/compositions/import", "Composition lab"],
 ] as const;
 
 export function LabShell({ children }: { children: ReactNode }) {
@@ -42,7 +43,11 @@ export function LabShell({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               aria-current={
-                pathname === href || (href.startsWith("/flows") && pathname.startsWith("/flows")) ? "page" : undefined
+                pathname === href ||
+                (href.startsWith("/flows") && pathname.startsWith("/flows")) ||
+                (href.startsWith("/compositions") && pathname.startsWith("/compositions"))
+                  ? "page"
+                  : undefined
               }
             >
               {label}

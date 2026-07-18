@@ -129,7 +129,8 @@ village settings.
 Purpose: manage village identity, tags, color, player tag, resource policy, and deletion.
 
 The UUID route selects a village directly and must survive reload. The settings list and editor must make the selected
-village obvious on mobile and desktop.
+village obvious on mobile and desktop. On mobile, the village list fills the available master pane and scrolls internally;
+selecting a village opens the editor sheet without leaving a large unused area below a capped list.
 
 Deletion is destructive and requires a confirmation Dialog. Saving uses immediate pending feedback followed by Toast
 success or error feedback.
@@ -143,8 +144,17 @@ drag-and-drop and accessible from a keyboard.
 
 ## UI Lab — separate development app
 
-Routes: `/`, `/components`, `/patterns`, and `/flows/{import,settings,dashboard,history}` within `apps/ui-lab`.
+Routes: `/`, `/components`, `/patterns`, `/flows/{import,settings,dashboard,history}`, and
+`/compositions/{import,dashboard,settings,history}` within `apps/ui-lab`.
 
 Purpose: compare tokens and owned component states without Dashboard data, verify persistent App Router layout behavior,
 and review fixture-only product flows across scenario, viewport, latency, and result combinations. UI Lab never owns a
 production component implementation or calls product APIs.
+
+Flow routes vary data and request state for a chosen composition. Composition routes hold fixture meaning stable while
+comparing screen role, information priority, component placement, and route/Dialog/sheet choices. Preferred composition
+labels are review notes, not regression contracts.
+
+Representative fixtures are insufficient for the product's target users. Composition review must also use dozens of
+villages or records and verify list scroll ownership, sticky control boundaries, result counts, no-selection states, and
+whether important summaries or charts accidentally move below an effectively unbounded list.

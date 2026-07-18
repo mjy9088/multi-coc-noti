@@ -106,6 +106,47 @@
   white-space: nowrap;
 }
 
+.ui-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  justify-content: flex-end;
+}
+
+.ui-sticky-surface {
+  background-color: var(--ui-surface-context, inherit);
+}
+
+.ui-action-bar-sticky {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  isolation: isolate;
+  padding: var(--ui-space-3) 0 max(var(--ui-space-3), env(safe-area-inset-bottom));
+}
+
+.ui-action-bar-sticky::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(0px - var(--ui-sticky-surface-inline-bleed, 0px))
+    calc(0px - var(--ui-sticky-surface-block-end-bleed, 0px));
+  border-top: 1px solid var(--ui-color-border);
+  background-color: inherit;
+  box-shadow: 0 -0.75rem 1rem -1rem var(--ui-color-text-muted);
+  content: "";
+}
+
+.ui-split-layout {
+  display: grid;
+  align-items: stretch;
+}
+
+.ui-split-layout > * {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
 .ui-icon-button {
   width: var(--ui-control-medium);
   height: var(--ui-control-medium);
@@ -217,6 +258,8 @@
 }
 
 .ui-card {
+  --ui-surface-context: var(--ui-color-surface);
+
   border: 1px solid var(--ui-color-border);
   border-radius: var(--ui-radius-medium);
   background: var(--ui-color-surface);
@@ -346,6 +389,8 @@
   animation: ui-fade-in var(--ui-motion-normal) var(--ui-ease-standard);
 }
 .ui-dialog-content {
+  --ui-surface-context: var(--ui-color-surface);
+
   position: fixed;
   z-index: 101;
   top: 50%;
