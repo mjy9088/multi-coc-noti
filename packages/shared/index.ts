@@ -52,7 +52,6 @@ export type VillageSnapshot = {
   level: number;
   color: string;
   tags?: string[];
-  dataSource: string;
   online: boolean;
   refreshRequired?: boolean;
   refreshCompletedAt?: string | null;

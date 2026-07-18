@@ -150,8 +150,6 @@ Preparation time is a per-village minute value and can be disabled. Each active 
 
 ## Storage locations
 
-<!-- contract: API-PROFILE-002 -->
-
 | Data | Location |
 | --- | --- |
 | Accounts, tags, group order, resource policy, and notification queue | PostgreSQL |

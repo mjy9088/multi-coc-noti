@@ -23,7 +23,6 @@ export async function getDashboard(
         level: 0,
         color: account.color,
         tags: account.tags,
-        dataSource: "unavailable",
         online: false,
         lastSeen: new Date().toISOString(),
         builders: { free: 0, total: 0 },
@@ -116,7 +115,6 @@ export async function getDashboard(
           ...(villageExport.heroEquipment ? { heroEquipment: villageExport.heroEquipment } : {}),
           upgrades: villageExport.upgrades,
           lastSeen: latestExport.exportedAt,
-          dataSource: "game-export",
           online: true,
         });
       }

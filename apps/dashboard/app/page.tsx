@@ -42,7 +42,6 @@ type Village = {
   level: number;
   color: string;
   tags?: string[];
-  dataSource?: string;
   online: boolean;
   refreshRequired?: boolean;
   refreshCompletedAt?: string | null;
@@ -76,115 +75,7 @@ type SettingsSection = "import" | "alerts" | "villages" | "groups";
 const settingsPath = (section: SettingsSection) =>
   `/settings/${section === "import" ? "paste" : section === "alerts" ? "upgrades" : section}`;
 
-const now = Date.now();
-const demoData: DashboardData = {
-  generatedAt: new Date(now - 2 * 60_000).toISOString(),
-  groupOrder: ["War", "Main", "Mini"],
-  accounts: [
-    {
-      id: "main",
-      name: "MJY Prime",
-      tag: "#2P0J8LQ",
-      townHall: 17,
-      level: 241,
-      color: "#e9a23b",
-      tags: ["Main", "War"],
-      online: true,
-      lastSeen: new Date(now - 2 * 60_000).toISOString(),
-      builders: { free: 1, total: 6, regularTotal: 6 },
-      upgradeSlots: {
-        laboratory: { available: false },
-        petHouse: { available: true },
-        builderBase: { builders: { free: 1, total: 2 }, laboratory: { available: true } },
-      },
-      cooldowns: {
-        clockTower: new Date(now + 2 * 3600_000).toISOString(),
-        helpers: [{ dataId: 93000000, availableAt: new Date(now + 6 * 3600_000).toISOString() }],
-      },
-      upgrades: [
-        {
-          id: "u1",
-          name: "Inferno Artillery",
-          level: 2,
-          nextLevel: 3,
-          type: "building",
-          finishAt: new Date(now + 2.7 * 3600_000).toISOString(),
-        },
-        {
-          id: "u2",
-          name: "Archer Queen",
-          level: 96,
-          nextLevel: 97,
-          type: "hero",
-          finishAt: new Date(now + 1.35 * 86400_000).toISOString(),
-        },
-        {
-          id: "u3",
-          name: "Root Rider",
-          level: 3,
-          nextLevel: 4,
-          type: "research",
-          finishAt: new Date(now + 3.2 * 86400_000).toISOString(),
-        },
-      ],
-    },
-    {
-      id: "rush",
-      name: "Builder Rush",
-      tag: "#8G2Y1V9",
-      townHall: 15,
-      level: 187,
-      color: "#4ea58c",
-      tags: ["War"],
-      online: true,
-      lastSeen: new Date(now - 5 * 60_000).toISOString(),
-      builders: { free: 0, total: 6 },
-      upgrades: [
-        {
-          id: "u4",
-          name: "Multi Mortar",
-          level: 9,
-          nextLevel: 10,
-          type: "building",
-          base: "builder",
-          finishAt: new Date(now + 8.4 * 3600_000).toISOString(),
-        },
-        {
-          id: "u5",
-          name: "Royal Champion",
-          level: 37,
-          nextLevel: 38,
-          type: "hero",
-          finishAt: new Date(now + 2.1 * 86400_000).toISOString(),
-        },
-      ],
-    },
-    {
-      id: "mini",
-      name: "Tiny Titan",
-      tag: "#QL8V29P",
-      townHall: 12,
-      level: 119,
-      color: "#718ccc",
-      tags: ["Mini"],
-      online: false,
-      lastSeen: new Date(now - 41 * 60_000).toISOString(),
-      builders: { free: 2, total: 5 },
-      upgrades: [
-        {
-          id: "u6",
-          name: "Town Hall",
-          level: 12,
-          nextLevel: 13,
-          type: "building",
-          finishAt: new Date(now + 5.7 * 86400_000).toISOString(),
-        },
-      ],
-    },
-  ],
-};
 const emptyData: DashboardData = { generatedAt: new Date(0).toISOString(), accounts: [] };
-const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE;
 const browserApiBase = () =>
   configuredApiBase === "same-origin" ? "" : configuredApiBase || `${location.protocol}//${location.hostname}:8787`;
@@ -215,7 +106,7 @@ export default function Home({
   const router = useRouter();
   const { formatDateTime, formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [clockNow, setClockNow] = useState(now);
+  const [clockNow, setClockNow] = useState(0);
   const [query, setQuery] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
   const [refreshOnly, setRefreshOnly] = useState(false);
@@ -244,11 +135,9 @@ export default function Home({
       return response.json() as Promise<DashboardData>;
     },
     enabled: Boolean(apiBase || typeof window !== "undefined"),
-    initialData: demoEnabled ? demoData : undefined,
     refetchInterval: 30_000,
   });
   const data = dashboardQuery.data || emptyData;
-  const demo = demoEnabled && data === demoData;
   const dashboardLoading = dashboardQuery.isPending;
   const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : "";
   useEffect(() => {
@@ -280,8 +169,12 @@ export default function Home({
   };
 
   useEffect(() => {
+    const initialClock = window.setTimeout(() => setClockNow(Date.now()), 0);
     const clock = window.setInterval(() => setClockNow(Date.now()), 60_000);
-    return () => window.clearInterval(clock);
+    return () => {
+      window.clearTimeout(initialClock);
+      window.clearInterval(clock);
+    };
   }, []);
 
   useEffect(() => {
@@ -392,7 +285,6 @@ export default function Home({
       ),
     [allUpgrades, availabilitySummary.builderBase, availabilitySummary.homeVillage, clockNow],
   );
-  const includesExample = !demo && liveAccounts.some((account) => account.dataSource === "example");
   const next = allUpgrades[0]?.upgrade;
 
   return (
@@ -439,7 +331,6 @@ export default function Home({
       )}
       {view === "village" &&
         selectedVillageId &&
-        !demo &&
         data.accounts.length > 0 &&
         !liveAccounts.some((account) => account.id === selectedVillageId) && (
           <section className="village-route-missing shell">
@@ -710,9 +601,6 @@ export default function Home({
         </section>
       </div>
       <footer>
-        <span>
-          {t("dataStatus")} · {demo ? t("awaiting") : includesExample ? t("example") : t("normal")}
-        </span>
         <span>
           {t("bark")} <b>{t("enabled")}</b>
         </span>

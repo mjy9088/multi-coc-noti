@@ -16,10 +16,8 @@ COPY packages/ui packages/ui
 COPY packages/upgrade-availability/index.ts packages/upgrade-availability/index.ts
 ARG NEXT_PUBLIC_API_BASE
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
-ARG NEXT_PUBLIC_DEMO_MODE=false
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
 RUN pnpm --filter @multi-coc/dashboard build
 
 FROM node:24-alpine AS web

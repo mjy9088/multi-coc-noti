@@ -47,13 +47,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json() as Promise<{
         generatedAt: string;
-        accounts: Array<{ dataSource?: string }>;
       }>;
     },
     enabled: Boolean(apiBase || typeof window !== "undefined"),
     refetchInterval: 30_000,
   });
-  const includesExample = dashboardQuery.data?.accounts.some((account) => account.dataSource === "example") ?? false;
   useEffect(() => {
     const initialClock = window.setTimeout(() => setClockNow(Date.now()), 0);
     const clock = window.setInterval(() => setClockNow(Date.now()), 60_000);
@@ -118,12 +116,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <PwaInstall />
         <div className="sync">
-          <i className={includesExample ? "warn" : ""} />
-          {includesExample
-            ? t("exampleIncluded")
-            : dashboardQuery.data
-              ? `${t("synced")}${clockNow ? ` ${formatRelative(dashboardQuery.data.generatedAt, clockNow)}` : ""}`
-              : t("awaiting")}
+          <i />
+          {dashboardQuery.data
+            ? `${t("synced")}${clockNow ? ` ${formatRelative(dashboardQuery.data.generatedAt, clockNow)}` : ""}`
+            : t("awaiting")}
           <LocaleSwitcher />
         </div>
       </header>

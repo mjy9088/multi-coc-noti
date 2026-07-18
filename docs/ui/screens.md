@@ -15,7 +15,7 @@ Critical elements:
 - Dashboard, History, and Settings navigation with a persistent active state;
 - Quick Paste global action;
 - PWA installation action when available;
-- synchronization status, example-data warning, and last refresh information;
+- synchronization status and last refresh information;
 - locale switcher.
 
 Important behavior:
@@ -54,7 +54,7 @@ Main controls:
 - Villages and Queue section navigation;
 - village card, history, settings, and fast import actions.
 
-Required states: initial loading, retryable initial error, stale cached data, example-data warning, empty filter result, no
+Required states: initial loading, retryable initial error, stale cached data, empty filter result, no
 villages, no active upgrades, narrow/mobile layout, and time-based countdown updates.
 
 ## Village detail — `/villages/<uuid>`

@@ -44,11 +44,11 @@ export async function fetchPlayerProfile(
   return mapPlayerProfile((await response.json()) as Record<string, unknown>);
 }
 
-export function mergeOfficialProfile<T extends Partial<VillageSnapshot> & Pick<VillageSnapshot, "name" | "dataSource">>(
+export function mergeOfficialProfile<T extends Partial<VillageSnapshot> & Pick<VillageSnapshot, "name">>(
   snapshot: T,
   profile: Partial<PlayerProfile> | null | undefined,
 ): T {
-  if (!profile || snapshot.dataSource === "example") return snapshot;
+  if (!profile) return snapshot;
   return {
     ...snapshot,
     tag: profile.tag || snapshot.tag,

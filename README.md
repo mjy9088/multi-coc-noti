@@ -93,4 +93,3 @@ Direct pnpm commands include `pnpm typecheck`, `pnpm test`, and `pnpm --filter @
 - Keep secrets only in `docker/.env` or package-specific `.env` files; never put them in `NEXT_PUBLIC_*`.
 - Use player tags for game-data matching and UUIDs for internal DB relations and API paths.
 - Do not invent current resource quantities that the official API and game export do not provide.
-- Enable demo fallback only with `NEXT_PUBLIC_DEMO_MODE=true`.
