@@ -143,7 +143,8 @@ drag-and-drop and accessible from a keyboard.
 
 ## UI Lab — separate development app
 
-Routes: `/`, `/components`, and `/patterns` within `apps/ui-lab`.
+Routes: `/`, `/components`, `/patterns`, and `/flows/{import,settings,dashboard,history}` within `apps/ui-lab`.
 
-Purpose: compare tokens and owned component states without Dashboard data, and verify persistent App Router layout behavior
-on desktop and mobile. UI Lab never owns a production component implementation.
+Purpose: compare tokens and owned component states without Dashboard data, verify persistent App Router layout behavior,
+and review fixture-only product flows across scenario, viewport, latency, and result combinations. UI Lab never owns a
+production component implementation or calls product APIs.

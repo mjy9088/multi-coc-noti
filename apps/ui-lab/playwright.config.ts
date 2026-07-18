@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.UI_LAB_TEST_PORT || 3101);
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -7,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL: `http://127.0.0.1:${port}`,
     trace: "on-first-retry",
   },
   projects: [
@@ -15,8 +17,8 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "pnpm exec next dev --hostname 127.0.0.1 --port 3100",
-    url: "http://127.0.0.1:3100",
+    command: `NEXT_DIST_DIR=.next-playwright pnpm exec next dev --hostname 127.0.0.1 --port ${port}`,
+    url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

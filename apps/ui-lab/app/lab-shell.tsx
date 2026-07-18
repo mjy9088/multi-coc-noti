@@ -9,6 +9,7 @@ const routes = [
   ["/", "Foundations"],
   ["/components", "Components"],
   ["/patterns", "Route patterns"],
+  ["/flows/import", "Flow lab"],
 ] as const;
 
 export function LabShell({ children }: { children: ReactNode }) {
@@ -37,7 +38,13 @@ export function LabShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="lab-nav" aria-label="UI Lab sections">
           {routes.map(([href, label]) => (
-            <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>
+            <Link
+              key={href}
+              href={href}
+              aria-current={
+                pathname === href || (href.startsWith("/flows") && pathname.startsWith("/flows")) ? "page" : undefined
+              }
+            >
               {label}
             </Link>
           ))}

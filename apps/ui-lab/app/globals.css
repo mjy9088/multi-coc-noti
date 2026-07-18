@@ -236,6 +236,268 @@ input {
   line-height: 1.8;
 }
 
+.flow-nav {
+  display: flex;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-4);
+  overflow-x: auto;
+}
+
+.flow-nav a {
+  min-height: var(--ui-control-medium);
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--ui-color-border);
+  border-radius: 999px;
+  padding: 0 var(--ui-space-4);
+  color: var(--ui-color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.flow-nav a[aria-current="page"] {
+  border-color: var(--ui-color-accent);
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-accent);
+}
+.flow-nav a:focus-visible {
+  outline: 3px solid var(--ui-color-focus);
+  outline-offset: 2px;
+}
+
+.flow-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-large);
+  background: var(--ui-color-surface);
+  padding: var(--ui-space-4);
+  box-shadow: var(--ui-shadow-small);
+}
+
+.flow-controls .ui-input {
+  min-height: var(--ui-control-medium);
+  font-size: 0.8rem;
+}
+.flow-stage-shell {
+  margin-top: var(--ui-space-4);
+  border-radius: var(--ui-radius-large);
+  background: color-mix(in srgb, var(--ui-color-surface-inset) 78%, var(--ui-color-border));
+  padding: var(--ui-space-3);
+}
+.flow-stage-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--ui-space-1) var(--ui-space-2);
+  color: var(--ui-color-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.flow-stage {
+  width: 100%;
+  min-height: 42rem;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: var(--ui-radius-medium);
+  background: var(--ui-color-canvas);
+  box-shadow: var(--ui-shadow-medium);
+  transition: width var(--ui-motion-normal) var(--ui-ease-standard);
+}
+.flow-stage[data-viewport="mobile"] {
+  width: min(390px, 100%);
+}
+.flow-product {
+  display: grid;
+  gap: var(--ui-space-5);
+  padding: clamp(1rem, 4vw, 2rem);
+}
+.flow-pane {
+  display: grid;
+  gap: var(--ui-space-5);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-large);
+  background: var(--ui-color-surface);
+  padding: clamp(1rem, 4vw, 2rem);
+  box-shadow: var(--ui-shadow-small);
+}
+.flow-pane h2,
+.flow-product h2,
+.flow-pane h3 {
+  margin: 0;
+}
+.flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  justify-content: flex-end;
+}
+.flow-review-heading,
+.flow-sim-header,
+.flow-card-heading,
+.flow-record {
+  display: flex;
+  gap: var(--ui-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.flow-diff-grid,
+.flow-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+.flow-diff-grid .ui-card,
+.flow-metric-grid .ui-card {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+.flow-diff-grid strong,
+.flow-metric-grid strong {
+  font-size: clamp(1.1rem, 3vw, 1.7rem);
+}
+.flow-diff-label,
+.flow-metric-grid span {
+  color: var(--ui-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.flow-list {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+.flow-list > .ui-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-3);
+  align-items: center;
+}
+.flow-list > .ui-card > span:last-child {
+  margin-left: auto;
+  color: var(--ui-color-text-muted);
+  font-size: 0.78rem;
+}
+.flow-choice-grid,
+.flow-village-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+.settings-sim {
+  grid-template-columns: minmax(11rem, 0.36fr) minmax(0, 1fr);
+  align-items: start;
+}
+.flow-side-list {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+.flow-side-list button {
+  min-height: var(--ui-control-large);
+  display: flex;
+  gap: var(--ui-space-3);
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-medium);
+  background: transparent;
+  padding: var(--ui-space-2);
+  color: inherit;
+  text-align: left;
+}
+.flow-side-list button.selected {
+  border-color: var(--ui-color-accent);
+  background: var(--ui-color-accent-soft);
+}
+.flow-side-copy {
+  display: grid;
+  min-width: 0;
+}
+.flow-side-list small,
+.flow-card-heading small,
+.flow-record span {
+  color: var(--ui-color-text-muted);
+}
+.flow-avatar {
+  width: 2.3rem;
+  height: 2.3rem;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text-inverse);
+  font-weight: 800;
+}
+.flow-avatar.blue {
+  background: var(--ui-color-info);
+}
+.flow-drag {
+  color: var(--ui-color-text-muted);
+  font-size: 1.2rem;
+}
+.flow-filter-bar {
+  display: flex;
+  gap: var(--ui-space-2);
+  overflow-x: auto;
+}
+.flow-card-heading > div,
+.flow-record > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--ui-space-1);
+}
+.flow-card-heading strong,
+.flow-card-heading small,
+.flow-record strong {
+  overflow-wrap: anywhere;
+}
+.flow-slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-4);
+  color: var(--ui-color-text-secondary);
+  font-size: 0.78rem;
+}
+.flow-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+
+.flow-stage[data-viewport="mobile"] .flow-controls {
+  grid-template-columns: 1fr;
+}
+.flow-stage[data-viewport="mobile"] .settings-sim {
+  grid-template-columns: 1fr;
+}
+.flow-stage[data-viewport="mobile"] .flow-side-list {
+  order: 2;
+}
+.flow-stage[data-viewport="mobile"] .flow-diff-grid,
+.flow-stage[data-viewport="mobile"] .flow-metric-grid,
+.flow-stage[data-viewport="mobile"] .flow-choice-grid,
+.flow-stage[data-viewport="mobile"] .flow-village-grid {
+  grid-template-columns: 1fr;
+}
+.flow-stage[data-viewport="mobile"] .flow-actions > .ui-button {
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  .flow-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .flow-diff-grid,
+  .flow-metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-sim {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 680px) {
   .lab-header {
     grid-template-columns: 1fr;

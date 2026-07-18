@@ -21,6 +21,8 @@ inventory live alongside this plan under `docs/ui/`.
   Dialog, and Toast primitives are available and catalogued in UI Lab.
 - `apps/ui-lab` is a Next.js App Router catalogue with a persistent layout and multiple routes, but there is not yet an
   isolated accessibility or visual regression suite.
+- UI Lab includes fixture-only Import, Settings, Dashboard, and History flow simulators. Their scenario, viewport, latency,
+  and result controls are for interaction design review and never call product APIs.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual
@@ -34,6 +36,11 @@ just dev-ui
 
 The persistent header includes an input and counter. Change both, navigate among Foundations, Components, and Route
 patterns, and confirm that their values and header geometry remain stable while only route content changes.
+
+Open `/flows/import` to review representative product situations. Flow fixtures must match plausible product data shapes,
+but they do not implement authentication, mutations, persistence, notification scheduling, or production query behavior.
+When a composition is approved, move it into a Dashboard feature component and make UI Lab import that production code;
+do not maintain two implementations.
 
 Run the desktop and mobile App Router layout check with:
 
@@ -167,13 +174,13 @@ Exit criteria:
 
 Implement and catalogue these in order:
 
-1. [In progress] `Button` and `IconButton`; Button is catalogued, while IconButton and automated accessibility coverage
-   remain.
-2. `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox`;
-3. `Card`, `Badge`, `Separator`, and layout `Stack`/`Cluster` helpers only where repetition proves useful;
-4. `Spinner`, `RequestState`, `EmptyState`, and `StaleNotice`;
-5. `Toast` and its viewport/provider;
-6. `Tabs` and `Dialog` using headless accessible primitives.
+1. [Done] `Button` and `IconButton`;
+2. [Done] `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox`;
+3. [Done] `Card`, `Badge`, and `Separator`; layout `Stack`/`Cluster` helpers remain intentionally deferred until repetition
+   proves useful;
+4. [Done] `Spinner`, `RequestState`, `EmptyState`, and `StaleNotice`;
+5. [Done] `Toast` and its viewport/provider;
+6. [Done] `Tabs` and `Dialog` using headless accessible primitives.
 
 Each component needs:
 

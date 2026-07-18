@@ -37,3 +37,10 @@ status and remove obsolete legacy entries in the same change.
 4. Route changes must preserve the App Shell and must not cause navigation movement or blank flashes.
 5. Reusable behavior belongs in owned components; feature meaning and product copy belong in feature components.
 6. Visual experimentation happens in `apps/ui-lab`; production components remain in `packages/ui`.
+
+## Flow review
+
+UI Lab has fixture-only routes for Import, Settings, Dashboard, and History. Each exposes scenario, viewport, latency, and
+result controls so empty, failure, pending, long-content, and narrow-layout decisions can be reviewed before Dashboard
+integration. These routes are prototypes, not alternate product implementations: they make no API calls, and approved
+compositions must move to Dashboard feature code rather than being copied.

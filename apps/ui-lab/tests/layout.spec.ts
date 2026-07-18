@@ -53,3 +53,21 @@ test("owned interactive primitives expose keyboard and feedback behavior", async
   await toastAlert.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved after retry" })).toBeVisible();
 });
+
+test("flow simulator switches fixtures without API or layout state loss", async ({ page }) => {
+  await page.goto("/flows/import");
+  await page.locator("#layout-note").fill("keep flow context");
+  await page.getByRole("combobox", { name: "Viewport" }).selectOption("mobile");
+  await expect(page.locator(".flow-stage")).toHaveAttribute("data-viewport", "mobile");
+
+  await page.getByRole("button", { name: "Review export" }).click();
+  await expect(page.getByRole("heading", { name: "Changes since the previous export" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Scenario" }).selectOption("invalid-json");
+  await expect(page.getByText("This is not complete export JSON.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review export" })).toBeDisabled();
+
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(page).toHaveURL(/\/flows\/settings$/);
+  await expect(page.locator("#layout-note")).toHaveValue("keep flow context");
+  await expect(page.getByRole("heading", { name: "Settings that acknowledge every save" })).toBeVisible();
+});
