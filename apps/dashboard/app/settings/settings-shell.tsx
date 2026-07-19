@@ -2,8 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import AdminPanel from "../admin-panel";
 import { useQuickPasteRequest } from "../app-shell";
+import SettingsPanel from "../settings-panel";
 
 type SettingsSection = "import" | "alerts" | "villages" | "groups";
 
@@ -38,7 +38,7 @@ export default function SettingsShell() {
 
   return (
     <main>
-      <AdminPanel
+      <SettingsPanel
         apiBase={apiBase}
         onChanged={() => {
           void queryClient.invalidateQueries({ queryKey: ["dashboard"] });

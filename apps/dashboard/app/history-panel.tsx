@@ -39,7 +39,7 @@ export default function HistoryPanel({
       const query = new URLSearchParams({ limit: "50" });
       for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
       if (pageParam) query.set("before", pageParam);
-      const response = await fetch(`${apiBase}/api/upgrades?${query}`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/upgrades?${query}`, { cache: "no-store", credentials: "include" });
       if (!response.ok) throw new Error((await response.json()).error || t("loadFailed"));
       return response.json() as Promise<HistoryResponse>;
     },

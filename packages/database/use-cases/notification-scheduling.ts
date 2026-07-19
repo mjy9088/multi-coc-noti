@@ -8,6 +8,7 @@ import type pg from "pg";
 
 export const accountFromRow = (row: pg.QueryResultRow): Account => ({
   id: String(row.id),
+  userId: row.user_id == null ? null : String(row.user_id),
   legacyIndex: row.legacy_index,
   label: row.label,
   playerTag: row.player_tag,

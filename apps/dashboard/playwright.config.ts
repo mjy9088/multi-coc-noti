@@ -15,7 +15,7 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: `NEXT_PUBLIC_API_BASE=same-origin NEXT_DIST_DIR=.next-playwright pnpm exec next dev --hostname 127.0.0.1 --port ${port}`,
+    command: `AUTH_SECRET=dashboard-e2e-secret AUTH_E2E_BYPASS=1 NEXT_PUBLIC_API_BASE=same-origin NEXT_DIST_DIR=.next-playwright pnpm exec next dev --hostname 127.0.0.1 --port ${port}`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

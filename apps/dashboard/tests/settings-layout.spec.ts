@@ -22,15 +22,13 @@ async function expectRouteTabsBelowHeader(page: import("@playwright/test").Page)
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("multi-coc-admin-token", "test-token"));
   await page.route("**/api/dashboard", (route) =>
     route.fulfill({ json: { generatedAt: "2026-07-19T00:00:00.000Z", accounts: [] } }),
   );
-  await page.route("**/api/admin/accounts", (route) => route.fulfill({ json: { accounts } }));
-  await page.route("**/api/admin/upgrades", (route) => route.fulfill({ json: { upgrades: [] } }));
-  await page.route("**/api/admin/dashboard-settings", (route) =>
-    route.fulfill({ json: { groupOrder: ["War", "Farm"] } }),
-  );
+  await page.route("**/api/villages", (route) => route.fulfill({ json: { accounts } }));
+  await page.route("**/api/settings/upgrades", (route) => route.fulfill({ json: { upgrades: [] } }));
+  await page.route("**/api/settings/dashboard", (route) => route.fulfill({ json: { groupOrder: ["War", "Farm"] } }));
+  await page.route("**/api/notification-channels", (route) => route.fulfill({ json: { channels: [] } }));
 });
 
 test("[UI-SETTINGS-001] pointer scrolling moves the page before the route frame becomes fixed", async ({

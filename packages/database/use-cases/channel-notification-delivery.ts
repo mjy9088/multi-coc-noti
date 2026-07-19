@@ -3,14 +3,14 @@ import { database } from "../client.ts";
 import type { DueChannelDelivery, NotificationKind } from "../types.ts";
 
 const channelRuleQuery = `
-  SELECT c.id AS channel_id,b.base_url,b.device_key,b.default_group,b.icon_url,
+  SELECT c.id AS channel_id,c.locale,b.base_url,b.device_key,b.default_group,b.icon_url,
     COALESCE(r.enabled,true) AS rule_enabled,r.sound,
     COALESCE(r.interruption_level,'active') AS interruption_level,r.critical_volume,
     COALESCE(r.repeat_sound,false) AS repeat_sound,r.group_name,r.target_url,r.archive,r.archive_ttl_seconds
   FROM notification_channels c
   JOIN bark_channel_settings b ON b.channel_id=c.id
   LEFT JOIN notification_delivery_rules r ON r.channel_id=c.id AND r.notification_kind=$1
-  WHERE c.enabled AND b.device_key<>'' AND COALESCE(r.enabled,true)
+  WHERE c.enabled AND c.user_id=$2 AND b.device_key<>'' AND COALESCE(r.enabled,true)
   ORDER BY c.created_at,c.id
 `;
 
@@ -18,7 +18,7 @@ async function configuredChannelCount(client: pg.PoolClient): Promise<number> {
   const result = await client.query(`
     SELECT count(*)::integer AS count FROM notification_channels c
     JOIN bark_channel_settings b ON b.channel_id=c.id
-    WHERE c.enabled AND b.device_key<>''
+    WHERE c.enabled AND c.user_id IS NOT NULL AND b.device_key<>''
   `);
   return Number(result.rows[0]?.count ?? 0);
 }
@@ -41,9 +41,10 @@ export async function claimDueChannelDeliveries(limit = 20, now = new Date()): P
 
     const candidates = await client.query(
       `
-      SELECT n.id,n.notification_kind,n.preparation_minutes,u.account_id
+      SELECT n.id,n.notification_kind,n.preparation_minutes,u.account_id,a.user_id
       FROM upgrade_notifications n
       JOIN tracked_upgrades u ON u.id=n.upgrade_id
+      JOIN accounts a ON a.id=u.account_id
       WHERE u.status IN ('active','completed') AND n.scheduled_at<=$1 AND n.next_attempt_at<=$1
         AND (n.status='pending' OR (n.status='processing' AND n.locked_at<$1-interval '5 minutes'))
         AND (n.notification_kind<>'refresh_required' OR NOT EXISTS (
@@ -64,7 +65,7 @@ export async function claimDueChannelDeliveries(limit = 20, now = new Date()): P
         continue;
       }
 
-      const channels = await client.query(channelRuleQuery, [event.notification_kind]);
+      const channels = await client.query(channelRuleQuery, [event.notification_kind, event.user_id]);
       let recipients = 0;
       for (const channel of channels.rows) {
         if (event.notification_kind === "resource_preparation") {
@@ -142,7 +143,7 @@ export async function claimDueChannelDeliveries(limit = 20, now = new Date()): P
       `
       SELECT d.id AS delivery_id,d.channel_id,n.id,n.upgrade_id,n.notification_kind,n.minutes_before,n.preparation_minutes,
         a.label AS account_name,u.name AS upgrade_name,u.next_level,u.finish_at,
-        b.base_url,b.device_key,b.default_group,b.icon_url,r.sound,
+        c.locale,b.base_url,b.device_key,b.default_group,b.icon_url,r.sound,
         COALESCE(r.enabled,true) AS rule_enabled,COALESCE(r.interruption_level,'active') AS interruption_level,
         r.critical_volume,COALESCE(r.repeat_sound,false) AS repeat_sound,r.group_name,r.target_url,r.archive,r.archive_ttl_seconds
       FROM notification_deliveries d
@@ -186,6 +187,7 @@ export async function claimDueChannelDeliveries(limit = 20, now = new Date()): P
         deviceKey: row.device_key,
         defaultGroup: row.default_group,
         iconUrl: row.icon_url,
+        locale: row.locale,
       },
       rule: {
         enabled: row.rule_enabled,

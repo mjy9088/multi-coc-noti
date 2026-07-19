@@ -15,7 +15,7 @@ inventory live alongside this plan under `docs/ui/`.
 
 - `packages/ui/src/styles` now contains the initial shared semantic colors, browser foundations, and Button styles.
 - `app/styles/legacy.css` is approximately 36 KB and owns about 168 distinct selectors across every screen.
-- `admin-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
+- `settings-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
 - Tailwind CSS 4, the local `cn()` helper, typed variants, and the owned actions, forms, containers, request states, Tabs,
   Dialog, and Toast primitives are available and catalogued in UI Lab.
 - `apps/ui-lab` is a Next.js App Router catalogue with a persistent layout and multiple routes, but there is not yet an
@@ -270,7 +270,7 @@ Exit criteria:
 
 ## Feature decomposition targets
 
-`admin-panel.tsx` should be divided into feature components without moving all state into a global store:
+`settings-panel.tsx` should be divided into feature components without moving all state into a global store:
 
 - `SettingsShell` and `AdminSignIn`;
 - `PasteExportFlow` and `ExportReview`;
@@ -323,4 +323,4 @@ Track progress with concrete evidence:
 - component catalogue coverage of supported variants and async states;
 - desktop/mobile visual test coverage for major routes;
 - zero known keyboard, accessible-name, focus, overflow, or touch-target regressions;
-- decreasing size of `admin-panel.tsx` and `page.tsx` through meaningful feature boundaries, not line movement alone.
+- decreasing size of `settings-panel.tsx` and `page.tsx` through meaningful feature boundaries, not line movement alone.

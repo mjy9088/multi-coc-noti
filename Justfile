@@ -17,19 +17,30 @@ dev port="3000":
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ ! -f docker/.env ]]; then
-      echo "docker/.env가 없습니다. cp docker/.env.example docker/.env 후 관리자·DB 비밀번호를 입력하세요."
+      echo "docker/.env가 없습니다. cp docker/.env.example docker/.env 후 인증·DB 설정을 입력하세요."
       exit 1
     fi
     mise exec -- node --env-file=docker/.env -e '
-      for (const key of ["ADMIN_TOKEN", "POSTGRES_PASSWORD"]) {
+      for (const key of ["AUTH_SECRET", "POSTGRES_PASSWORD"]) {
         const value = process.env[key] || "";
         if (!value) {
           console.error(`docker/.env의 ${key}가 비어 있습니다.`);
           process.exit(1);
         }
       }
-      if ((process.env.ADMIN_TOKEN || "").startsWith("replace-with-")) {
-        console.error("docker/.env의 ADMIN_TOKEN에 실제 값을 설정하세요.");
+      if ((process.env.AUTH_SECRET || "").startsWith("replace-with-")) {
+        console.error("docker/.env의 AUTH_SECRET에 실제 값을 설정하세요.");
+        process.exit(1);
+      }
+      const testLoginEnabled = process.env.AUTH_TEST_CREDENTIALS_ENABLED === "true";
+      const testLogin = testLoginEnabled && process.env.AUTH_TEST_USERNAME && process.env.AUTH_TEST_PASSWORD;
+      if (testLoginEnabled && !testLogin) {
+        console.error("테스트 로그인을 활성화하면 AUTH_TEST_USERNAME과 AUTH_TEST_PASSWORD가 모두 필요합니다.");
+        process.exit(1);
+      }
+      if (!(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) &&
+          !(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) && !testLogin) {
+        console.error("GitHub/Google 소셜 로그인 또는 완전한 테스트 로그인 설정이 필요합니다.");
         process.exit(1);
       }
       if ((process.env.POSTGRES_PASSWORD || "").startsWith("replace-with-")) {
@@ -115,14 +126,10 @@ dev-collector:
 # 개발: Collector 상태 확인
 dev-status:
     @curl --max-time 5 --fail-with-body --silent --show-error --output /dev/null http://127.0.0.1:3000/
-    @curl --max-time 5 --fail-with-body --silent --show-error --output /dev/null http://127.0.0.1:3000/api/dashboard
-    @echo "development gateway, dashboard, and Collector are reachable"
+    @curl --max-time 5 --fail-with-body --silent --show-error --output /dev/null http://127.0.0.1:3000/health
+    @echo "development gateway, dashboard, and Collector health endpoint are reachable"
 
 # 개발: 계정별 공식 API 동기화 상태 확인
-dev-sources:
-    @curl --max-time 5 --fail-with-body --silent --show-error http://127.0.0.1:3000/api/sources
-    @echo
-
 # 개발: Bark notifier만 standalone 설정으로 실행
 dev-notifier:
     mise exec -- pnpm notifier

@@ -21,10 +21,18 @@ async function baselineExistingDatabase(): Promise<void> {
   try {
     await client.query("BEGIN");
     await client.query(schema);
-    const hasDeliveryChannels = (
-      await client.query("SELECT to_regclass('public.notification_channels') IS NOT NULL AS present")
-    ).rows[0].present;
-    const baselines = hasDeliveryChannels ? journal.entries : [initial];
+    const markers = (
+      await client.query(`SELECT
+        to_regclass('public.notification_channels') IS NOT NULL AS has_delivery_channels,
+        to_regclass('public.users') IS NOT NULL AND
+          to_regclass('public.user_dashboard_settings') IS NOT NULL AS has_user_ownership`)
+    ).rows[0];
+    const baselines = journal.entries.filter(
+      (entry) =>
+        entry.tag === initial.tag ||
+        (entry.tag === "0001_notification-delivery-channels" && markers.has_delivery_channels) ||
+        (entry.tag === "0002_user-auth-ownership" && markers.has_user_ownership),
+    );
     await client.query("CREATE SCHEMA IF NOT EXISTS drizzle");
     await client.query(`CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
       id serial PRIMARY KEY,

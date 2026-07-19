@@ -1,23 +1,23 @@
 import { eq } from "drizzle-orm";
 import { drizzleDatabase } from "../client.ts";
-import { dashboardSettings } from "../schema.ts";
+import { userDashboardSettings } from "../schema.ts";
 
-export async function getDashboardSettings(): Promise<{ groupOrder: string[] }> {
+export async function getDashboardSettings(userId: string): Promise<{ groupOrder: string[] }> {
   const [row] = await drizzleDatabase()
-    .select({ groupOrder: dashboardSettings.groupOrder })
-    .from(dashboardSettings)
-    .where(eq(dashboardSettings.singleton, true));
+    .select({ groupOrder: userDashboardSettings.groupOrder })
+    .from(userDashboardSettings)
+    .where(eq(userDashboardSettings.userId, userId));
   return { groupOrder: row?.groupOrder || [] };
 }
 
-export async function updateDashboardSettings(groupOrder: string[]): Promise<{ groupOrder: string[] }> {
+export async function updateDashboardSettings(userId: string, groupOrder: string[]): Promise<{ groupOrder: string[] }> {
   const [row] = await drizzleDatabase()
-    .insert(dashboardSettings)
-    .values({ singleton: true, groupOrder })
+    .insert(userDashboardSettings)
+    .values({ userId, groupOrder })
     .onConflictDoUpdate({
-      target: dashboardSettings.singleton,
+      target: userDashboardSettings.userId,
       set: { groupOrder, updatedAt: new Date() },
     })
-    .returning({ groupOrder: dashboardSettings.groupOrder });
+    .returning({ groupOrder: userDashboardSettings.groupOrder });
   return row;
 }

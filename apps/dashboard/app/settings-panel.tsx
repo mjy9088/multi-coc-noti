@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
-import { useAdminRequest } from "./use-admin-request";
+import { useApiRequest } from "./use-api-request";
 import { useDashboardFormat } from "./use-dashboard-format";
 import { useMutationFeedback } from "./use-mutation-feedback";
 
@@ -56,6 +56,15 @@ type Upgrade = {
   resourcePreparationOverrideMinutes: number | null;
 };
 type UpgradeAlertDraft = { mode: "inherit" | "disabled" | "custom"; minutes: number };
+type NotificationChannel = {
+  id: string;
+  label: string;
+  enabled: boolean;
+  locale: "ko" | "en";
+  baseUrl: string;
+  defaultGroup: string | null;
+  deviceKeySuffix: string;
+};
 type ExportPreview = {
   tag: string;
   exportedAt: string;
@@ -84,11 +93,11 @@ type ExportPreview = {
     }>;
   };
 };
-const adminLoadedAt = Date.now();
-type AdminSection = "import" | "alerts" | "villages" | "groups";
+const settingsLoadedAt = Date.now();
+type SettingsSection = "import" | "alerts" | "villages" | "groups";
 type QuickPasteRequest = { id: number; text: string; clipboardError: boolean } | null;
 
-export default function AdminPanel({
+export default function SettingsPanel({
   apiBase,
   onChanged,
   onSectionChange,
@@ -100,21 +109,25 @@ export default function AdminPanel({
 }: {
   apiBase: string;
   onChanged: () => void;
-  onSectionChange?: (section: AdminSection) => void;
+  onSectionChange?: (section: SettingsSection) => void;
   onVillageChange?: (accountId: string) => void;
-  initialSection?: AdminSection;
+  initialSection?: SettingsSection;
   initialAccountId?: string | null;
   quickPasteRequest?: QuickPasteRequest;
   onQuickPasteApplied?: (id: number) => void;
 }) {
-  const t = useTranslations("Admin");
+  const t = useTranslations("Settings");
   const { dismiss, toast } = useToast();
   const { formatDateTime, formatDuration } = useDashboardFormat();
-  const [token, setToken] = useState("");
-  const [authReady, setAuthReady] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>([]);
+  const [barkChannelForm, setBarkChannelForm] = useState({
+    label: "iPhone",
+    deviceKey: "",
+    locale: "ko" as "ko" | "en",
+  });
   const [upgradeAlertDrafts, setUpgradeAlertDrafts] = useState<Record<string, UpgradeAlertDraft>>({});
   const [savingUpgradeId, setSavingUpgradeId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -125,7 +138,7 @@ export default function AdminPanel({
   const [exportText, setExportText] = useState("");
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [clockNow, setClockNow] = useState(adminLoadedAt);
+  const [clockNow, setClockNow] = useState(settingsLoadedAt);
   const [newLabel, setNewLabel] = useState("");
   const [villageSearch, setVillageSearch] = useState("");
   const [editing, setEditing] = useState<Account | null>(null);
@@ -147,20 +160,16 @@ export default function AdminPanel({
   const appliedQuickPaste = useRef<number | null>(null);
   const confirmImportButton = useRef<HTMLButtonElement | null>(null);
 
-  const handleUnauthorized = useCallback(() => {
-    localStorage.removeItem("multi-coc-admin-token");
-    setToken("");
-  }, []);
-  const request = useAdminRequest(apiBase, token, t("invalidToken"), handleUnauthorized);
+  const request = useApiRequest(apiBase);
 
   const load = useCallback(async () => {
-    if (!token) return;
     setInitialLoading(true);
     try {
-      const [accountResult, upgradeResult, dashboardSettings] = await Promise.all([
-        request("/api/admin/accounts"),
-        request("/api/admin/upgrades"),
-        request("/api/admin/dashboard-settings"),
+      const [accountResult, upgradeResult, dashboardSettings, channelResult] = await Promise.all([
+        request("/api/villages"),
+        request("/api/settings/upgrades"),
+        request("/api/settings/dashboard"),
+        request("/api/notification-channels"),
       ]);
       setAccounts(accountResult.accounts);
       setUpgrades(upgradeResult.upgrades);
@@ -187,6 +196,7 @@ export default function AdminPanel({
         current ? accountResult.accounts.find((item: Account) => item.id === current.id) || null : null,
       );
       setGroupOrder(dashboardSettings.groupOrder || []);
+      setNotificationChannels(channelResult.channels || []);
       setError("");
       setInitialLoadFailed(false);
     } catch (reason) {
@@ -195,20 +205,11 @@ export default function AdminPanel({
     } finally {
       setInitialLoading(false);
     }
-  }, [request, token]);
-
+  }, [request]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setToken(localStorage.getItem("multi-coc-admin-token") || "");
-      setAuthReady(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    if (!token) return;
     const timer = window.setTimeout(load, 0);
     return () => window.clearTimeout(timer);
-  }, [load, token]);
+  }, [load]);
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -240,7 +241,7 @@ export default function AdminPanel({
   }, [accounts, initialAccountId]);
   useEffect(() => {
     const id = "admin-mutation-feedback";
-    if (!token || initialLoadFailed) {
+    if (initialLoadFailed) {
       dismiss(id);
       return;
     }
@@ -253,7 +254,7 @@ export default function AdminPanel({
       return;
     }
     dismiss(id);
-  }, [dismiss, error, initialLoadFailed, message, toast, token]);
+  }, [dismiss, error, initialLoadFailed, message, toast]);
 
   const reviewExport = useCallback(
     async (text: string) => {
@@ -265,7 +266,7 @@ export default function AdminPanel({
       setError("");
       setMessage("");
       try {
-        const result = await request("/api/admin/village-export/preview", {
+        const result = await request("/api/village-exports/preview", {
           method: "POST",
           body: JSON.stringify({ exportText: candidate }),
         });
@@ -311,7 +312,7 @@ export default function AdminPanel({
   }, [exportText, reviewExport]);
 
   useEffect(() => {
-    if (!token || !quickPasteRequest || appliedQuickPaste.current === quickPasteRequest.id) return;
+    if (!quickPasteRequest || appliedQuickPaste.current === quickPasteRequest.id) return;
     const timer = window.setTimeout(() => {
       appliedQuickPaste.current = quickPasteRequest.id;
       onQuickPasteApplied?.(quickPasteRequest.id);
@@ -320,7 +321,7 @@ export default function AdminPanel({
       else if (quickPasteRequest.clipboardError) setError(t("clipboardUnavailable"));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [onQuickPasteApplied, onSectionChange, quickPasteRequest, replaceExportText, t, token]);
+  }, [onQuickPasteApplied, onSectionChange, quickPasteRequest, replaceExportText, t]);
 
   useEffect(() => {
     if (!preview || preview.isNew) return;
@@ -388,7 +389,7 @@ export default function AdminPanel({
     [next[index], next[target]] = [next[target], next[index]];
     setGroupOrder(next);
     await run(
-      () => request("/api/admin/dashboard-settings", { method: "PATCH", body: JSON.stringify({ groupOrder: next }) }),
+      () => request("/api/settings/dashboard", { method: "PATCH", body: JSON.stringify({ groupOrder: next }) }),
       t("groupOrderSaved"),
     );
   };
@@ -398,8 +399,7 @@ export default function AdminPanel({
     const askForResources = preview.upgrades.length > 0;
     setImporting(true);
     const result = await run(
-      () =>
-        request("/api/admin/village-export", { method: "POST", body: JSON.stringify({ exportText, label: newLabel }) }),
+      () => request("/api/village-exports", { method: "POST", body: JSON.stringify({ exportText, label: newLabel }) }),
       preview.isNew ? t("villageAdded") : t("villageImported"),
     );
     setImporting(false);
@@ -418,7 +418,7 @@ export default function AdminPanel({
     setResourceResponding(true);
     const result = await run(
       () =>
-        request(`/api/admin/accounts/${resourcePrompt.accountId}/resource-status`, {
+        request(`/api/villages/${resourcePrompt.accountId}/resource-status`, {
           method: "PATCH",
           body: JSON.stringify({ resourceStatus }),
         }),
@@ -434,7 +434,7 @@ export default function AdminPanel({
     setSavingUpgradeId(upgrade.id);
     await run(
       () =>
-        request(`/api/admin/upgrades/${upgrade.id}/alerts`, {
+        request(`/api/settings/upgrades/${upgrade.id}/alerts`, {
           method: "PATCH",
           body: JSON.stringify({ resourcePreparationOverrideMinutes: override }),
         }),
@@ -449,40 +449,22 @@ export default function AdminPanel({
     onSectionChange?.("villages");
   };
 
-  if (!authReady)
-    return (
-      <section className="settings-page">
-        <LoadingState compact />
-      </section>
-    );
-  if (!token)
-    return (
-      <section className="settings-page">
-        <div className="settings-login settings-surface">
-          <p className="settings-eyebrow">ADMIN</p>
-          <h1>{t("authentication")}</h1>
-          <p>{t("authenticationHelp")}</p>
-          {error && <p className="settings-inline-error">{error}</p>}
-          <form
-            className="settings-login-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const value = String(new FormData(event.currentTarget).get("token") || "").trim();
-              setError("");
-              setMessage("");
-              localStorage.setItem("multi-coc-admin-token", value);
-              setToken(value);
-            }}
-          >
-            <Field>
-              <Label className="ui-visually-hidden">{t("authentication")}</Label>
-              <Input name="token" type="password" required autoComplete="current-password" autoFocus />
-            </Field>
-            <Button>{t("signIn")}</Button>
-          </form>
-        </div>
-      </section>
-    );
+  const addBarkChannel = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await run(async () => {
+      await request("/api/notification-channels", {
+        method: "POST",
+        body: JSON.stringify({
+          ...barkChannelForm,
+          enabled: true,
+          baseUrl: "https://api.day.app",
+          defaultGroup: "Multi CoC Noti",
+        }),
+      });
+      setBarkChannelForm((current) => ({ ...current, deviceKey: "" }));
+    }, t("notificationChannelSaved"));
+  };
+
   if (initialLoading && !accounts.length)
     return (
       <section className="settings-page">
@@ -503,15 +485,6 @@ export default function AdminPanel({
           <p className="settings-eyebrow">VILLAGE DATA</p>
           <h1>{t("title")}</h1>
         </div>
-        <Button
-          tone="secondary"
-          onClick={() => {
-            localStorage.removeItem("multi-coc-admin-token");
-            setToken("");
-          }}
-        >
-          {t("signOut")}
-        </Button>
       </div>
       <StickyStackItem order={10} className="settings-tabs-sticky ui-sticky-surface">
         <Tabs
@@ -519,7 +492,7 @@ export default function AdminPanel({
           label={t("settingsSections")}
           value={section}
           onValueChange={(value) => {
-            const next = value as AdminSection;
+            const next = value as SettingsSection;
             onSectionChange?.(next);
           }}
         >
@@ -709,6 +682,66 @@ export default function AdminPanel({
 
         {section === "alerts" && (
           <article className="settings-surface settings-wide">
+            <h2>{t("barkChannels")}</h2>
+            <p>{t("barkChannelsHelp")}</p>
+            <div className="settings-upgrade-list">
+              {notificationChannels.map((channel) => (
+                <div className="settings-upgrade-row" key={channel.id}>
+                  <div className="settings-upgrade-heading">
+                    <span>
+                      <b>{channel.label}</b>
+                      <small>{`${channel.baseUrl} · ••••${channel.deviceKeySuffix} · ${channel.locale.toUpperCase()}`}</small>
+                    </span>
+                    <Button
+                      type="button"
+                      tone="danger"
+                      onClick={() =>
+                        void run(
+                          () => request(`/api/notification-channels/${channel.id}`, { method: "DELETE" }),
+                          t("notificationChannelDeleted"),
+                        )
+                      }
+                    >
+                      {t("delete")}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <form className="settings-upgrade-controls" onSubmit={addBarkChannel}>
+              <Field>
+                <Label>{t("channelName")}</Label>
+                <Input
+                  required
+                  value={barkChannelForm.label}
+                  onChange={(event) => setBarkChannelForm({ ...barkChannelForm, label: event.target.value })}
+                />
+              </Field>
+              <Field>
+                <Label>{t("barkDeviceKey")}</Label>
+                <Input
+                  required
+                  type="password"
+                  autoComplete="off"
+                  value={barkChannelForm.deviceKey}
+                  onChange={(event) => setBarkChannelForm({ ...barkChannelForm, deviceKey: event.target.value })}
+                />
+              </Field>
+              <Field>
+                <Label>{t("notificationLanguage")}</Label>
+                <Select
+                  value={barkChannelForm.locale}
+                  onChange={(event) =>
+                    setBarkChannelForm({ ...barkChannelForm, locale: event.target.value === "en" ? "en" : "ko" })
+                  }
+                >
+                  <option value="ko">한국어</option>
+                  <option value="en">English</option>
+                </Select>
+              </Field>
+              <Button type="submit">{t("addNotificationChannel")}</Button>
+            </form>
+            <hr />
             <h2>{t("upgradeAlertsTitle")}</h2>
             <p>{t("upgradeAlertsHelp")}</p>
             <div className="settings-upgrade-list">
@@ -873,7 +906,7 @@ export default function AdminPanel({
                         event.preventDefault();
                         void run(
                           () =>
-                            request(`/api/admin/accounts/${editing.id}`, {
+                            request(`/api/villages/${editing.id}`, {
                               method: "PATCH",
                               body: JSON.stringify({
                                 ...accountForm,
@@ -1032,7 +1065,7 @@ export default function AdminPanel({
               onClick={() => {
                 if (!editing) return;
                 void run(async () => {
-                  await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" });
+                  await request(`/api/villages/${editing.id}`, { method: "DELETE" });
                   setDeletePromptOpen(false);
                   setEditing(null);
                 }, t("deleted"));

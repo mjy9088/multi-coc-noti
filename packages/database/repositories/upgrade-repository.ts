@@ -1,5 +1,5 @@
 import type { UpgradeType } from "@multi-coc/shared";
-import { and, desc, eq, lt, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, ne } from "drizzle-orm";
 import { drizzleDatabase } from "../client.ts";
 import { trackedUpgrades } from "../schema.ts";
 import type { TrackedUpgrade, UpgradeSource } from "../types.ts";
@@ -22,9 +22,21 @@ export const upgradeFromRow = (row: typeof trackedUpgrades.$inferSelect): Tracke
     row.resourcePreparationOverrideMinutes == null ? null : Number(row.resourcePreparationOverrideMinutes),
 });
 
-export async function listTrackedUpgrades({ activeOnly = false } = {}): Promise<TrackedUpgrade[]> {
+export async function listTrackedUpgrades({
+  activeOnly = false,
+  accountIds,
+}: {
+  activeOnly?: boolean;
+  accountIds?: string[];
+} = {}): Promise<TrackedUpgrade[]> {
+  if (accountIds?.length === 0) return [];
   const query = drizzleDatabase().select().from(trackedUpgrades).orderBy(trackedUpgrades.finishAt);
-  const rows = activeOnly ? await query.where(eq(trackedUpgrades.status, "active")) : await query;
+  const rows = await query.where(
+    and(
+      activeOnly ? eq(trackedUpgrades.status, "active") : undefined,
+      accountIds ? inArray(trackedUpgrades.accountId, accountIds) : undefined,
+    ),
+  );
   return rows.map(upgradeFromRow);
 }
 
@@ -35,6 +47,7 @@ export async function listUpgradeHistory({
   base,
   active,
   type,
+  accountIds,
 }: {
   accountId?: string;
   limit?: number;
@@ -42,13 +55,16 @@ export async function listUpgradeHistory({
   base?: "home" | "builder";
   active?: boolean;
   type?: UpgradeType;
+  accountIds?: string[];
 } = {}): Promise<TrackedUpgrade[]> {
+  if (accountIds?.length === 0) return [];
   const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
   const cursor = before == null ? null : Number(before);
   if (cursor != null && (!Number.isSafeInteger(cursor) || cursor <= 0))
     throw new Error("invalid upgrade history cursor");
   const conditions = [
     accountId ? eq(trackedUpgrades.accountId, accountId) : undefined,
+    accountIds ? inArray(trackedUpgrades.accountId, accountIds) : undefined,
     cursor ? lt(trackedUpgrades.id, cursor) : undefined,
     base ? eq(trackedUpgrades.base, base) : undefined,
     active == null ? undefined : active ? eq(trackedUpgrades.status, "active") : ne(trackedUpgrades.status, "active"),

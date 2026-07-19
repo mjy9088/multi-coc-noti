@@ -18,7 +18,9 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | --- | --- | --- | --- |
 | `API-PROFILE-001` | Encode and authenticate official API requests and map profiles into the internal shape, preventing incorrect account enrichment. | [Operations: Collection paths](operations.md#collection-paths) | Collector unit |
 | `API-PROFILE-003` | Preserve the configured Display Name during official profile enrichment instead of replacing it with the in-game name. | [Dashboard](dashboard-guide.md#dashboard) | Collector unit |
-| `OPS-PROXY-001` | Route `/api` exclusively to Collector and all other PWA and Next.js paths to Dashboard behind one public port. | [Operations: Reverse proxy chains and PWA deployment](operations.md#reverse-proxy-chains-and-pwa-deployment) | Reverse-proxy unit |
+| `AUTH-ISOLATION-001` | Allow the same player tag for different users while isolating village reads, mutations, history, settings, and notification channels. | [Authentication: Village ownership](authentication.md#village-ownership) | Database and Collector integration |
+| `AUTH-TEST-001` | Keep local ID/password login absent unless explicitly enabled with complete credentials, and create a normal database session when used. | [Authentication: Optional local test login](authentication.md#optional-local-test-login) | Dashboard unit and PostgreSQL integration |
+| `OPS-PROXY-001` | Route Auth.js endpoints to Dashboard, application APIs and health to Collector, and other paths to Dashboard behind one public port. | [Operations: Reverse proxy chains and PWA deployment](operations.md#reverse-proxy-chains-and-pwa-deployment) | Reverse-proxy unit |
 | `OPS-PROXY-002` | Survive normal HTTP cancellation and WebSocket/HMR disconnect errors without terminating the gateway. | [Operations: Reverse proxy chains and PWA deployment](operations.md#reverse-proxy-chains-and-pwa-deployment) | Reverse-proxy integration |
 | `DATA-UPGRADE-001` | Treat upgrades as active only before a valid finish time, preventing completed work from remaining queued. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
 | `DATA-REFRESH-001` | Mark a village update-required exactly 30 minutes after an upgrade completion that has no newer observation. | [Dashboard](dashboard-guide.md#dashboard) | Shared unit |
@@ -61,7 +63,7 @@ Do not change contract expectations merely because of a refactor. One ID represe
 These documented behaviors are not directly protected by `pnpm test`. Treat them as manual review requirements until adding tests and registry IDs.
 
 1. The full import flow from initial unanswered storage to a separately saved resource response
-2. Admin authentication, preview/import, new-account creation, and newest-export precedence
+2. Authenticated preview/import, new-village creation, and newest-export precedence
 3. Mobile fast import from clipboard through Review and save, preservation of input after failure, appropriate route/Dialog presentation, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, Settings village search and list/editor-sheet scroll ownership, persistent App Shell geometry, and the 30-minute update-required browser filter
 4. Group ordering, tag groups, and upgrade-ready sorting in the browser
 5. Maintenance CLI JSONL compatibility plus seed/reseed behavior
@@ -70,7 +72,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 8. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
 9. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
 10. REST upgrade-history filtering and pagination, the global History screen, `Load more`, and village-detail prefiltered navigation
-11. Persistent Settings/History route layouts, non-replacing route loading boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
+11. Persistent Settings/History route layouts, non-replacing route loading boundaries, initial-failure, stale-data, retry states, and visible mutation feedback across Dashboard, History, and Settings
 12. URL-backed Upgrade/Sync History sections, sync-history village filtering and pagination, and export/import timestamp plus state-summary rendering
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.

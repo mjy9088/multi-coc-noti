@@ -157,7 +157,16 @@ CREATE TABLE IF NOT EXISTS village_exports (
 CREATE UNIQUE INDEX IF NOT EXISTS accounts_legacy_index_unique_idx ON accounts (legacy_index) WHERE legacy_index IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS village_exports_account_exported_unique_idx ON village_exports (account_id, exported_at);
 CREATE INDEX IF NOT EXISTS village_exports_latest_idx ON village_exports (account_id, exported_at DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS accounts_unique_player_tag_idx ON accounts (upper(player_tag)) WHERE player_tag <> '';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'user_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS accounts_unique_player_tag_idx
+      ON accounts (upper(player_tag)) WHERE player_tag <> '';
+  END IF;
+END $$;
 
 -- Bring the latest game export into the unified tracker during upgrades from
 -- versions that stored export timers only inside village_exports.normalized.

@@ -17,6 +17,7 @@ export type Upgrade = {
 
 export type Account = {
   id: string;
+  userId: string | null;
   legacyIndex?: number | null;
   label: string;
   playerTag: string;

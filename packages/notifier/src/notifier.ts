@@ -1,17 +1,9 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DueChannelDelivery, DueNotification } from "@multi-coc/database";
-import {
-  claimDueChannelDeliveries,
-  claimDueNotifications,
-  markChannelDeliveryFailed,
-  markChannelDeliverySent,
-  markNotificationFailed,
-  markNotificationSent,
-} from "@multi-coc/database";
+import { claimDueChannelDeliveries, markChannelDeliveryFailed, markChannelDeliverySent } from "@multi-coc/database";
 
 export type NotifierConfig = {
-  intervalMs: number;
   barkBase: string;
   deviceKey: string;
   locale: "ko" | "en";
@@ -19,6 +11,7 @@ export type NotifierConfig = {
   icon?: string;
   deliveryRules?: Partial<Record<DeliverableNotificationKind, Partial<BarkDeliveryRule>>>;
 };
+export type NotifierRuntimeConfig = { intervalMs: number };
 
 export type DeliverableNotificationKind = Exclude<DueNotification["kind"], "legacy">;
 export type BarkInterruptionLevel = "passive" | "active" | "timeSensitive" | "critical";
@@ -48,14 +41,9 @@ export type BarkPayload = {
   ttl?: number;
 };
 
-export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierConfig {
+export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierRuntimeConfig {
   return {
     intervalMs: Number(env.NOTIFIER_INTERVAL_SECONDS || 10) * 1000,
-    barkBase: (env.BARK_BASE_URL || "https://api.day.app").replace(/\/$/, ""),
-    deviceKey: env.BARK_DEVICE_KEY || "",
-    locale: env.NOTIFICATION_LOCALE === "en" ? "en" : "ko",
-    group: env.BARK_GROUP || "Clash Upgrades",
-    icon: env.BARK_ICON || undefined,
   };
 }
 
@@ -158,24 +146,18 @@ export async function sendBark(
 }
 
 type NotificationStore = {
-  claim: typeof claimDueNotifications;
-  sent: typeof markNotificationSent;
-  failed: typeof markNotificationFailed;
-  claimChannels?: typeof claimDueChannelDeliveries;
-  channelSent?: typeof markChannelDeliverySent;
-  channelFailed?: typeof markChannelDeliveryFailed;
+  claimChannels: typeof claimDueChannelDeliveries;
+  channelSent: typeof markChannelDeliverySent;
+  channelFailed: typeof markChannelDeliveryFailed;
 };
 
 const databaseStore: NotificationStore = {
-  claim: claimDueNotifications,
-  sent: markNotificationSent,
-  failed: markNotificationFailed,
   claimChannels: claimDueChannelDeliveries,
   channelSent: markChannelDeliverySent,
   channelFailed: markChannelDeliveryFailed,
 };
 
-function channelConfig(delivery: DueChannelDelivery, runtime: NotifierConfig): NotifierConfig {
+function channelConfig(delivery: DueChannelDelivery): NotifierConfig {
   const deliveryRules =
     delivery.kind === "legacy"
       ? undefined
@@ -183,55 +165,37 @@ function channelConfig(delivery: DueChannelDelivery, runtime: NotifierConfig): N
           [delivery.kind]: delivery.rule,
         };
   return {
-    ...runtime,
     barkBase: delivery.channel.baseUrl.replace(/\/$/, ""),
     deviceKey: delivery.channel.deviceKey,
-    group: delivery.channel.defaultGroup ?? runtime.group,
-    icon: delivery.channel.iconUrl ?? runtime.icon,
+    locale: delivery.channel.locale,
+    group: delivery.channel.defaultGroup ?? "Clash Upgrades",
+    icon: delivery.channel.iconUrl ?? undefined,
     deliveryRules,
   };
 }
 
-export async function runOnce(
-  config: NotifierConfig,
-  {
-    fetchImpl = fetch,
-    logger = console,
-    store = databaseStore,
-  }: { fetchImpl?: typeof fetch; logger?: Pick<Console, "log" | "error">; store?: NotificationStore } = {},
-): Promise<{ delivered: number; failed: number }> {
+export async function runOnce({
+  fetchImpl = fetch,
+  logger = console,
+  store = databaseStore,
+}: {
+  fetchImpl?: typeof fetch;
+  logger?: Pick<Console, "log" | "error">;
+  store?: NotificationStore;
+} = {}): Promise<{ delivered: number; failed: number }> {
   let delivered = 0;
   let failed = 0;
-  const channelDeliveries = store.claimChannels ? await store.claimChannels() : null;
-  if (channelDeliveries !== null) {
-    if (!store.channelSent || !store.channelFailed) throw new Error("channel delivery store is incomplete");
-    for (const delivery of channelDeliveries) {
-      try {
-        await sendBark(delivery, channelConfig(delivery, config), fetchImpl);
-        await store.channelSent(delivery.deliveryId);
-        delivered += 1;
-        logger.log(`[notifier] delivered channel delivery ${delivery.deliveryId}`);
-      } catch (error) {
-        failed += 1;
-        await store.channelFailed(delivery.deliveryId, (error as Error).message);
-        logger.error(`[notifier] channel delivery ${delivery.deliveryId}: ${(error as Error).message}`);
-      }
-    }
-    return { delivered, failed };
-  }
-
-  if (!config.deviceKey) throw new Error("BARK_DEVICE_KEY is required when no managed Bark channel is enabled");
-  const notifications = await store.claim();
-  for (const notification of notifications) {
+  const channelDeliveries = (await store.claimChannels()) ?? [];
+  for (const delivery of channelDeliveries) {
     try {
-      await sendBark(notification, config, fetchImpl);
-      await store.sent(notification.id);
+      await sendBark(delivery, channelConfig(delivery), fetchImpl);
+      await store.channelSent(delivery.deliveryId);
       delivered += 1;
-      logger.log(`[notifier] delivered notification ${notification.id}`);
+      logger.log(`[notifier] delivered channel delivery ${delivery.deliveryId}`);
     } catch (error) {
       failed += 1;
-      await store.failed(notification.id, (error as Error).message);
-      logger.error(`[notifier] notification ${notification.id}: ${(error as Error).message}`);
+      await store.channelFailed(delivery.deliveryId, (error as Error).message);
+      logger.error(`[notifier] channel delivery ${delivery.deliveryId}: ${(error as Error).message}`);
     }
   }
   return { delivered, failed };
@@ -243,7 +207,7 @@ export function startNotifier(config = notifierConfig()): NodeJS.Timeout {
     if (running) return;
     running = true;
     try {
-      await runOnce(config);
+      await runOnce();
     } catch (error) {
       console.error(`[notifier] ${(error as Error).message}`);
     } finally {

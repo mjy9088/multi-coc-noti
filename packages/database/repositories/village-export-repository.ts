@@ -1,4 +1,4 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { drizzleDatabase } from "../client.ts";
 import { villageExports } from "../schema.ts";
 import type { ExportData, SyncHistoryEntry } from "../types.ts";
@@ -7,11 +7,14 @@ export async function listSyncHistory({
   accountId,
   limit = 100,
   before,
+  accountIds,
 }: {
   accountId?: string;
   limit?: number;
   before?: string;
+  accountIds?: string[];
 } = {}): Promise<SyncHistoryEntry[]> {
+  if (accountIds?.length === 0) return [];
   const boundedLimit = Math.max(1, Math.min(500, Math.floor(limit) || 100));
   const cursor = before == null ? null : Number(before);
   if (cursor != null && (!Number.isSafeInteger(cursor) || cursor <= 0)) throw new Error("invalid sync history cursor");
@@ -21,6 +24,7 @@ export async function listSyncHistory({
     .where(
       and(
         accountId ? eq(villageExports.accountId, accountId) : undefined,
+        accountIds ? inArray(villageExports.accountId, accountIds) : undefined,
         cursor ? lt(villageExports.id, cursor) : undefined,
       ),
     )
@@ -66,12 +70,14 @@ export async function latestVillageExport(
     : null;
 }
 
-export async function listLatestVillageExports(): Promise<
-  Array<{ accountId: string; exportedAt: string; normalized: ExportData; raw: unknown }>
-> {
+export async function listLatestVillageExports(
+  accountIds?: string[],
+): Promise<Array<{ accountId: string; exportedAt: string; normalized: ExportData; raw: unknown }>> {
+  if (accountIds?.length === 0) return [];
   const rows = await drizzleDatabase()
     .selectDistinctOn([villageExports.accountId])
     .from(villageExports)
+    .where(accountIds ? inArray(villageExports.accountId, accountIds) : undefined)
     .orderBy(villageExports.accountId, desc(villageExports.exportedAt));
   return rows.map((row) => ({
     accountId: row.accountId,

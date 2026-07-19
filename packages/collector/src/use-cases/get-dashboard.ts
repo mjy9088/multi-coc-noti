@@ -7,11 +7,14 @@ import type { CollectorState } from "../services/collector-state.ts";
 
 export async function getDashboard(
   state: CollectorState,
+  userId: string,
 ): Promise<{ generatedAt: string; accounts: VillageSnapshot[]; groupOrder: string[] }> {
-  const tracked = await listTrackedUpgrades();
-  const exports = new Map((await listLatestVillageExports()).map((item) => [item.accountId, item]));
+  const accounts = state.accountsFor(userId);
+  const accountIds = accounts.map(({ id }) => id);
+  const tracked = await listTrackedUpgrades({ accountIds });
+  const exports = new Map((await listLatestVillageExports(accountIds)).map((item) => [item.accountId, item]));
   const result = await Promise.all(
-    state.accounts.map(async (account) => {
+    accounts.map(async (account) => {
       const latestExport = exports.get(account.id);
       const villageExport = latestExport?.normalized;
       const accountUpgrades = tracked.filter((upgrade) => upgrade.accountId === account.id);
@@ -137,6 +140,6 @@ export async function getDashboard(
       );
     }),
   );
-  const { groupOrder } = await getDashboardSettings();
+  const { groupOrder } = await getDashboardSettings(userId);
   return { generatedAt: new Date().toISOString(), accounts: result, groupOrder };
 }

@@ -10,7 +10,7 @@ import type {
 
 export type AccountInput = Omit<
   Account,
-  "id" | "legacyIndex" | "resourceStatus" | "resourceStatusUpdatedAt" | "resourcePreparationMinutes"
+  "id" | "userId" | "legacyIndex" | "resourceStatus" | "resourceStatusUpdatedAt" | "resourcePreparationMinutes"
 > &
   Partial<Pick<Account, "resourceStatus" | "resourcePreparationMinutes">>;
 
@@ -51,6 +51,7 @@ export type DueChannelDelivery = DueNotification & {
     deviceKey: string;
     defaultGroup: string | null;
     iconUrl: string | null;
+    locale: "ko" | "en";
   };
   rule: {
     enabled: boolean;

@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
 import test from "node:test";
 import type { DueChannelDelivery, DueNotification } from "@multi-coc/database";
-import type { NotifierConfig } from "../src/notifier.ts";
 import { buildBarkPayload, localizeNotification, runOnce } from "../src/notifier.ts";
 
 const due: DueNotification = {
@@ -86,49 +83,7 @@ test("[ALERT-BARK-001] resolves kind-specific Bark presentation and omits inappl
   );
 });
 
-test("[ALERT-DELIVERY-001] delivers claimed notifications and records Bark success", async (context) => {
-  const requests: Array<{ url: string | undefined; body: { title: string; body: string } }> = [];
-  const server = createServer(async (request, response) => {
-    const chunks: Buffer[] = [];
-    for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    requests.push({ url: request.url, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) });
-    response.writeHead(200, { "Content-Type": "application/json" });
-    response.end('{"code":200}');
-  });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  context.after(
-    () => new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
-  );
-  const address = server.address() as AddressInfo;
-  const config: NotifierConfig = {
-    intervalMs: 10_000,
-    barkBase: `http://127.0.0.1:${address.port}`,
-    deviceKey: "test-device",
-    locale: "en",
-    group: "Test",
-  };
-  const sent: string[] = [];
-  const failed: string[] = [];
-  const result = await runOnce(config, {
-    logger: { log() {}, error() {} },
-    store: {
-      claim: async () => [due],
-      sent: async (id) => {
-        sent.push(id);
-      },
-      failed: async (id) => {
-        failed.push(id);
-      },
-    },
-  });
-  assert.deepEqual(result, { delivered: 1, failed: 0 });
-  assert.deepEqual(sent, [due.id]);
-  assert.deepEqual(failed, []);
-  assert.equal(requests[0].url, "/test-device");
-  assert.match(requests[0].body.body, /60 minute/);
-});
-
-test("[ALERT-DELIVERY-001] prefers managed channels and records channel-specific success", async () => {
+test("[ALERT-DELIVERY-001] delivers managed channels and records channel-specific success", async () => {
   const managed: DueChannelDelivery = {
     ...due,
     deliveryId: "delivery-1",
@@ -138,6 +93,7 @@ test("[ALERT-DELIVERY-001] prefers managed channels and records channel-specific
       deviceKey: "managed-device",
       defaultGroup: "Managed group",
       iconUrl: "https://coc.example/icon.png",
+      locale: "en",
     },
     rule: {
       enabled: true,
@@ -153,32 +109,20 @@ test("[ALERT-DELIVERY-001] prefers managed channels and records channel-specific
   };
   const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
   const channelSent: string[] = [];
-  const result = await runOnce(
-    {
-      intervalMs: 10_000,
-      barkBase: "https://environment-bark.example",
-      deviceKey: "environment-device",
-      locale: "en",
-      group: "Environment group",
+  const result = await runOnce({
+    fetchImpl: async (input, init) => {
+      requests.push({ url: String(input), body: JSON.parse(String(init?.body)) });
+      return new Response("ok");
     },
-    {
-      fetchImpl: async (input, init) => {
-        requests.push({ url: String(input), body: JSON.parse(String(init?.body)) });
-        return new Response("ok");
+    logger: { log() {}, error() {} },
+    store: {
+      claimChannels: async () => [managed],
+      channelSent: async (id) => {
+        channelSent.push(id);
       },
-      logger: { log() {}, error() {} },
-      store: {
-        claimChannels: async () => [managed],
-        channelSent: async (id) => {
-          channelSent.push(id);
-        },
-        channelFailed: async () => {},
-        claim: async () => assert.fail("environment fallback must not be claimed"),
-        sent: async () => {},
-        failed: async () => {},
-      },
+      channelFailed: async () => {},
     },
-  );
+  });
   assert.deepEqual(result, { delivered: 1, failed: 0 });
   assert.deepEqual(channelSent, [managed.deliveryId]);
   assert.equal(requests[0].url, "https://managed-bark.example/managed-device");
@@ -189,24 +133,40 @@ test("[ALERT-DELIVERY-001] prefers managed channels and records channel-specific
 
 test("[ALERT-DELIVERY-002] returns failed Bark deliveries to the DB queue", async () => {
   const failed: string[] = [];
-  const config: NotifierConfig = {
-    intervalMs: 10_000,
-    barkBase: "https://example.invalid",
-    deviceKey: "test",
-    locale: "ko",
-    group: "Test",
+  const managed: DueChannelDelivery = {
+    ...due,
+    deliveryId: "delivery-2",
+    channel: {
+      id: "channel-2",
+      baseUrl: "https://example.invalid",
+      deviceKey: "test",
+      defaultGroup: "Test",
+      iconUrl: null,
+      locale: "ko",
+    },
+    rule: {
+      enabled: true,
+      sound: null,
+      interruptionLevel: "active",
+      criticalVolume: null,
+      repeatSound: false,
+      groupName: null,
+      targetUrl: null,
+      archive: null,
+      archiveTtlSeconds: null,
+    },
   };
-  const result = await runOnce(config, {
+  const result = await runOnce({
     fetchImpl: async () => new Response("no", { status: 503 }),
     logger: { log() {}, error() {} },
     store: {
-      claim: async () => [due],
-      sent: async () => {},
-      failed: async (id) => {
+      claimChannels: async () => [managed],
+      channelSent: async () => {},
+      channelFailed: async (id) => {
         failed.push(id);
       },
     },
   });
   assert.deepEqual(result, { delivered: 0, failed: 1 });
-  assert.deepEqual(failed, [due.id]);
+  assert.deepEqual(failed, [managed.deliveryId]);
 });

@@ -20,10 +20,60 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
+export const users = pgTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  image: text("image"),
+  ...timestamps,
+});
+
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (table) => [primaryKey({ columns: [table.provider, table.providerAccountId] })],
+);
+
+export const authSessions = pgTable("auth_sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { withTimezone: true }).notNull(),
+});
+
+export const authVerificationTokens = pgTable(
+  "auth_verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.identifier, table.token] })],
+);
+
 export const accounts = pgTable(
   "accounts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     legacyIndex: integer("legacy_index"),
     label: text("label").notNull(),
     playerTag: text("player_tag").notNull().default(""),
@@ -44,8 +94,8 @@ export const accounts = pgTable(
       sql`${table.resourcePreparationMinutes} IS NULL OR ${table.resourcePreparationMinutes} BETWEEN 1 AND 525600`,
     ),
     uniqueIndex("accounts_legacy_index_unique_idx").on(table.legacyIndex).where(sql`${table.legacyIndex} IS NOT NULL`),
-    uniqueIndex("accounts_unique_player_tag_idx")
-      .on(sql`upper(${table.playerTag})`)
+    uniqueIndex("accounts_user_player_tag_idx")
+      .on(table.userId, sql`upper(${table.playerTag})`)
       .where(sql`${table.playerTag} <> ''`),
   ],
 );
@@ -59,6 +109,14 @@ export const dashboardSettings = pgTable(
   },
   (table) => [check("dashboard_settings_singleton_check", sql`${table.singleton}`)],
 );
+
+export const userDashboardSettings = pgTable("user_dashboard_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  groupOrder: text("group_order").array().notNull().default(sql`ARRAY[]::text[]`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const trackedUpgrades = pgTable(
   "tracked_upgrades",
@@ -133,12 +191,17 @@ export const notificationChannels = pgTable(
   "notification_channels",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     channelType: text("channel_type").notNull(),
+    locale: text("locale").notNull().default("ko"),
     enabled: boolean("enabled").notNull().default(true),
     ...timestamps,
   },
-  (table) => [check("notification_channels_type_check", sql`${table.channelType} IN ('bark')`)],
+  (table) => [
+    check("notification_channels_type_check", sql`${table.channelType} IN ('bark')`),
+    check("notification_channels_locale_check", sql`${table.locale} IN ('ko', 'en')`),
+  ],
 );
 
 export const barkChannelSettings = pgTable("bark_channel_settings", {
@@ -276,8 +339,13 @@ export const resourceReminderSuppressions = pgTable(
 );
 
 export const schema = {
+  users,
+  authAccounts,
+  authSessions,
+  authVerificationTokens,
   accounts,
   dashboardSettings,
+  userDashboardSettings,
   trackedUpgrades,
   upgradeNotifications,
   notificationChannels,

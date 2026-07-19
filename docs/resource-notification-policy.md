@@ -140,20 +140,17 @@ archive behavior and TTL, notification grouping, and the URL opened on tap. Payl
 do not apply: volume is sent only for `critical`, archive TTL only when archiving is enabled, and repeated sound only when
 explicitly requested.
 
-The initial environment-backed channel preserves current behavior: completion uses `minuet`, other kinds use `bell`, all
-kinds use `active`, and `BARK_GROUP` and `BARK_ICON` remain channel defaults. Database channel rows and rules are groundwork
-for later user ownership and management APIs; merely adding them must not create an additional recipient or duplicate an
-environment-backed delivery.
+Each Bark channel belongs to one user and stores its connection defaults and locale in PostgreSQL. Completion uses
+`minuet`, other kinds use `bell`, and all kinds use `active` unless a channel rule overrides those defaults.
 
 One scheduled notification can eventually fan out into one `notification_deliveries` row per enabled channel. Delivery
 status, lease, retry count, and error belong to that channel-specific row so one device's failure cannot resend another
 device's successful delivery. Preparation suppression is likewise keyed by village and channel: all enabled recipients can
 receive the useful reminder once, while repeated reminders to the same recipient remain suppressed.
 
-Notifier uses managed database channels whenever at least one enabled, fully configured Bark channel exists. Missing rules
-inherit the Bark defaults above; disabled rules omit that notification kind for the channel. If no managed channel is
-available, Notifier uses the environment-backed channel and legacy queue state as a compatibility fallback. It never sends
-one scheduled event through both modes in the same run.
+Notifier uses enabled, fully configured Bark channels owned by the same user as the village. Missing rules inherit the Bark
+defaults above; disabled rules omit that notification kind for the channel. A user without an enabled channel receives no
+Bark delivery.
 
 ## Stale village data reminder
 

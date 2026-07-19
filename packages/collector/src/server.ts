@@ -20,7 +20,6 @@ completionTimer.unref();
 
 const app = createCollectorApp({
   state,
-  adminToken: process.env.ADMIN_TOKEN || "",
   corsOrigin: process.env.CORS_ORIGIN || "*",
 });
 

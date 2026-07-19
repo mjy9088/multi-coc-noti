@@ -4,6 +4,14 @@
 @import "./styles/shell.css";
 @import "./styles/settings.css";
 
+.auth-test-form {
+  display: grid;
+  gap: var(--ui-space-3);
+  margin-block-start: var(--ui-space-5);
+  padding-block-start: var(--ui-space-4);
+  border-block-start: 1px solid var(--ui-color-border-subtle);
+}
+
 .resource-dialog-body {
   display: grid;
   gap: var(--ui-space-2);

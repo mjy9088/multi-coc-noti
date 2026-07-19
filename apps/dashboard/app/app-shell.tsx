@@ -4,6 +4,7 @@ import { Button, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import LocaleSwitcher from "./locale-switcher";
@@ -45,7 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const dashboardQuery = useQuery({
     queryKey: dashboardQueryKey(apiBase),
     queryFn: async () => {
-      const response = await fetch(`${apiBase}/api/dashboard`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/dashboard`, { cache: "no-store", credentials: "include" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json() as Promise<{
         generatedAt: string;
@@ -136,6 +137,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <LocaleSwitcher />
+            <Button size="small" tone="secondary" onClick={() => void signOut({ callbackUrl: "/sign-in" })}>
+              {t("signOut")}
+            </Button>
           </div>
         </StickyStackItem>
         {children}

@@ -8,6 +8,7 @@ import { rescheduleAccountNotifications } from "./notification-scheduling.ts";
 export async function updateUpgradePreparationOverride(
   id: string,
   overrideMinutes: number | null,
+  userId?: string,
 ): Promise<TrackedUpgrade | null> {
   const client = await database().connect();
   try {
@@ -15,12 +16,14 @@ export async function updateUpgradePreparationOverride(
     const { rows } = await client.query(
       `UPDATE tracked_upgrades
       SET resource_preparation_override_minutes=$2,updated_at=now()
-      WHERE id=$1 RETURNING id, account_id AS "accountId", source, source_key AS "sourceKey", name, type, base,
+      WHERE id=$1 AND ($3::text IS NULL OR EXISTS (
+        SELECT 1 FROM accounts a WHERE a.id=tracked_upgrades.account_id AND a.user_id=$3
+      )) RETURNING id, account_id AS "accountId", source, source_key AS "sourceKey", name, type, base,
         current_level AS "currentLevel", next_level AS "nextLevel", started_at AS "startedAt", finish_at AS "finishAt",
         status, notification_offsets AS "notificationOffsets",
         resource_preparation_override_minutes AS "resourcePreparationOverrideMinutes",
         last_seen_at AS "lastSeenAt", created_at AS "createdAt", updated_at AS "updatedAt"`,
-      [id, overrideMinutes],
+      [id, overrideMinutes, userId ?? null],
     );
     if (!rows[0]) {
       await client.query("ROLLBACK");

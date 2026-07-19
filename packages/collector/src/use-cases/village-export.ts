@@ -6,7 +6,10 @@ import type { CollectorState } from "../services/collector-state.ts";
 
 export type VillageExportInput = Record<string, unknown>;
 
-export function accountInput(value: VillageExportInput, existing: Account | null): Omit<Account, "id" | "legacyIndex"> {
+export function accountInput(
+  value: VillageExportInput,
+  existing: Account | null,
+): Omit<Account, "id" | "userId" | "legacyIndex"> {
   const label = String(value.label || "").trim();
   if (!label) throw new Error("label is required");
   const playerTag = normalizePlayerTag(value.playerTag || existing?.playerTag);
@@ -37,9 +40,9 @@ export function accountInput(value: VillageExportInput, existing: Account | null
   };
 }
 
-export async function previewVillageExport(state: CollectorState, value: VillageExportInput) {
+export async function previewVillageExport(state: CollectorState, userId: string, value: VillageExportInput) {
   const parsed = parseVillageExport(value.export ?? value.exportText ?? value);
-  const account = state.accounts.find((item) => item.playerTag === parsed.tag);
+  const account = state.accountsFor(userId).find((item) => item.playerTag === parsed.tag);
   const previous = account ? await latestVillageExport(account.id) : null;
   const previousParsed = previous ? parseVillageExport(previous.raw, { allowHistorical: true }) : null;
   return {
@@ -67,14 +70,14 @@ export async function previewVillageExport(state: CollectorState, value: Village
   };
 }
 
-export async function importVillageExport(state: CollectorState, value: VillageExportInput) {
-  const { parsed } = await previewVillageExport(state, value);
-  let account = state.accounts.find((item) => item.playerTag === parsed.tag);
+export async function importVillageExport(state: CollectorState, userId: string, value: VillageExportInput) {
+  const { parsed } = await previewVillageExport(state, userId, value);
+  let account = state.accountsFor(userId).find((item) => item.playerTag === parsed.tag);
   let created = false;
   if (!account) {
     const label = String(value.label || "").trim();
     if (!label) throw new Error(`label is required to add new village ${parsed.tag}`);
-    account = await createAccount(accountInput({ label, playerTag: parsed.tag }, null));
+    account = await createAccount(accountInput({ label, playerTag: parsed.tag }, null), userId);
     created = true;
     await state.refreshAccounts();
   }

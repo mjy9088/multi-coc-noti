@@ -19,7 +19,7 @@ const allowedDevOrigins = (() => {
 export default withNextIntl({
   distDir: process.env.NEXT_DIST_DIR || ".next",
   output: "standalone",
-  transpilePackages: ["@multi-coc/ui"],
+  transpilePackages: ["@multi-coc/ui", "@multi-coc/database"],
   outputFileTracingRoot: path.join(dashboardRoot, "../.."),
   ...(allowedDevOrigins.length ? { allowedDevOrigins } : {}),
   async headers() {

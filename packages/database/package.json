@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "exports": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./auth-adapter": "./auth-adapter.ts"
+  },
   "scripts": {
     "schema:check": "drizzle-kit generate --config drizzle.config.ts --name schema-check",
     "test": "node --test test/*.integration.test.ts",

@@ -22,6 +22,10 @@ export class CollectorState {
     this.logger = logger;
   }
 
+  accountsFor(userId: string): Account[] {
+    return this.accounts.filter((account) => account.userId === userId);
+  }
+
   async refreshAccounts(): Promise<void> {
     this.accounts = await listAccounts();
     const currentIds = new Set(this.accounts.map((account) => account.id));

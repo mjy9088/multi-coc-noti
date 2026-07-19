@@ -102,7 +102,7 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
   const dashboardQuery = useQuery({
     queryKey: dashboardQueryKey(apiBase),
     queryFn: async () => {
-      const response = await fetch(`${apiBase}/api/dashboard`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/dashboard`, { cache: "no-store", credentials: "include" });
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
       return response.json() as Promise<DashboardData>;
     },

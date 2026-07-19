@@ -2,40 +2,41 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import type { CollectorState } from "../services/collector-state.ts";
-import { isAdminTokenAuthorized } from "./auth.ts";
-import { registerAdminRoutes } from "./routes/admin.ts";
+import { authenticatedUser } from "./auth.ts";
 import { registerPublicRoutes } from "./routes/public.ts";
+import { registerUserRoutes } from "./routes/user.ts";
 
 export type CollectorAppOptions = {
   state: CollectorState;
-  adminToken: string;
   corsOrigin: string;
+  authenticate?: typeof authenticatedUser;
 };
 
-export function createCollectorApp({ state, adminToken, corsOrigin }: CollectorAppOptions): Hono {
+export function createCollectorApp({ state, corsOrigin, authenticate = authenticatedUser }: CollectorAppOptions): Hono {
   const app = new Hono();
   app.use(
     "*",
     cors({
-      origin: corsOrigin,
-      allowHeaders: ["authorization", "content-type"],
+      origin: corsOrigin === "*" ? (origin) => origin : corsOrigin,
+      credentials: true,
+      allowHeaders: ["content-type"],
       allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
   );
   app.use(
-    "/api/admin/*",
+    "/api/*",
     bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "payload too large" }, 413) }),
   );
-  app.use("/api/admin/*", async (c, next) => {
-    if (!adminToken) return c.json({ error: "ADMIN_TOKEN is not configured" }, 503);
-    if (!isAdminTokenAuthorized(c.req.header("authorization") || "", adminToken))
-      return c.json({ error: "invalid admin token" }, 401);
+  app.use("/api/*", async (c, next) => {
+    const user = await authenticate(c);
+    if (!user) return c.json({ error: "authentication required" }, 401);
+    c.set("userId" as never, user.id as never);
     await next();
   });
   app.onError((error, c) => c.json({ error: error.message }, 400));
   app.notFound((c) => c.json({ error: "not found" }, 404));
 
-  registerPublicRoutes(app, state, adminToken);
-  registerAdminRoutes(app, state);
+  registerPublicRoutes(app, state);
+  registerUserRoutes(app, state);
   return app;
 }

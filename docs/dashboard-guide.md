@@ -7,11 +7,14 @@ The top-level menu contains `Dashboard`, `History`, `Settings`, and `Quick Paste
 village, base, active/inactive, and type filters and cursor-based `Load more`. It does not label inactive records completed
 or cancelled because exports cannot distinguish those outcomes reliably. Sync history shows which village export was
 stored, its export and import times, and a summary of the Town Hall, active upgrades, and builder state contained in that
-export. The application cannot attribute a sync to a person because admin access currently uses one shared token without
-user identities. A village detail action opens Upgrade History already scoped to that village. Dashboard, History, and
+export. Each sync belongs to the signed-in user's independent village record, even when another user registers the same
+player tag. A village detail action opens Upgrade History already scoped to that village. Dashboard, History, and
 Settings section tabs remain sticky below the header and scroll horizontally on mobile.
 
-Every route provides an immediate loading state and a render-error boundary. Dashboard, History, and authenticated Settings requests also handle expected network failures explicitly: an initial failure replaces empty content with a retry action, while a refresh failure keeps already loaded data visible and marks it as stale. Settings waits for saved-token hydration before deciding whether to show the sign-in form.
+Every route provides an immediate loading state and a render-error boundary. Dashboard, History, and Settings requests also
+handle expected network failures explicitly: an initial failure replaces empty content with a retry action, while a refresh
+failure keeps already loaded data visible and marks it as stale. Auth.js redirects unauthenticated navigation to social
+sign-in before those screens mount.
 
 The root layout owns one TanStack Query client and a persistent App Shell. Dashboard and History reads use the shared cache,
 so revisiting a route can render recent data while refreshing instead of rebuilding an empty client-side state. The App
@@ -43,7 +46,9 @@ The phased token, component-library, feature-decomposition, and visual-testing w
 
 The dashboard publishes a web app manifest, install icons, and a minimal service worker so supported browsers can install it with standalone display. Chromium shows `Install app` when its install prompt is available. On iOS, the button explains how to use Safari's `Share → Add to Home Screen`; iOS does not expose the Chromium install event.
 
-The service worker deliberately does not cache dashboard API or admin traffic. Fresh village and notification state remains network-dependent, and Bark stays the only notification delivery channel. Installation requires HTTPS outside localhost.
+The service worker deliberately does not cache authenticated dashboard API traffic. Fresh village and notification state
+remains network-dependent, and Bark stays the only notification delivery channel. Installation requires HTTPS outside
+localhost.
 
 ### Dashboard
 
@@ -152,7 +157,6 @@ Preparation time is a per-village minute value and can be disabled. Each active 
 
 | Data | Location |
 | --- | --- |
-| Accounts, tags, group order, resource policy, and notification queue | PostgreSQL |
+| Users, OAuth identities, sessions, villages, tags, group order, resource policy, Bark channels, and notification queue | PostgreSQL |
 | Goblin inference and upgrade-ready sorting options | Browser localStorage |
 | Language | Cookie |
-| Admin token | Browser localStorage, checked against server `ADMIN_TOKEN` |

@@ -33,7 +33,7 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
       const query = new URLSearchParams({ limit: "50" });
       if (village) query.set("village", village);
       if (pageParam) query.set("before", pageParam);
-      const response = await fetch(`${apiBase}/api/syncs?${query}`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/syncs?${query}`, { cache: "no-store", credentials: "include" });
       if (!response.ok) throw new Error((await response.json()).error || t("syncLoadFailed"));
       return response.json() as Promise<SyncResponse>;
     },

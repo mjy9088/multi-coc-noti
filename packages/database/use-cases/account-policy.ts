@@ -3,14 +3,15 @@ import { database } from "../client.ts";
 import type { AccountInput } from "../types.ts";
 import { accountFromRow, rescheduleAccountNotifications } from "./notification-scheduling.ts";
 
-export async function updateAccount(id: string, value: AccountInput): Promise<Account | null> {
+export async function updateAccount(id: string, value: AccountInput, userId?: string): Promise<Account | null> {
   const client = await database().connect();
   try {
     await client.query("BEGIN");
     const previous = (
-      await client.query("SELECT resource_status,resource_preparation_minutes FROM accounts WHERE id=$1 FOR UPDATE", [
-        id,
-      ])
+      await client.query(
+        "SELECT resource_status,resource_preparation_minutes FROM accounts WHERE id=$1 AND ($2::text IS NULL OR user_id=$2) FOR UPDATE",
+        [id, userId ?? null],
+      )
     ).rows[0];
     const { rows } = await client.query(
       `
@@ -18,7 +19,7 @@ export async function updateAccount(id: string, value: AccountInput): Promise<Ac
         resource_status=COALESCE($6,resource_status),
         resource_status_updated_at=CASE WHEN $6::text IS NULL OR $6=resource_status THEN resource_status_updated_at ELSE now() END,
         resource_preparation_minutes=CASE WHEN $8 THEN $7 ELSE resource_preparation_minutes END, updated_at=now()
-      WHERE id=$1 RETURNING *
+      WHERE id=$1 AND ($9::text IS NULL OR user_id=$9) RETURNING *
     `,
       [
         id,
@@ -29,6 +30,7 @@ export async function updateAccount(id: string, value: AccountInput): Promise<Ac
         value.resourceStatus ?? null,
         value.resourcePreparationMinutes ?? null,
         value.resourcePreparationMinutes !== undefined,
+        userId ?? null,
       ],
     );
     if (!rows[0]) {
@@ -50,15 +52,19 @@ export async function updateAccount(id: string, value: AccountInput): Promise<Ac
   }
 }
 
-export async function updateAccountResourceStatus(id: string, resourceStatus: ResourceStatus): Promise<Account | null> {
+export async function updateAccountResourceStatus(
+  id: string,
+  resourceStatus: ResourceStatus,
+  userId?: string,
+): Promise<Account | null> {
   const client = await database().connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
       `UPDATE accounts
       SET resource_status=$2,resource_status_updated_at=now(),updated_at=now()
-      WHERE id=$1 RETURNING *`,
-      [id, resourceStatus],
+      WHERE id=$1 AND ($3::text IS NULL OR user_id=$3) RETURNING *`,
+      [id, resourceStatus, userId ?? null],
     );
     if (!rows[0]) {
       await client.query("ROLLBACK");
