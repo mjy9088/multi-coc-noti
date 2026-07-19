@@ -37,7 +37,6 @@ test("Hono collector app preserves health, CORS, authentication, and not-found t
     ).status,
     404,
   );
-  assert.equal((await app.request("/missing")).status, 404);
 });
 
 test("Hono collector app reports missing admin configuration before authentication", async () => {

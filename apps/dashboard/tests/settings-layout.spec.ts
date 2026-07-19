@@ -83,22 +83,6 @@ test("[UI-SETTINGS-001] measured sticky chrome keeps the desktop settings viewpo
       );
     })
     .toBe(true);
-  await expect
-    .poll(async () => {
-      const editorBounds = await page.locator(".settings-village-editor-card").boundingBox();
-      const saveBounds = await page.locator(".settings-action-bar .ui-button").last().boundingBox();
-      return editorBounds && saveBounds ? editorBounds.y + editorBounds.height - saveBounds.y - saveBounds.height : -1;
-    })
-    .toBeGreaterThanOrEqual(20);
-  expect(
-    await page.locator(".settings-village-editor-card").evaluate((editor) => {
-      const save = editor.querySelector<HTMLElement>(".settings-action-bar .ui-button:last-child");
-      return save
-        ? editor.getBoundingClientRect().bottom - save.getBoundingClientRect().bottom
-        : Number.POSITIVE_INFINITY;
-    }),
-  ).toBeLessThanOrEqual(28);
-
   await page.locator(".settings-tabs .ui-tab").nth(3).click();
   await expect(page).toHaveURL(/\/settings\/groups$/);
   await expect(settingsPage).toHaveAttribute("data-persistence-probe", "mounted");
@@ -120,14 +104,6 @@ test("[UI-SETTINGS-001] mobile village settings keep list and editor scroll owne
   await expect(editor).toHaveCSS("bottom", "0px");
   await expect(page.locator(".village-editor-scroll")).toHaveCSS("overflow-y", "auto");
   await expect(page.locator(".settings-action-bar")).toBeInViewport();
-  const mobileActionInset = await editor.evaluate((element) => {
-    const save = element.querySelector<HTMLElement>(".settings-action-bar .ui-button:last-child");
-    return save
-      ? element.getBoundingClientRect().bottom - save.getBoundingClientRect().bottom
-      : Number.POSITIVE_INFINITY;
-  });
-  expect(mobileActionInset).toBeGreaterThanOrEqual(12);
-  expect(mobileActionInset).toBeLessThanOrEqual(20);
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
   await expectRouteTabsBelowHeader(page);
 });

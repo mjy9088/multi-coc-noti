@@ -60,6 +60,10 @@ Every upgrade detected from an export remains in `tracked_upgrades` after it is 
 ## Upgrade availability
 
 <!-- contract: IMPORT-PARSE-001 -->
+
+Active building, hero, pet, and research timers from the Home Village and Builder Base are normalized with their base,
+identity, level, and absolute completion time.
+
 <!-- contract: IMPORT-SLOT-001 -->
 <!-- contract: IMPORT-SLOT-002 -->
 <!-- contract: IMPORT-SLOT-003 -->

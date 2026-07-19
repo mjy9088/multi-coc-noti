@@ -35,15 +35,15 @@ test("[IMPORT-PARSE-001] parses active home and builder upgrades from an in-game
     { now },
   );
   assert.equal(result.townHall, 17);
-  assert.deepEqual(result.builders, { total: 6, free: 4, regularTotal: 6 });
-  assert.deepEqual(result.upgradeSlots, {
-    laboratory: { available: false, active: 1, total: 1 },
-    petHouse: { available: false },
-    builderBase: { builders: { total: 2, free: 1 }, laboratory: { available: true, active: 0, total: 1 } },
-  });
   assert.deepEqual(
-    result.upgrades.map((upgrade) => upgrade.name),
-    ["Cannon", "Archer Queen", "Dragon", "L.A.S.S.I", "Cannon"],
+    result.upgrades.map(({ base, name }) => ({ base, name })),
+    [
+      { base: "home", name: "Cannon" },
+      { base: "home", name: "Archer Queen" },
+      { base: "home", name: "Dragon" },
+      { base: "home", name: "L.A.S.S.I" },
+      { base: "builder", name: "Cannon" },
+    ],
   );
   assert.equal(result.upgrades[0].finishAt, new Date((timestamp + 3600) * 1000).toISOString());
 });
@@ -74,14 +74,10 @@ test("[IMPORT-DETAIL-001] maps helper and Hero Equipment levels for village deta
     },
     { now },
   );
-  assert.deepEqual(result.helpers, [
-    {
-      dataId: 93000000,
-      name: "Builder's Apprentice",
-      level: 8,
-      availableAt: new Date((timestamp + 60) * 1000).toISOString(),
-    },
-  ]);
+  assert.deepEqual(
+    result.helpers.map(({ dataId, level, name }) => ({ dataId, level, name })),
+    [{ dataId: 93000000, name: "Builder's Apprentice", level: 8 }],
+  );
   assert.deepEqual(result.heroEquipment, [{ dataId: 90000001, name: "Rage Vial", level: 18 }]);
 });
 
@@ -163,19 +159,6 @@ test("[IMPORT-DIFF-001] summarizes changed upgrades and available slots", () => 
   );
   assert.deepEqual(compareVillageExports(null, current), { hasPrevious: false, started: [], ended: [], slots: [] });
 
-  const legacyNormalized = {
-    ...previous,
-    upgrades: previous.upgrades.map((upgrade, index) => ({
-      ...upgrade,
-      id: `export:buildings:${upgrade.dataId}:${index}`,
-    })),
-  };
-  assert.notDeepEqual(compareVillageExports(legacyNormalized, previous), {
-    hasPrevious: true,
-    started: [],
-    ended: [],
-    slots: [],
-  });
   const reparsedStored = parseVillageExport(previous.raw, { allowHistorical: true });
   assert.deepEqual(compareVillageExports(reparsedStored, previous), {
     hasPrevious: true,

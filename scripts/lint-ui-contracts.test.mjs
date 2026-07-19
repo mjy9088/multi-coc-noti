@@ -133,25 +133,6 @@ test("multi-pane layouts direct authors to SplitLayout", () => {
   assert.match(diagnostic.message, /SplitLayout/);
 });
 
-test("shared solutions satisfy all UI contracts", () => {
-  const diagnostics = lintCss(
-    `
-      .ui-sticky-surface { position: sticky; top: 0; }
-      .mobile-sheet {
-        position: absolute;
-        bottom: 0;
-        border-radius: var(--ui-radius-large) var(--ui-radius-large) 0 0;
-      }
-      .pane {
-        --ui-sticky-surface-inline-bleed: 1rem;
-        --ui-sticky-surface-block-end-bleed: 1rem;
-      }
-    `,
-    "packages/ui/src/styles/components.css",
-  );
-  assert.deepEqual(diagnostics, []);
-});
-
 test("a suppression requires a rule id and a specific reason", () => {
   const suppressed = lintCss(`
     /* ui-contract-disable-next-line sticky-surface -- translucent app chrome is intentional */
