@@ -18,7 +18,7 @@ export default function HistoryShell() {
 
   return (
     <main>
-      <section className="history-shell">
+      <section className="history-shell shell">
         <HistoryNav section={section} />
         {section === "upgrades" ? (
           <HistoryPanel apiBase={apiBase} initialVillageId={searchParams.get("village") || ""} />

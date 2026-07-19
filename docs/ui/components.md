@@ -95,7 +95,7 @@ The owned Radix-backed Dialog composition handles modal focus and responsive she
 success/information feedback. Dashboard mounts the provider at its persistent app boundary; Settings mutation feedback and
 the resource-status prompt now use the shared Toast and Dialog paths.
 
-## Legacy reusable UI
+## Migrated compatibility UI
 
 These elements work today but are not stable design-system APIs.
 
@@ -103,18 +103,19 @@ These elements work today but are not stable design-system APIs.
 
 Current location: `apps/dashboard/app/request-state.tsx`.
 
-They encode useful request behavior but remain tied to Dashboard markup and CSS. Migrate into Spinner, RequestState,
-EmptyState, and StaleNotice primitives or feature-level compositions.
+These are thin translated Dashboard adapters over the owned `Spinner`, `RequestState`, and `Button` primitives. Feature
+screens may retain the adapters where they avoid duplicating localized request copy; they no longer own visual behavior.
 
 ### Section tabs and navigation
 
-History and Dashboard still use repeated button/class combinations. Settings uses the owned Tabs path; preserve URL-backed
-navigation semantics and sticky mobile behavior while migrating the remaining screens.
+Settings and History use owned Tabs and the shared measured sticky stack. Dashboard's in-page section navigation uses owned
+Buttons because it scrolls to content regions rather than switching tab panels.
 
 ### Cards, badges, fields, and lists
 
-The remaining legacy screens repeat card, badge, input, select, checkbox, metric, and action-row patterns. Settings forms
-and actions now use the owned primitives; legacy patterns elsewhere remain migration evidence, not component APIs.
+Dashboard, village detail, History, and Settings now compose owned Card, Badge, form, status, Button, Tabs, Dialog, and
+ActionBar primitives. Product-specific metrics, charts, availability blocks, and result rows remain feature components;
+their layout CSS uses shared semantic tokens rather than becoming generic component APIs.
 
 ## Implemented primitive scope
 

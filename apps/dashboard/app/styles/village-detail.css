@@ -1,0 +1,75 @@
+.village-detail {
+  padding-block: var(--ui-space-6) var(--ui-space-7);
+}
+
+.village-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  margin-block-end: var(--ui-space-4);
+}
+
+.village-detail-actions > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+.village-detail-header {
+  --ui-surface-context: var(--ui-color-surface);
+  border-radius: var(--ui-radius-medium);
+  border-inline-start: 4px solid var(--accent, var(--ui-color-accent));
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-small);
+}
+
+.village-detail-header::before {
+  content: none;
+}
+
+.village-detail-grid {
+  gap: var(--ui-space-3);
+  margin-block-start: var(--ui-space-3);
+}
+
+.village-detail-card.ui-card {
+  --ui-surface-context: var(--ui-color-surface);
+  padding: var(--ui-space-5);
+}
+
+.metric-grid > div,
+.cooldown-grid > div,
+.detail-item-grid > div,
+.equipment-grid > div {
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface-inset);
+}
+
+.equipment-card,
+.village-upgrades {
+  margin-block-start: var(--ui-space-3);
+}
+
+@media (max-width: 48rem) {
+  .village-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .village-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ui-space-3);
+  }
+}
+
+@media (max-width: 32rem) {
+  .village-detail-actions,
+  .village-detail-actions > span {
+    width: 100%;
+  }
+
+  .village-detail-actions .ui-button {
+    flex: 1 1 auto;
+  }
+}

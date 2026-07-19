@@ -1,3 +1,4 @@
+import { Card, EmptyState } from "@multi-coc/ui";
 import type { CompletionBin, UpgradeTimelinePoint } from "@multi-coc/upgrade-availability";
 
 const WIDTH = 720;
@@ -35,7 +36,7 @@ function AreaPlot({
     `${line(key)} L${x(end)},${HEIGHT - BOTTOM} L${x(start)},${HEIGHT - BOTTOM} Z`;
   const first = points[0];
   return (
-    <div className="upgrade-area-chart">
+    <Card className="upgrade-area-chart">
       <div className="upgrade-chart-heading">
         <h3>{label}</h3>
         <span>
@@ -69,7 +70,7 @@ function AreaPlot({
           {formatTime(end)}
         </text>
       </svg>
-    </div>
+    </Card>
   );
 }
 
@@ -105,10 +106,10 @@ export default function UpgradeCharts({
         <span>{labels.description}</span>
       </div>
       {!hasUpgrades ? (
-        <div className="empty chart-empty">{labels.empty}</div>
+        <EmptyState title={labels.empty} />
       ) : (
         <div className="upgrade-chart-layout">
-          <div className="completion-chart">
+          <Card className="completion-chart">
             <div className="upgrade-chart-heading">
               <h3>{labels.completions}</h3>
               <span>
@@ -134,7 +135,7 @@ export default function UpgradeCharts({
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
           <AreaPlot
             points={timeline}
             homeKey="activeHome"

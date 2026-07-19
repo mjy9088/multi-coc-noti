@@ -1,6 +1,19 @@
 "use client";
 
-import { useStickyStack } from "@multi-coc/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  EmptyState,
+  Field,
+  Input,
+  Label,
+  Select,
+  StaleNotice,
+  StickyStackItem,
+  useStickyStack,
+} from "@multi-coc/ui";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import {
   applyDisplayOptions,
@@ -262,9 +275,10 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
         <ErrorState message={dashboardError || t("dashboardLoadFailed")} retry={() => void dashboardQuery.refetch()} />
       )}
       {dashboardError && data.accounts.length > 0 && (
-        <div className="shell stale-warning" role="status">
-          {t("staleDataWarning")}
-          <button onClick={() => void dashboardQuery.refetch()}>{t("retry")}</button>
+        <div className="shell">
+          <StaleNotice onRetry={() => void dashboardQuery.refetch()} retryLabel={t("retry")}>
+            {t("staleDataWarning")}
+          </StaleNotice>
         </div>
       )}
       {view === "village" && selectedVillageId && selectedVillage && (
@@ -284,7 +298,7 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
         !liveAccounts.some((account) => account.id === selectedVillageId) && (
           <section className="village-route-missing shell">
             <h1>{t("villageNotFound")}</h1>
-            <button onClick={() => router.push("/")}>← {t("backToDashboard")}</button>
+            <Button onClick={() => router.push("/")}>← {t("backToDashboard")}</Button>
           </section>
         )}
       <div
@@ -304,93 +318,82 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
           </div>
           <div className="account-controls dashboard-filters">
             <div className="account-tools">
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setActiveTag(null);
-                }}
-                placeholder={t("search")}
-                aria-label={t("search")}
-              />
-              <div className="availability-filter" role="radiogroup" aria-label={t("availabilityFilter")}>
-                {(["all", "home", "any"] as const).map((filter) => (
-                  <label key={filter}>
-                    <input
-                      type="radio"
-                      name="availability"
-                      checked={availabilityFilter === filter}
-                      onChange={() => {
-                        setAvailabilityFilter(filter);
-                        setActiveTag(null);
-                      }}
-                    />
-                    {t(filter === "all" ? "statusAll" : filter === "home" ? "homeSlotAvailable" : "anySlotAvailable")}
-                  </label>
-                ))}
-              </div>
-              <label className="refresh-filter">
-                <input
-                  type="checkbox"
-                  checked={refreshOnly}
+              <Field className="dashboard-search-field">
+                <Label>{t("search")}</Label>
+                <Input
+                  type="search"
+                  value={query}
                   onChange={(event) => {
-                    setRefreshOnly(event.target.checked);
+                    setQuery(event.target.value);
                     setActiveTag(null);
                   }}
+                  placeholder={t("search")}
                 />
-                {t("refreshRequired")}
-              </label>
+              </Field>
+              <Field className="dashboard-availability-field">
+                <Label>{t("availabilityFilter")}</Label>
+                <Select
+                  value={availabilityFilter}
+                  onChange={(event) => {
+                    setAvailabilityFilter(event.target.value as AvailabilityFilter);
+                    setActiveTag(null);
+                  }}
+                >
+                  <option value="all">{t("statusAll")}</option>
+                  <option value="home">{t("homeSlotAvailable")}</option>
+                  <option value="any">{t("anySlotAvailable")}</option>
+                </Select>
+              </Field>
+              <Checkbox
+                className="refresh-filter"
+                label={t("refreshRequired")}
+                checked={refreshOnly}
+                onChange={(event) => {
+                  setRefreshOnly(event.target.checked);
+                  setActiveTag(null);
+                }}
+              />
               <details className="display-options">
                 <summary>{t("displayOptions")}</summary>
                 <div>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={displayOptions.goblinResearcher}
-                      onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)}
-                    />
-                    {t("inferGoblinResearcher")}
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={displayOptions.goblinBuilder}
-                      onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)}
-                    />
-                    {t("inferGoblinBuilder")}
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={prioritizeAvailable}
-                      onChange={(event) => {
-                        setPrioritizeAvailable(event.target.checked);
-                        localStorage.setItem("multi-village-prioritize-available", String(event.target.checked));
-                      }}
-                    />
-                    {t("prioritizeAvailable")}
-                  </label>
+                  <Checkbox
+                    label={t("inferGoblinResearcher")}
+                    checked={displayOptions.goblinResearcher}
+                    onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)}
+                  />
+                  <Checkbox
+                    label={t("inferGoblinBuilder")}
+                    checked={displayOptions.goblinBuilder}
+                    onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)}
+                  />
+                  <Checkbox
+                    label={t("prioritizeAvailable")}
+                    checked={prioritizeAvailable}
+                    onChange={(event) => {
+                      setPrioritizeAvailable(event.target.checked);
+                      localStorage.setItem("multi-village-prioritize-available", String(event.target.checked));
+                    }}
+                  />
                 </div>
               </details>
             </div>
-            <div className="account-tabs" role="tablist">
-              <button className={selectedTag === null ? "active" : ""} onClick={() => setActiveTag(null)}>
+            <div className="account-tabs" role="group" aria-label={t("all")}>
+              <Button tone={selectedTag === null ? "primary" : "quiet"} onClick={() => setActiveTag(null)}>
                 {t("all")} <b>{visibleAccounts.length}</b>
-              </button>
+              </Button>
               {tagOptions.map((tag) => (
-                <button
+                <Button
                   key={tag.key}
-                  className={selectedTag === tag.key ? "active" : ""}
+                  tone={selectedTag === tag.key ? "primary" : "quiet"}
                   onClick={() => setActiveTag(tag.key)}
                 >
                   <span className="tag-hash">#</span>
                   {tag.label} <b>{tag.count}</b>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
-          <div className="summary-strip">
+          <Card className="summary-strip">
             <div>
               <span>{t("accounts")}</span>
               <strong>{accounts.length}</strong>
@@ -411,7 +414,7 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
               <span>{t("earliest")}</span>
               <strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t("none")}</strong>
             </div>
-          </div>
+          </Card>
         </section>
 
         <UpgradeCharts
@@ -430,20 +433,25 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
           }}
         />
 
-        <div className="dashboard-section-tabs section-tabs" role="navigation" aria-label={t("dashboardSections")}>
-          <button
-            className={dashboardSection === "villages" ? "active" : ""}
+        <StickyStackItem
+          order={10}
+          className="dashboard-section-tabs"
+          role="navigation"
+          aria-label={t("dashboardSections")}
+        >
+          <Button
+            tone={dashboardSection === "villages" ? "primary" : "quiet"}
             onClick={() => scrollToDashboardSection("villages")}
           >
             {t("villages")}
-          </button>
-          <button
-            className={dashboardSection === "queue" ? "active" : ""}
+          </Button>
+          <Button
+            tone={dashboardSection === "queue" ? "primary" : "quiet"}
             onClick={() => scrollToDashboardSection("queue")}
           >
             {t("queueTab")}
-          </button>
-        </div>
+          </Button>
+        </StickyStackItem>
 
         <section id="village-list" className="dashboard-scroll-section ui-sticky-scroll-target">
           <div className="village-grid">
@@ -458,42 +466,44 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
                 : undefined;
               return (
                 <Link
-                  className="village-card village-card-link"
+                  className="village-card-link"
                   key={account.id}
                   href={`/villages/${encodeURIComponent(account.id)}`}
                   style={{ "--accent": account.color } as React.CSSProperties}
                   aria-label={t("openVillage", { name: account.name })}
                 >
-                  <div className="card-head">
-                    <Shield level={account.townHall} color={account.color} />
-                    <div>
-                      <h2>{account.name}</h2>
-                      <p>
-                        {account.tag} · {t("level")} {account.level}
-                      </p>
+                  <Card className="village-card">
+                    <div className="card-head">
+                      <Shield level={account.townHall} color={account.color} />
+                      <div>
+                        <h2>{account.name}</h2>
+                        <p>
+                          {account.tag} · {t("level")} {account.level}
+                        </p>
+                      </div>
+                      {account.refreshRequired && <Badge tone="warning">{t("refreshRequired")}</Badge>}
                     </div>
-                    {account.refreshRequired && <span className="status refresh-needed">{t("refreshRequired")}</span>}
-                  </div>
-                  {!!account.tags?.length && (
-                    <div className="account-tag-list">
-                      {account.tags.map((tag) => (
-                        <span key={tag}>#{tag}</span>
-                      ))}
+                    {!!account.tags?.length && (
+                      <div className="account-tag-list">
+                        {account.tags.map((tag) => (
+                          <span key={tag}>#{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                    <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
+                    <div className="card-foot">
+                      <span>
+                        {t("inProgress")} <b>{account.upgrades.length}</b>
+                      </span>
+                      <span>
+                        {t("updated")} {formatRelative(account.lastSeen, clockNow)}
+                      </span>
                     </div>
-                  )}
-                  <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
-                  <div className="card-foot">
-                    <span>
-                      {t("inProgress")} <b>{account.upgrades.length}</b>
-                    </span>
-                    <span>
-                      {t("updated")} {formatRelative(account.lastSeen, clockNow)}
-                    </span>
-                  </div>
+                  </Card>
                 </Link>
               );
             })}
-            {!accounts.length && <div className="empty villages-empty">{t("noMatches")}</div>}
+            {!accounts.length && <EmptyState title={t("noMatches")} />}
           </div>
         </section>
 
@@ -511,7 +521,7 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
               const urgency = duration < 6 * 3600_000;
               const labels = { building: t("building"), hero: t("hero"), pet: t("pet"), research: t("research") };
               return (
-                <article className={urgency ? "upgrade urgent" : "upgrade"} key={`${account.id}-${upgrade.id}`}>
+                <Card className={urgency ? "upgrade urgent" : "upgrade"} key={`${account.id}-${upgrade.id}`}>
                   <div className={`upgrade-icon ${upgrade.type}`}>
                     {upgrade.type === "research" ? "⌁" : upgrade.type === "hero" ? "♛" : "◆"}
                   </div>
@@ -534,18 +544,13 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
                     </em>
                   </div>
                   <time>{formatQueueDate(upgrade.finishAt)}</time>
-                </article>
+                </Card>
               );
             })}
-            {!allUpgrades.length && <div className="empty">{t("empty")}</div>}
+            {!allUpgrades.length && <EmptyState title={t("empty")} />}
           </div>
         </section>
       </div>
-      <footer>
-        <span>
-          {t("bark")} <b>{t("enabled")}</b>
-        </span>
-      </footer>
     </main>
   );
 }

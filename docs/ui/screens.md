@@ -47,6 +47,12 @@ frame. Route changes reset only the frame's internal scroll position.
 
 ## Dashboard — `/`
 
+<!-- contract: UI-ROUTES-001 -->
+
+Dashboard, village detail, and both History routes compose the owned UI primitives for actions, fields, cards, badges,
+request states, and tabs. Their product-specific charts, metrics, and result rows use semantic tokens and must not create
+page-level horizontal overflow at supported desktop or mobile widths.
+
 Purpose: answer “which village can start work now, what is currently upgrading, and what finishes next?” across all
 villages.
 

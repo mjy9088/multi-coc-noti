@@ -33,13 +33,14 @@ inventory live alongside this plan under `docs/ui/`.
   or semantic token.
 - Dashboard mounts the shared Toast provider at its persistent layout boundary. Settings mutation feedback uses it, and its
   resource-status prompt uses the owned Dialog primitive.
-- The production App Shell now uses owned tokens, Button, and semantic route Links. Settings uses the owned Tabs, Button,
-  ActionBar, Dialog, and Toast paths with a dedicated token-based composition stylesheet; remaining feature migrations must
-  not add new dependencies on the legacy shell or Settings selectors.
+- The production App Shell and all Dashboard routes use owned tokens and primitives. Dashboard, village detail, History,
+  and Settings keep product-specific composition styles in separate token-based stylesheets and must not add new
+  dependencies on legacy selectors.
 - Settings and History use persistent nested App Router layouts. Their URL-backed tab pages validate route parameters but do
   not recreate the client feature shell, preventing authentication/data loading flashes and navigation movement.
 - Settings markup uses Settings-owned class names plus the shared form/action/layout primitives. Its standalone retired
-  selector blocks have been removed from `legacy.css`; the remaining legacy file serves screens that have not migrated yet. Product browser E2E covers 36-village
+selector blocks have been removed from `legacy.css`; the remaining legacy file is compatibility debt for incremental
+selector removal rather than the target API. Product browser E2E covers 36-village
   desktop/mobile scroll ownership and persistent tab navigation.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are

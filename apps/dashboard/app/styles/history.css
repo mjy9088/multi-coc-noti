@@ -1,0 +1,114 @@
+.history-shell {
+  padding-block: var(--ui-space-6) var(--ui-space-7);
+}
+
+.history-header {
+  padding-inline: var(--ui-space-4);
+}
+
+.history-sections.ui-tabs {
+  margin-block-start: var(--ui-space-5);
+  border-bottom: 1px solid var(--ui-color-border);
+  background: var(--ui-color-canvas);
+}
+
+.history-tabs-sticky {
+  z-index: var(--ui-layer-local-sticky);
+  top: var(--ui-sticky-stack-offset);
+  background: var(--ui-color-canvas);
+}
+
+.history-section-header {
+  margin-block: var(--ui-space-6) var(--ui-space-4);
+}
+
+.history-filters {
+  --ui-surface-context: var(--ui-color-surface);
+  position: static;
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr);
+  gap: var(--ui-space-3);
+  margin-block: 0 var(--ui-space-4);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-medium);
+  background: var(--ui-color-surface);
+  backdrop-filter: none;
+}
+
+.history-filters .ui-label {
+  display: block;
+  color: var(--ui-color-text);
+  font-size: 0.875rem;
+}
+
+.history-filters .ui-select {
+  min-width: 0;
+  min-height: var(--ui-control-large);
+  height: auto;
+  border: 1px solid var(--ui-color-border-strong);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface-raised);
+  padding-inline: var(--ui-space-3);
+  color: var(--ui-color-text);
+  font: inherit;
+}
+
+.sync-history-filters {
+  grid-template-columns: minmax(14rem, 26rem);
+}
+
+.history-list {
+  display: grid;
+  gap: var(--ui-space-2);
+  border: 0;
+}
+
+.history-card.ui-card {
+  --ui-surface-context: var(--ui-color-surface);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ui-space-4);
+  overflow: hidden;
+  padding: var(--ui-space-4);
+  border-inline-start: 3px solid var(--accent, var(--ui-color-accent));
+}
+
+.history-card.ui-card::before {
+  content: none;
+}
+
+.history-result {
+  gap: var(--ui-space-2);
+}
+
+.history-more.ui-button {
+  margin: var(--ui-space-5) auto 0;
+}
+
+@media (max-width: 48rem) {
+  .history-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sync-history-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 32rem) {
+  .history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .history-card.ui-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .history-result {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+}

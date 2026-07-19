@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge, Button, Card, EmptyState, Field, Label, Select, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -48,37 +49,41 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
   const error = syncQuery.error instanceof Error ? syncQuery.error.message : "";
 
   return (
-    <section className="history-shell shell">
+    <section className="history-section">
       <header className="history-section-header">
         <p className="eyebrow">SYNC HISTORY</p>
         <h2>{t("syncTitle")}</h2>
         <p>{t("syncDescription")}</p>
       </header>
       <div className="history-filters sync-history-filters">
-        <label>
-          {t("village")}
-          <select value={village} onChange={(event) => setVillage(event.target.value)}>
+        <Field>
+          <Label>{t("village")}</Label>
+          <Select value={village} onChange={(event) => setVillage(event.target.value)}>
             <option value="">{t("allVillages")}</option>
             {villages.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name} · {item.playerTag}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
       </div>
       {error && syncs.length > 0 && (
-        <div className="stale-warning" role="status">
+        <StaleNotice onRetry={() => void syncQuery.refetch()} retryLabel={t("retry")}>
           {error}
-          <button onClick={() => void syncQuery.refetch()}>{t("retry")}</button>
-        </div>
+        </StaleNotice>
       )}
       {error && !syncs.length && <ErrorState compact message={error} retry={() => void syncQuery.refetch()} />}
       <div className="history-list sync-history-list">
         {syncs.map((sync) => {
           const account = villageById.get(sync.accountId);
           return (
-            <article key={sync.id} style={{ "--accent": account?.color || "#9a7c4c" } as React.CSSProperties}>
+            <Card
+              role="listitem"
+              className="history-card"
+              key={sync.id}
+              style={{ "--accent": account?.color || "var(--ui-color-accent)" } as React.CSSProperties}
+            >
               <i className="history-type sync" />
               <div>
                 <span>{account?.name || sync.playerTag}</span>
@@ -94,19 +99,19 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
                 {sync.unknownDataIds > 0 && <small>{t("unknownData", { count: sync.unknownDataIds })}</small>}
               </div>
               <div className="history-result">
-                <b className="history-status active">{t("synced")}</b>
+                <Badge tone="success">{t("synced")}</Badge>
                 <time>{formatDateTime(sync.importedAt)}</time>
                 <small>{t("exportedAt", { date: formatDateTime(sync.exportedAt) })}</small>
               </div>
-            </article>
+            </Card>
           );
         })}
-        {!loading && !syncs.length && <div className="empty">{t("syncEmpty")}</div>}
+        {!loading && !syncs.length && <EmptyState title={t("syncEmpty")} />}
       </div>
       {syncQuery.hasNextPage && (
-        <button className="history-more" disabled={loading} onClick={() => void syncQuery.fetchNextPage()}>
+        <Button className="history-more" pending={loading} onClick={() => void syncQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}
-        </button>
+        </Button>
       )}
       {loading && !syncs.length && <LoadingState compact />}
     </section>

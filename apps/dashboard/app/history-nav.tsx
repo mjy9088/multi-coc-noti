@@ -1,5 +1,6 @@
 "use client";
 
+import { StickyStackItem, Tab, Tabs } from "@multi-coc/ui";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -13,14 +14,17 @@ export default function HistoryNav({ section }: { section: "upgrades" | "syncs" 
         <h1>{t("historyTitle")}</h1>
         <p>{t("historyDescription")}</p>
       </header>
-      <div className="history-sections section-tabs" role="navigation" aria-label={t("sections")}>
-        <button className={section === "upgrades" ? "active" : ""} onClick={() => router.push("/history/upgrades")}>
-          {t("upgrades")}
-        </button>
-        <button className={section === "syncs" ? "active" : ""} onClick={() => router.push("/history/syncs")}>
-          {t("syncs")}
-        </button>
-      </div>
+      <StickyStackItem order={10} as="nav" className="history-tabs-sticky">
+        <Tabs
+          className="history-sections"
+          label={t("sections")}
+          value={section}
+          onValueChange={(value) => router.push(`/history/${value}`, { scroll: false })}
+        >
+          <Tab value="upgrades">{t("upgrades")}</Tab>
+          <Tab value="syncs">{t("syncs")}</Tab>
+        </Tabs>
+      </StickyStackItem>
     </>
   );
 }

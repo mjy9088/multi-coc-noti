@@ -3,6 +3,9 @@
 @import "./styles/legacy.css";
 @import "./styles/shell.css";
 @import "./styles/settings.css";
+@import "./styles/dashboard.css";
+@import "./styles/history.css";
+@import "./styles/village-detail.css";
 
 .auth-test-form {
   display: grid;

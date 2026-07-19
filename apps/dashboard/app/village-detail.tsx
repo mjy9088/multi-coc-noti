@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Card, EmptyState } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
@@ -74,14 +75,14 @@ export default function VillageDetail({
   return (
     <section className="village-detail shell">
       <div className="village-detail-actions">
-        <button className="secondary" onClick={onBack}>
+        <Button tone="secondary" onClick={onBack}>
           ← {t("backToDashboard")}
-        </button>
+        </Button>
         <span>
-          <button className="secondary" onClick={onHistory}>
+          <Button tone="secondary" onClick={onHistory}>
             {t("history")}
-          </button>
-          <button onClick={onSettings}>{t("villageSettings")}</button>
+          </Button>
+          <Button onClick={onSettings}>{t("villageSettings")}</Button>
         </span>
       </div>
       <header className="village-detail-header" style={{ "--accent": village.color } as React.CSSProperties}>
@@ -97,11 +98,11 @@ export default function VillageDetail({
         </span>
       </header>
       <div className="village-detail-grid">
-        <article className="village-detail-card">
+        <Card className="village-detail-card">
           <h2>{t("upgradeAvailability")}</h2>
           <UpgradeAvailabilityPanel builders={village.builders} upgradeSlots={village.upgradeSlots} />
-        </article>
-        <article className="village-detail-card">
+        </Card>
+        <Card className="village-detail-card">
           <h2>{t("upgradeSummary")}</h2>
           <div className="metric-grid">
             <div>
@@ -129,9 +130,9 @@ export default function VillageDetail({
               <strong>{typeCount("pet")}</strong>
             </div>
           </div>
-        </article>
+        </Card>
         {stats && (
-          <article className="village-detail-card">
+          <Card className="village-detail-card">
             <h2>{t("playerStats")}</h2>
             <div className="metric-grid">
               {stats.league && (
@@ -165,10 +166,10 @@ export default function VillageDetail({
                 <strong>{stats.capitalContributions.toLocaleString()}</strong>
               </div>
             </div>
-          </article>
+          </Card>
         )}
         {village.cooldowns?.clockTower && (
-          <article className="village-detail-card cooldown-card">
+          <Card className="village-detail-card cooldown-card">
             <h2>{t("cooldowns")}</h2>
             <div className="cooldown-grid">
               {village.cooldowns?.clockTower && (
@@ -178,10 +179,10 @@ export default function VillageDetail({
                 </div>
               )}
             </div>
-          </article>
+          </Card>
         )}
         {!!village.helpers?.length && (
-          <article className="village-detail-card">
+          <Card className="village-detail-card">
             <h2>{t("villageHelpers")}</h2>
             <div className="detail-item-grid">
               {village.helpers.map((helper) => (
@@ -196,11 +197,11 @@ export default function VillageDetail({
                 </div>
               ))}
             </div>
-          </article>
+          </Card>
         )}
       </div>
       {!!village.heroEquipment?.length && (
-        <article className="village-detail-card equipment-card">
+        <Card className="village-detail-card equipment-card">
           <h2>{t("heroEquipment")}</h2>
           <div className="equipment-grid">
             {village.heroEquipment.map((item) => (
@@ -212,9 +213,9 @@ export default function VillageDetail({
               </div>
             ))}
           </div>
-        </article>
+        </Card>
       )}
-      <article className="village-detail-card village-upgrades">
+      <Card className="village-detail-card village-upgrades">
         <h2>{t("activeVillageUpgrades")}</h2>
         {village.upgrades.length ? (
           village.upgrades.map((upgrade) => (
@@ -233,9 +234,9 @@ export default function VillageDetail({
             </div>
           ))
         ) : (
-          <p>{t("empty")}</p>
+          <EmptyState title={t("empty")} />
         )}
-      </article>
+      </Card>
     </section>
   );
 }

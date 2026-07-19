@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge, Button, Card, EmptyState, Field, Label, Select, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -61,63 +62,67 @@ export default function HistoryPanel({
   };
 
   return (
-    <section className="history-shell shell">
+    <section className="history-section">
       <header className="history-section-header">
         <p className="eyebrow">UPGRADE HISTORY</p>
         <h2>{t("title")}</h2>
         <p>{t("description")}</p>
       </header>
       <div className="history-filters">
-        <label>
-          {t("village")}
-          <select value={filters.village} onChange={(event) => setFilter("village", event.target.value)}>
+        <Field>
+          <Label>{t("village")}</Label>
+          <Select value={filters.village} onChange={(event) => setFilter("village", event.target.value)}>
             <option value="">{t("allVillages")}</option>
             {villages.map((village) => (
               <option key={village.id} value={village.id}>
                 {village.name} · {village.playerTag}
               </option>
             ))}
-          </select>
-        </label>
-        <label>
-          {t("base")}
-          <select value={filters.base} onChange={(event) => setFilter("base", event.target.value)}>
+          </Select>
+        </Field>
+        <Field>
+          <Label>{t("base")}</Label>
+          <Select value={filters.base} onChange={(event) => setFilter("base", event.target.value)}>
             <option value="">{t("all")}</option>
             <option value="home">{t("home")}</option>
             <option value="builder">{t("builderBase")}</option>
-          </select>
-        </label>
-        <label>
-          {t("status")}
-          <select value={filters.active} onChange={(event) => setFilter("active", event.target.value)}>
+          </Select>
+        </Field>
+        <Field>
+          <Label>{t("status")}</Label>
+          <Select value={filters.active} onChange={(event) => setFilter("active", event.target.value)}>
             <option value="">{t("all")}</option>
             <option value="true">{t("active")}</option>
             <option value="false">{t("inactive")}</option>
-          </select>
-        </label>
-        <label>
-          {t("type")}
-          <select value={filters.type} onChange={(event) => setFilter("type", event.target.value)}>
+          </Select>
+        </Field>
+        <Field>
+          <Label>{t("type")}</Label>
+          <Select value={filters.type} onChange={(event) => setFilter("type", event.target.value)}>
             <option value="">{t("all")}</option>
             <option value="building">{t("building")}</option>
             <option value="hero">{t("hero")}</option>
             <option value="pet">{t("pet")}</option>
             <option value="research">{t("research")}</option>
-          </select>
-        </label>
+          </Select>
+        </Field>
       </div>
       {error && upgrades.length > 0 && (
-        <div className="stale-warning" role="status">
+        <StaleNotice onRetry={() => void historyQuery.refetch()} retryLabel={t("retry")}>
           {error}
-          <button onClick={() => void historyQuery.refetch()}>{t("retry")}</button>
-        </div>
+        </StaleNotice>
       )}
       {error && !upgrades.length && <ErrorState compact message={error} retry={() => void historyQuery.refetch()} />}
       <div className="history-list">
         {upgrades.map((upgrade) => {
           const village = villageById.get(upgrade.accountId);
           return (
-            <article key={upgrade.id} style={{ "--accent": village?.color || "#9a7c4c" } as React.CSSProperties}>
+            <Card
+              role="listitem"
+              className="history-card"
+              key={upgrade.id}
+              style={{ "--accent": village?.color || "var(--ui-color-accent)" } as React.CSSProperties}
+            >
               <i className={`history-type ${upgrade.type}`} />
               <div>
                 <span>
@@ -130,20 +135,18 @@ export default function HistoryPanel({
                 </p>
               </div>
               <div className="history-result">
-                <b className={`history-status ${upgrade.active ? "active" : "inactive"}`}>
-                  {t(upgrade.active ? "active" : "inactive")}
-                </b>
+                <Badge tone={upgrade.active ? "accent" : "neutral"}>{t(upgrade.active ? "active" : "inactive")}</Badge>
                 <time>{formatDateTime(upgrade.finishAt)}</time>
               </div>
-            </article>
+            </Card>
           );
         })}
-        {!loading && !upgrades.length && <div className="empty">{t("empty")}</div>}
+        {!loading && !upgrades.length && <EmptyState title={t("empty")} />}
       </div>
       {historyQuery.hasNextPage && (
-        <button className="history-more" disabled={loading} onClick={() => void historyQuery.fetchNextPage()}>
+        <Button className="history-more" pending={loading} onClick={() => void historyQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}
-        </button>
+        </Button>
       )}
       {loading && !upgrades.length && <LoadingState compact />}
     </section>

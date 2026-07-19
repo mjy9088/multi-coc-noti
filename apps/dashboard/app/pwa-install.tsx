@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -50,9 +51,9 @@ export default function PwaInstall() {
   };
   return (
     <div className="pwa-install">
-      <button type="button" onClick={install}>
+      <Button size="small" tone="secondary" onClick={install}>
         {t("installApp")}
-      </button>
+      </Button>
       {showIosHelp && <p role="status">{t("installIosHelp")}</p>}
     </div>
   );
