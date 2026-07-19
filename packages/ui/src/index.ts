@@ -1,5 +1,6 @@
 export { ActionBar } from "./components/action-bar";
 export { Button, type ButtonProps } from "./components/button";
+export { RadioGroup, RadioGroupItem, ToggleGroup, ToggleGroupItem } from "./components/choices";
 export {
   Dialog,
   DialogBody,
@@ -10,7 +11,19 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./components/dialog";
-export { Badge, Card, Separator, Tab, Tabs } from "./components/display";
+export {
+  Badge,
+  Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  NavLink,
+  Separator,
+  Tab,
+  TabContent,
+  Tabs,
+} from "./components/display";
 export { Checkbox, Description, Field, FieldError, Input, Label, Select, Textarea } from "./components/forms";
 export { IconButton, type IconButtonProps } from "./components/icon-button";
 export { SplitLayout } from "./components/split-layout";
@@ -23,4 +36,5 @@ export {
   useStickyStack,
 } from "./components/sticky-stack";
 export { type ToastInput, type ToastIntent, ToastProvider, useToast } from "./components/toast";
+export { Tooltip, TooltipProvider } from "./components/tooltip";
 export { cn } from "./lib/cn";

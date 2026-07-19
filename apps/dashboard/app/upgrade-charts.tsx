@@ -1,4 +1,4 @@
-import { Card, EmptyState } from "@multi-coc/ui";
+import { Card, CardHeader, CardTitle, EmptyState } from "@multi-coc/ui";
 import type { CompletionBin, UpgradeTimelinePoint } from "@multi-coc/upgrade-availability";
 
 const WIDTH = 720;
@@ -37,15 +37,15 @@ function AreaPlot({
   const first = points[0];
   return (
     <Card className="upgrade-area-chart">
-      <div className="upgrade-chart-heading">
-        <h3>{label}</h3>
+      <CardHeader className="upgrade-chart-heading">
+        <CardTitle>{label}</CardTitle>
         <span>
           <b className="legend-home" />
           {homeLabel} {first?.[homeKey] || 0}
           <b className="legend-all" />
           {allLabel} {first?.[allKey] || 0}
         </span>
-      </div>
+      </CardHeader>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
@@ -110,15 +110,15 @@ export default function UpgradeCharts({
       ) : (
         <div className="upgrade-chart-layout">
           <Card className="completion-chart">
-            <div className="upgrade-chart-heading">
-              <h3>{labels.completions}</h3>
+            <CardHeader className="upgrade-chart-heading">
+              <CardTitle>{labels.completions}</CardTitle>
               <span>
                 <b className="legend-home" />
                 {labels.home}
                 <b className="legend-all" />
                 {labels.all}
               </span>
-            </div>
+            </CardHeader>
             <div className="completion-bars" role="img" aria-label={labels.completions}>
               {bins.map((bin, index) => (
                 <div className="completion-bin" key={bin.start}>

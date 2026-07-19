@@ -44,7 +44,9 @@ test("[UI-ROUTES-001] dashboard, village detail, and history compose owned UI pr
 }) => {
   await page.goto("/");
   await expect(page.locator(".village-card.ui-card")).toHaveCount(1);
-  await expect(page.locator(".dashboard-filters .ui-input")).toHaveCount(2);
+  await expect(page.locator(".dashboard-filters .ui-input")).toHaveCount(1);
+  await expect(page.locator(".dashboard-availability-field .ui-radio-group")).toBeVisible();
+  await expect(page.locator(".account-tabs.ui-toggle-group")).toBeVisible();
   await page.locator(".village-card-link").click();
   await expect(page).toHaveURL(new RegExp(`/villages/${village.id}$`));
   await expect(page.locator(".village-detail-card.ui-card")).not.toHaveCount(0);

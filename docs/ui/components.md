@@ -29,8 +29,8 @@ coverage.
 ### Actions, forms, and containers
 
 UI Lab now catalogues the owned `IconButton`, `Field`, `Label`, `Description`, `FieldError`, `Input`, `Textarea`, `Select`,
-`Checkbox`, `Card`, `Badge`, and `Separator` APIs. Field controls derive stable accessible relationships from their parent
-`Field`; icon-only actions require a label.
+`Checkbox`, `RadioGroup`, `ToggleGroup`, structured `Card`, `Badge`, and `Separator` APIs. Field controls derive stable
+accessible relationships from their parent `Field`; icon-only actions require a label.
 
 `ActionBar` groups final actions. Its sticky variant inherits the nearest `--ui-surface-context` through transparent
 wrappers and owns a stacking context, top boundary, shadow, and safe-area padding so scrolled content never shows through
@@ -128,11 +128,13 @@ their layout CSS uses shared semantic tokens rather than becoming generic compon
 
 - `Field`, `Label`, `Description`, and `FieldError` for accessible relationships;
 - `Input`, `Textarea`, and `Select` with invalid, disabled, and pending-compatible states;
-- `Checkbox` with a full-label touch target.
+- `Checkbox` with a full-label touch target;
+- `RadioGroup` for visible single-choice forms and `ToggleGroup` for compact view/filter choices.
 
 ### Containers and status
 
-- `Card` for semantic surface, padding, and selected/disabled variants;
+- `Card` for semantic surface, padding, and selected/disabled variants, with optional header, title, body, and footer
+  structure;
 - `Badge` for status and metadata, never as the sole indicator of critical state;
 - `Separator`;
 - `Spinner`, `RequestState`, `EmptyState`, and `StaleNotice`;
@@ -140,8 +142,8 @@ their layout CSS uses shared semantic tokens rather than becoming generic compon
 
 ### Navigation
 
-- `Tabs` for section selection when content and URL semantics match tabs;
-- `NavLink` or application navigation composition for route destinations;
+- `Tabs`, `Tab`, and `TabContent` for section selection when content and URL semantics match tabs;
+- `NavLink` for route destinations and `Button asChild` for links with action emphasis;
 - pagination/load-more action composition.
 
 ### Overlays and feedback
@@ -150,6 +152,14 @@ their layout CSS uses shared semantic tokens rather than becoming generic compon
 - `Toast`, `ToastViewport`, and a provider/hook for global mutation feedback;
 - a fast import composition remains product-level work; Settings destructive confirmation uses Dialog, and other workflows
   should do so only when their validation supports it.
+
+### Tooltip
+
+`Tooltip` provides supplemental hover and keyboard-focus copy, and `IconButton` uses its accessible label as tooltip copy
+by default. A tooltip must never be the only source of an action's name, state, validation result, or instructions. Coarse
+touch pointers do not render the floating tooltip: the trigger still exposes its accessible name and activates on the first
+tap. Help that must be discoverable and readable on mobile belongs in visible copy or an explicit help action backed by a
+Dialog/Popover, not in a Tooltip. `TooltipProvider` belongs at the persistent application boundary.
 
 See [Overlays and feedback](overlays-and-feedback.md) for behavioral requirements.
 

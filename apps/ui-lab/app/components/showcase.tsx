@@ -5,6 +5,10 @@ import {
   Badge,
   Button,
   Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Checkbox,
   Description,
   Dialog,
@@ -21,6 +25,9 @@ import {
   IconButton,
   Input,
   Label,
+  NavLink,
+  RadioGroup,
+  RadioGroupItem,
   RequestState,
   Select,
   Separator,
@@ -32,6 +39,8 @@ import {
   Tabs,
   Textarea,
   ToastProvider,
+  ToggleGroup,
+  ToggleGroupItem,
   useToast,
 } from "@multi-coc/ui";
 import { useState } from "react";
@@ -82,6 +91,8 @@ function ToastExamples() {
 
 export default function ComponentsShowcase() {
   const [tab, setTab] = useState("upgrades");
+  const [radio, setRadio] = useState("all");
+  const [toggle, setToggle] = useState("all");
   return (
     <ToastProvider>
       <div className="lab-grid">
@@ -98,6 +109,44 @@ export default function ComponentsShowcase() {
               ×
             </IconButton>
           </div>
+        </section>
+        <section id="navigation-and-choices" className="lab-section wide">
+          <h2>Navigation and choices</h2>
+          <p>
+            Links preserve navigation semantics; radio and toggle groups provide keyboard-accessible single choices.
+          </p>
+          <div className="lab-row">
+            <NavLink href="#navigation-and-choices" active>
+              Dashboard
+            </NavLink>
+            <RadioGroup value={radio} onValueChange={setRadio} aria-label="Availability">
+              <RadioGroupItem value="all">All</RadioGroupItem>
+              <RadioGroupItem value="home">Home available</RadioGroupItem>
+              <RadioGroupItem value="any">Any available</RadioGroupItem>
+            </RadioGroup>
+            <ToggleGroup type="single" value={toggle} onValueChange={(value) => value && setToggle(value)}>
+              <ToggleGroupItem value="all">All</ToggleGroupItem>
+              <ToggleGroupItem value="war">War</ToggleGroupItem>
+              <ToggleGroupItem value="farm">Farm</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </section>
+        <section className="lab-section">
+          <h2>Structured card</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Builder availability</CardTitle>
+              <Badge tone="success">2 free</Badge>
+            </CardHeader>
+            <CardBody>
+              <p>Header, body, and footer keep repeated surface structure consistent.</p>
+            </CardBody>
+            <CardFooter>
+              <Button size="small" tone="secondary">
+                Open village
+              </Button>
+            </CardFooter>
+          </Card>
         </section>
         <section className="lab-section">
           <h2>Size and async state</h2>

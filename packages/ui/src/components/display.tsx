@@ -1,5 +1,6 @@
 "use client";
 
+import { Slot } from "@radix-ui/react-slot";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ComponentProps, HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
@@ -16,6 +17,39 @@ export function Card({
       data-selected={selected || undefined}
       data-disabled={disabled || undefined}
       aria-disabled={disabled || undefined}
+      {...props}
+    />
+  );
+}
+
+export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("ui-card-header", className)} {...props} />;
+}
+
+export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h3 className={cn("ui-card-title", className)} {...props} />;
+}
+
+export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("ui-card-body", className)} {...props} />;
+}
+
+export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("ui-card-footer", className)} {...props} />;
+}
+
+export function NavLink({
+  active = false,
+  asChild = false,
+  className,
+  ...props
+}: ComponentProps<"a"> & { active?: boolean; asChild?: boolean }) {
+  const Component = asChild ? Slot : "a";
+  return (
+    <Component
+      className={cn("ui-nav-link", className)}
+      aria-current={active ? "page" : undefined}
+      data-active={active || undefined}
       {...props}
     />
   );
@@ -62,4 +96,8 @@ export function Tabs({
 
 export function Tab({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
   return <TabsPrimitive.Trigger className={cn("ui-tab", className)} {...props} />;
+}
+
+export function TabContent({ className, ...props }: ComponentProps<typeof TabsPrimitive.Content>) {
+  return <TabsPrimitive.Content className={cn("ui-tab-content", className)} {...props} />;
 }

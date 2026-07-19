@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
+import { TooltipProvider } from "@multi-coc/ui";
 import AppShell from "./app-shell";
 import QueryProvider from "./query-provider";
 import ToastProvider from "./toast-provider";
@@ -39,7 +40,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
             <ToastProvider>
-              <AppShell>{children}</AppShell>
+              <TooltipProvider>
+                <AppShell>{children}</AppShell>
+              </TooltipProvider>
             </ToastProvider>
           </QueryProvider>
         </NextIntlClientProvider>

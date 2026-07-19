@@ -47,6 +47,22 @@
   accent-color: var(--ui-color-accent);
 }
 
+.dashboard-availability-field .ui-radio-group {
+  min-height: var(--ui-control-large);
+  flex-wrap: nowrap;
+  align-items: center;
+  padding-inline: var(--ui-space-2);
+  border: 1px solid var(--ui-color-border-strong);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface-raised);
+}
+
+.dashboard-availability-field .ui-radio-item {
+  min-height: var(--ui-control-large);
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
 .refresh-filter {
   --ui-surface-context: var(--ui-color-surface);
   min-height: var(--ui-control-medium);
@@ -82,8 +98,19 @@
   gap: var(--ui-space-2);
 }
 
-.account-tabs .ui-button {
+.account-tabs .ui-toggle-group-item {
   flex: 0 0 auto;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ui-color-text-secondary);
+  padding-inline: var(--ui-space-3);
+  font-size: 0.75rem;
+}
+
+.account-tabs .ui-toggle-group-item[data-state="on"] {
+  border-color: var(--ui-color-accent);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text-inverse);
 }
 
 .summary-strip {

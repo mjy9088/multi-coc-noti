@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
+import { Button, NavLink, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -105,23 +105,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           <nav className="app-primary-nav" aria-label="Dashboard menu">
-            <Link className="app-nav-link" href="/" aria-current={view === "dashboard" ? "page" : undefined}>
-              {t("dashboard")}
-            </Link>
-            <Link
-              className="app-nav-link"
-              href="/history/upgrades"
-              aria-current={view === "history" ? "page" : undefined}
-            >
-              {t("history")}
-            </Link>
-            <Link
-              className="app-nav-link"
-              href="/settings/paste"
-              aria-current={view === "settings" ? "page" : undefined}
-            >
-              {t("settings")}
-            </Link>
+            <NavLink asChild active={view === "dashboard"} className="app-nav-link">
+              <Link href="/">{t("dashboard")}</Link>
+            </NavLink>
+            <NavLink asChild active={view === "history"} className="app-nav-link">
+              <Link href="/history/upgrades">{t("history")}</Link>
+            </NavLink>
+            <NavLink asChild active={view === "settings"} className="app-nav-link">
+              <Link href="/settings/paste">{t("settings")}</Link>
+            </NavLink>
             <Button className="app-quick-paste" size="small" pending={quickPasteLoading} onClick={quickPaste}>
               {quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}
             </Button>

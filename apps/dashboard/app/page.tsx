@@ -9,9 +9,12 @@ import {
   Field,
   Input,
   Label,
-  Select,
+  RadioGroup,
+  RadioGroupItem,
   StaleNotice,
   StickyStackItem,
+  ToggleGroup,
+  ToggleGroupItem,
   useStickyStack,
 } from "@multi-coc/ui";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
@@ -332,17 +335,17 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
               </Field>
               <Field className="dashboard-availability-field">
                 <Label>{t("availabilityFilter")}</Label>
-                <Select
+                <RadioGroup
                   value={availabilityFilter}
-                  onChange={(event) => {
-                    setAvailabilityFilter(event.target.value as AvailabilityFilter);
+                  onValueChange={(value) => {
+                    setAvailabilityFilter(value as AvailabilityFilter);
                     setActiveTag(null);
                   }}
                 >
-                  <option value="all">{t("statusAll")}</option>
-                  <option value="home">{t("homeSlotAvailable")}</option>
-                  <option value="any">{t("anySlotAvailable")}</option>
-                </Select>
+                  <RadioGroupItem value="all">{t("statusAll")}</RadioGroupItem>
+                  <RadioGroupItem value="home">{t("homeSlotAvailable")}</RadioGroupItem>
+                  <RadioGroupItem value="any">{t("anySlotAvailable")}</RadioGroupItem>
+                </RadioGroup>
               </Field>
               <Checkbox
                 className="refresh-filter"
@@ -377,21 +380,23 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
                 </div>
               </details>
             </div>
-            <div className="account-tabs" role="group" aria-label={t("all")}>
-              <Button tone={selectedTag === null ? "primary" : "quiet"} onClick={() => setActiveTag(null)}>
+            <ToggleGroup
+              className="account-tabs"
+              type="single"
+              aria-label={t("all")}
+              value={selectedTag ?? "all"}
+              onValueChange={(value) => setActiveTag(value && value !== "all" ? value : null)}
+            >
+              <ToggleGroupItem value="all">
                 {t("all")} <b>{visibleAccounts.length}</b>
-              </Button>
+              </ToggleGroupItem>
               {tagOptions.map((tag) => (
-                <Button
-                  key={tag.key}
-                  tone={selectedTag === tag.key ? "primary" : "quiet"}
-                  onClick={() => setActiveTag(tag.key)}
-                >
+                <ToggleGroupItem key={tag.key} value={tag.key}>
                   <span className="tag-hash">#</span>
                   {tag.label} <b>{tag.count}</b>
-                </Button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </div>
           <Card className="summary-strip">
             <div>
