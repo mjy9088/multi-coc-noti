@@ -26,7 +26,7 @@ The repository does not use a root `.env`. Copy the example files and replace se
 | `PROFILE_REFRESH_INTERVAL_SECONDS` | `300` | Official Player API refresh interval |
 | `CLASH_OF_CLANS_API_TOKEN` | none | Official developer Player API server key |
 | `CLASH_OF_CLANS_API_BASE` | Supercell API | Compatible proxy or test base URL |
-| `BARK_DEVICE_KEY` | none | Bark device key required by Notifier |
+| `BARK_DEVICE_KEY` | none | Fallback Bark device key; required only when no managed DB Bark channel is enabled |
 | `BARK_BASE_URL` | `https://api.day.app` | Bark API base URL |
 | `BARK_GROUP` | `Clash Upgrades` | Bark notification group |
 | `NOTIFICATION_LOCALE` | `ko` | Bark copy language: `ko` or `en` |
@@ -118,7 +118,14 @@ Package dependencies follow the runtime responsibility direction:
 
 ## Data storage
 
-PostgreSQL is the only runtime data store. It stores accounts, group order, raw game exports, the derived upgrade record set, and notification state. Notification kinds include completion, one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Collector and Notifier do not write runtime snapshot files.
+PostgreSQL is the only runtime data store. It stores accounts, group order, raw game exports, the derived upgrade record set,
+notification state, and the channel/rule records prepared for configurable delivery. Notification kinds include completion,
+one-minute, resource preparation, and the 24-hour stale-village `refresh_required` reminder. Channel credentials and Bark
+presentation rules are kept outside the scheduling queue so future user ownership or additional delivery channels do not
+change resource-policy semantics. Channel-specific delivery rows isolate claims, success, and retries when a scheduled event
+fans out to multiple recipients. Notifier prefers enabled, fully configured database Bark channels and falls back to the
+existing environment-backed Bark channel only when none exist. This makes later user/channel management additive without
+double-sending during migration. Collector and Notifier do not write runtime snapshot files.
 
 <!-- contract: DB-MIGRATION-001 -->
 
@@ -161,7 +168,9 @@ Notifier atomically claims due rows. Success records `sent`; failure records the
 <!-- contract: DB-NOTIFICATION-001 -->
 
 Database claiming must give a due notification to only one worker. A resource reminder claim reserves the village-level
-suppression window atomically, and recording delivery failure releases that reservation before scheduling a retry.
+suppression window atomically, and recording delivery failure releases that reservation before scheduling a retry. Managed
+channels fan out once per scheduled event, claim each channel delivery exclusively, and record success or retry without
+changing another channel's delivery state.
 
 ## API
 

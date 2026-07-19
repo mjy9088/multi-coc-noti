@@ -12,6 +12,7 @@ export {
   listSyncHistory,
 } from "./repositories/village-export-repository.ts";
 export type {
+  DueChannelDelivery,
   DueNotification,
   NotificationKind,
   SyncHistoryEntry,
@@ -21,10 +22,13 @@ export type {
   VillageHistoryImportResult,
 } from "./types.ts";
 export {
+  claimDueChannelDeliveries,
   claimDueNotifications,
   completeDueTrackedUpgrades,
   exportVillageHistories,
   importVillageHistory,
+  markChannelDeliveryFailed,
+  markChannelDeliverySent,
   markNotificationFailed,
   markNotificationSent,
   saveVillageExport,

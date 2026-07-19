@@ -129,6 +129,112 @@ export const upgradeNotifications = pgTable(
   ],
 );
 
+export const notificationChannels = pgTable(
+  "notification_channels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    label: text("label").notNull(),
+    channelType: text("channel_type").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [check("notification_channels_type_check", sql`${table.channelType} IN ('bark')`)],
+);
+
+export const barkChannelSettings = pgTable("bark_channel_settings", {
+  channelId: uuid("channel_id")
+    .primaryKey()
+    .references(() => notificationChannels.id, { onDelete: "cascade" }),
+  baseUrl: text("base_url").notNull().default("https://api.day.app"),
+  deviceKey: text("device_key").notNull(),
+  defaultGroup: text("default_group"),
+  iconUrl: text("icon_url"),
+  ...timestamps,
+});
+
+export const notificationDeliveryRules = pgTable(
+  "notification_delivery_rules",
+  {
+    channelId: uuid("channel_id")
+      .notNull()
+      .references(() => notificationChannels.id, { onDelete: "cascade" }),
+    notificationKind: text("notification_kind").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    sound: text("sound"),
+    interruptionLevel: text("interruption_level").notNull().default("active"),
+    criticalVolume: integer("critical_volume"),
+    repeatSound: boolean("repeat_sound").notNull().default(false),
+    groupName: text("group_name"),
+    targetUrl: text("target_url"),
+    archive: boolean("archive"),
+    archiveTtlSeconds: integer("archive_ttl_seconds"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.channelId, table.notificationKind] }),
+    check(
+      "notification_delivery_rules_kind_check",
+      sql`${table.notificationKind} IN ('completion', 'one_minute', 'resource_preparation', 'refresh_required')`,
+    ),
+    check(
+      "notification_delivery_rules_level_check",
+      sql`${table.interruptionLevel} IN ('passive', 'active', 'timeSensitive', 'critical')`,
+    ),
+    check(
+      "notification_delivery_rules_volume_check",
+      sql`${table.criticalVolume} IS NULL OR (${table.interruptionLevel} = 'critical' AND ${table.criticalVolume} BETWEEN 0 AND 10)`,
+    ),
+    check(
+      "notification_delivery_rules_archive_ttl_check",
+      sql`${table.archiveTtlSeconds} IS NULL OR (${table.archive} IS TRUE AND ${table.archiveTtlSeconds} > 0)`,
+    ),
+  ],
+);
+
+export const notificationDeliveries = pgTable(
+  "notification_deliveries",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    notificationId: bigint("notification_id", { mode: "number" })
+      .notNull()
+      .references(() => upgradeNotifications.id, { onDelete: "cascade" }),
+    channelId: uuid("channel_id")
+      .notNull()
+      .references(() => notificationChannels.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestamps,
+  },
+  (table) => [
+    check("notification_deliveries_status_check", sql`${table.status} IN ('pending', 'processing', 'sent', 'skipped')`),
+    uniqueIndex("notification_deliveries_notification_channel_idx").on(table.notificationId, table.channelId),
+    index("notification_deliveries_due_idx").on(table.status, table.nextAttemptAt),
+  ],
+);
+
+export const notificationDeliverySuppressions = pgTable(
+  "notification_delivery_suppressions",
+  {
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    channelId: uuid("channel_id")
+      .notNull()
+      .references(() => notificationChannels.id, { onDelete: "cascade" }),
+    notificationId: bigint("notification_id", { mode: "number" })
+      .notNull()
+      .references(() => upgradeNotifications.id, { onDelete: "cascade" }),
+    suppressUntil: timestamp("suppress_until", { withTimezone: true }).notNull(),
+    preparationMinutes: integer("preparation_minutes").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.channelId] })],
+);
+
 export const villageExports = pgTable(
   "village_exports",
   {
@@ -174,6 +280,11 @@ export const schema = {
   dashboardSettings,
   trackedUpgrades,
   upgradeNotifications,
+  notificationChannels,
+  barkChannelSettings,
+  notificationDeliveryRules,
+  notificationDeliveries,
+  notificationDeliverySuppressions,
   villageExports,
   appMigrations,
   resourceReminderSuppressions,

@@ -30,7 +30,10 @@ test("[DB-MIGRATION-001] fresh and legacy PostgreSQL databases converge on the D
   assert.equal((await listAccounts())[0]?.id, account.id);
   assert.deepEqual(await getDashboardSettings(), { groupOrder: [] });
   assert.deepEqual(await updateDashboardSettings(["Main", "War"]), { groupOrder: ["Main", "War"] });
-  assert.equal(Number((await database().query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 1);
+  const migrationCount = Number(
+    (await database().query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count,
+  );
+  assert.ok(migrationCount > 0);
   assert.equal(
     (await drizzleDatabase().execute(sql`select count(*)::integer AS count from accounts`)).rows[0]?.count,
     1,
@@ -39,7 +42,10 @@ test("[DB-MIGRATION-001] fresh and legacy PostgreSQL databases converge on the D
   await database().query("DROP SCHEMA drizzle CASCADE");
   await migrate();
   assert.equal((await listAccounts())[0]?.id, account.id);
-  assert.equal(Number((await database().query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 1);
+  assert.equal(
+    Number((await database().query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count),
+    migrationCount,
+  );
   await closeDatabase();
 });
 
@@ -94,9 +100,16 @@ test("[DB-NOTIFICATION-001] notification claiming is exclusive and failure relea
   skip: !databaseUrl,
 }, async () => {
   process.env.DATABASE_URL = databaseUrl;
-  const { claimDueNotifications, closeDatabase, database, markNotificationFailed, migrate } = await import(
-    "../index.ts"
-  );
+  const {
+    claimDueChannelDeliveries,
+    claimDueNotifications,
+    closeDatabase,
+    database,
+    markChannelDeliveryFailed,
+    markChannelDeliverySent,
+    markNotificationFailed,
+    migrate,
+  } = await import("../index.ts");
   await migrate();
   const notification = (
     await database().query(
@@ -126,6 +139,54 @@ test("[DB-NOTIFICATION-001] notification claiming is exclusive and failure relea
   assert.equal(
     (await database().query("SELECT status FROM upgrade_notifications WHERE id=$1", [notification.id])).rows[0].status,
     "pending",
+  );
+
+  const channel = (
+    await database().query(
+      "INSERT INTO notification_channels (label,channel_type) VALUES ('Primary iPhone','bark') RETURNING id",
+    )
+  ).rows[0];
+  await database().query(
+    `INSERT INTO bark_channel_settings (channel_id,base_url,device_key,default_group)
+     VALUES ($1,'https://api.day.app','managed-device','Managed')`,
+    [channel.id],
+  );
+  await database().query(
+    `INSERT INTO notification_delivery_rules
+      (channel_id,notification_kind,sound,interruption_level,target_url)
+     VALUES ($1,'resource_preparation','glass','timeSensitive','https://coc.example/villages/main')`,
+    [channel.id],
+  );
+  const managed = await claimDueChannelDeliveries(20);
+  assert.ok(managed);
+  const delivery = managed.find((item) => item.id === String(notification.id));
+  assert.ok(delivery);
+  assert.equal(delivery.channel.deviceKey, "managed-device");
+  assert.equal(delivery.rule.sound, "glass");
+  assert.equal((await claimDueChannelDeliveries(20))?.length, 0);
+  await markChannelDeliveryFailed(delivery.deliveryId, "temporary managed failure", new Date(Date.now() - 60_000));
+  assert.equal(
+    Number(
+      (
+        await database().query("SELECT count(*) FROM notification_delivery_suppressions WHERE notification_id=$1", [
+          notification.id,
+        ])
+      ).rows[0].count,
+    ),
+    0,
+  );
+  const retried = await claimDueChannelDeliveries(20);
+  const retriedDelivery = retried?.find((item) => item.deliveryId === delivery.deliveryId);
+  assert.ok(retriedDelivery);
+  await markChannelDeliverySent(retriedDelivery.deliveryId);
+  assert.equal(
+    (await database().query("SELECT status FROM notification_deliveries WHERE id=$1", [delivery.deliveryId])).rows[0]
+      .status,
+    "sent",
+  );
+  assert.equal(
+    (await database().query("SELECT status FROM upgrade_notifications WHERE id=$1", [notification.id])).rows[0].status,
+    "sent",
   );
   await closeDatabase();
 });

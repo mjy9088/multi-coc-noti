@@ -1,7 +1,14 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DueNotification } from "@multi-coc/database";
-import { claimDueNotifications, markNotificationFailed, markNotificationSent } from "@multi-coc/database";
+import type { DueChannelDelivery, DueNotification } from "@multi-coc/database";
+import {
+  claimDueChannelDeliveries,
+  claimDueNotifications,
+  markChannelDeliveryFailed,
+  markChannelDeliverySent,
+  markNotificationFailed,
+  markNotificationSent,
+} from "@multi-coc/database";
 
 export type NotifierConfig = {
   intervalMs: number;
@@ -10,15 +17,42 @@ export type NotifierConfig = {
   locale: "ko" | "en";
   group: string;
   icon?: string;
+  deliveryRules?: Partial<Record<DeliverableNotificationKind, Partial<BarkDeliveryRule>>>;
+};
+
+export type DeliverableNotificationKind = Exclude<DueNotification["kind"], "legacy">;
+export type BarkInterruptionLevel = "passive" | "active" | "timeSensitive" | "critical";
+export type BarkDeliveryRule = {
+  enabled: boolean;
+  sound: string | null;
+  interruptionLevel: BarkInterruptionLevel;
+  criticalVolume: number | null;
+  repeatSound: boolean;
+  groupName: string | null;
+  targetUrl: string | null;
+  archive: boolean | null;
+  archiveTtlSeconds: number | null;
+};
+
+export type BarkPayload = {
+  title: string;
+  body: string;
+  group?: string;
+  icon?: string;
+  sound?: string;
+  level: BarkInterruptionLevel;
+  volume?: number;
+  call?: "1";
+  url?: string;
+  isArchive?: "0" | "1";
+  ttl?: number;
 };
 
 export function notifierConfig(env: NodeJS.ProcessEnv = process.env): NotifierConfig {
-  const deviceKey = env.BARK_DEVICE_KEY;
-  if (!deviceKey) throw new Error("BARK_DEVICE_KEY is required");
   return {
     intervalMs: Number(env.NOTIFIER_INTERVAL_SECONDS || 10) * 1000,
     barkBase: (env.BARK_BASE_URL || "https://api.day.app").replace(/\/$/, ""),
-    deviceKey,
+    deviceKey: env.BARK_DEVICE_KEY || "",
     locale: env.NOTIFICATION_LOCALE === "en" ? "en" : "ko",
     group: env.BARK_GROUP || "Clash Upgrades",
     icon: env.BARK_ICON || undefined,
@@ -68,23 +102,57 @@ export function localizeNotification(
   };
 }
 
+export function resolveBarkDeliveryRule(
+  kind: DueNotification["kind"],
+  config: Pick<NotifierConfig, "group" | "deliveryRules">,
+): BarkDeliveryRule {
+  const override = kind === "legacy" ? undefined : config.deliveryRules?.[kind];
+  return {
+    enabled: override?.enabled ?? true,
+    sound: override?.sound ?? (kind === "completion" ? "minuet" : "bell"),
+    interruptionLevel: override?.interruptionLevel ?? "active",
+    criticalVolume: override?.criticalVolume ?? null,
+    repeatSound: override?.repeatSound ?? false,
+    groupName: override?.groupName ?? config.group,
+    targetUrl: override?.targetUrl ?? null,
+    archive: override?.archive ?? null,
+    archiveTtlSeconds: override?.archiveTtlSeconds ?? null,
+  };
+}
+
+export function buildBarkPayload(
+  notification: DueNotification,
+  config: Pick<NotifierConfig, "locale" | "group" | "icon" | "deliveryRules">,
+): BarkPayload | null {
+  const localized = localizeNotification(notification, config.locale);
+  const rule = resolveBarkDeliveryRule(notification.kind, config);
+  if (!rule.enabled) return null;
+  return {
+    title: localized.title,
+    body: localized.body,
+    level: rule.interruptionLevel,
+    ...(rule.groupName ? { group: rule.groupName } : {}),
+    ...(config.icon ? { icon: config.icon } : {}),
+    ...(rule.sound ? { sound: rule.sound } : {}),
+    ...(rule.interruptionLevel === "critical" && rule.criticalVolume !== null ? { volume: rule.criticalVolume } : {}),
+    ...(rule.repeatSound ? { call: "1" as const } : {}),
+    ...(rule.targetUrl ? { url: rule.targetUrl } : {}),
+    ...(rule.archive !== null ? { isArchive: rule.archive ? ("1" as const) : ("0" as const) } : {}),
+    ...(rule.archive === true && rule.archiveTtlSeconds !== null ? { ttl: rule.archiveTtlSeconds } : {}),
+  };
+}
+
 export async function sendBark(
   notification: DueNotification,
   config: NotifierConfig,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const localized = localizeNotification(notification, config.locale);
+  const payload = buildBarkPayload(notification, config);
+  if (!payload) return;
   const response = await fetchImpl(new URL(`${config.barkBase}/${encodeURIComponent(config.deviceKey)}`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: localized.title,
-      body: localized.body,
-      group: config.group,
-      icon: config.icon,
-      sound: notification.kind === "completion" ? "minuet" : "bell",
-      level: "active",
-    }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(`Bark HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
 }
@@ -93,13 +161,36 @@ type NotificationStore = {
   claim: typeof claimDueNotifications;
   sent: typeof markNotificationSent;
   failed: typeof markNotificationFailed;
+  claimChannels?: typeof claimDueChannelDeliveries;
+  channelSent?: typeof markChannelDeliverySent;
+  channelFailed?: typeof markChannelDeliveryFailed;
 };
 
 const databaseStore: NotificationStore = {
   claim: claimDueNotifications,
   sent: markNotificationSent,
   failed: markNotificationFailed,
+  claimChannels: claimDueChannelDeliveries,
+  channelSent: markChannelDeliverySent,
+  channelFailed: markChannelDeliveryFailed,
 };
+
+function channelConfig(delivery: DueChannelDelivery, runtime: NotifierConfig): NotifierConfig {
+  const deliveryRules =
+    delivery.kind === "legacy"
+      ? undefined
+      : {
+          [delivery.kind]: delivery.rule,
+        };
+  return {
+    ...runtime,
+    barkBase: delivery.channel.baseUrl.replace(/\/$/, ""),
+    deviceKey: delivery.channel.deviceKey,
+    group: delivery.channel.defaultGroup ?? runtime.group,
+    icon: delivery.channel.iconUrl ?? runtime.icon,
+    deliveryRules,
+  };
+}
 
 export async function runOnce(
   config: NotifierConfig,
@@ -109,9 +200,28 @@ export async function runOnce(
     store = databaseStore,
   }: { fetchImpl?: typeof fetch; logger?: Pick<Console, "log" | "error">; store?: NotificationStore } = {},
 ): Promise<{ delivered: number; failed: number }> {
-  const notifications = await store.claim();
   let delivered = 0;
   let failed = 0;
+  const channelDeliveries = store.claimChannels ? await store.claimChannels() : null;
+  if (channelDeliveries !== null) {
+    if (!store.channelSent || !store.channelFailed) throw new Error("channel delivery store is incomplete");
+    for (const delivery of channelDeliveries) {
+      try {
+        await sendBark(delivery, channelConfig(delivery, config), fetchImpl);
+        await store.channelSent(delivery.deliveryId);
+        delivered += 1;
+        logger.log(`[notifier] delivered channel delivery ${delivery.deliveryId}`);
+      } catch (error) {
+        failed += 1;
+        await store.channelFailed(delivery.deliveryId, (error as Error).message);
+        logger.error(`[notifier] channel delivery ${delivery.deliveryId}: ${(error as Error).message}`);
+      }
+    }
+    return { delivered, failed };
+  }
+
+  if (!config.deviceKey) throw new Error("BARK_DEVICE_KEY is required when no managed Bark channel is enabled");
+  const notifications = await store.claim();
   for (const notification of notifications) {
     try {
       await sendBark(notification, config, fetchImpl);

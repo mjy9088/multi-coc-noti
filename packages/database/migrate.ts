@@ -15,25 +15,33 @@ async function baselineExistingDatabase(): Promise<void> {
   const journal = JSON.parse(
     await readFile(new URL("./drizzle/meta/_journal.json", import.meta.url), "utf8"),
   ) as MigrationJournal;
-  const baseline = journal.entries[0];
-  if (!baseline) throw new Error("Drizzle migration journal has no baseline migration");
-  const migration = await readFile(new URL(`./drizzle/${baseline.tag}.sql`, import.meta.url), "utf8");
-  const hash = createHash("sha256").update(migration).digest("hex");
+  const initial = journal.entries[0];
+  if (!initial) throw new Error("Drizzle migration journal has no baseline migration");
   const client = await database().connect();
   try {
     await client.query("BEGIN");
     await client.query(schema);
+    const hasDeliveryChannels = (
+      await client.query("SELECT to_regclass('public.notification_channels') IS NOT NULL AS present")
+    ).rows[0].present;
+    const baselines = hasDeliveryChannels ? journal.entries : [initial];
     await client.query("CREATE SCHEMA IF NOT EXISTS drizzle");
     await client.query(`CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
       id serial PRIMARY KEY,
       hash text NOT NULL,
       created_at bigint
     )`);
-    await client.query(
-      `INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-       SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM drizzle.__drizzle_migrations)`,
-      [hash, baseline.when],
-    );
+    for (const baseline of baselines) {
+      const migration = await readFile(new URL(`./drizzle/${baseline.tag}.sql`, import.meta.url), "utf8");
+      const hash = createHash("sha256").update(migration).digest("hex");
+      await client.query(
+        `INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+         SELECT $1, $2 WHERE NOT EXISTS (
+           SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash=$1 OR created_at=$2
+         )`,
+        [hash, baseline.when],
+      );
+    }
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

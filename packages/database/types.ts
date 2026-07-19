@@ -43,6 +43,27 @@ export type DueNotification = {
   nextLevel: number;
   finishAt: string;
 };
+export type DueChannelDelivery = DueNotification & {
+  deliveryId: string;
+  channel: {
+    id: string;
+    baseUrl: string;
+    deviceKey: string;
+    defaultGroup: string | null;
+    iconUrl: string | null;
+  };
+  rule: {
+    enabled: boolean;
+    sound: string | null;
+    interruptionLevel: "passive" | "active" | "timeSensitive" | "critical";
+    criticalVolume: number | null;
+    repeatSound: boolean;
+    groupName: string | null;
+    targetUrl: string | null;
+    archive: boolean | null;
+    archiveTtlSeconds: number | null;
+  };
+};
 export type ExportData = {
   tag: string;
   exportedAt: string;
