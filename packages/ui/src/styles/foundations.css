@@ -9,6 +9,11 @@ summary,
   touch-action: manipulation;
 }
 
+:where(button, a, summary, [role="button"]):focus-visible {
+  outline: 3px solid var(--ui-color-focus);
+  outline-offset: 2px;
+}
+
 html {
   --ui-surface-context: var(--ui-color-canvas);
 

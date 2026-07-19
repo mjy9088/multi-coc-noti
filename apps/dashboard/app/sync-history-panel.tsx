@@ -3,7 +3,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import HistoryNav from "./history-nav";
 import { syncHistoryQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -50,7 +49,6 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
 
   return (
     <section className="history-shell shell">
-      <HistoryNav section="syncs" />
       <header className="history-section-header">
         <p className="eyebrow">SYNC HISTORY</p>
         <h2>{t("syncTitle")}</h2>

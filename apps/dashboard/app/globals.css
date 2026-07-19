@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@multi-coc/ui/styles.css";
 @import "./styles/legacy.css";
+@import "./styles/shell.css";
+@import "./styles/settings.css";
 
 .resource-dialog-body {
   display: grid;

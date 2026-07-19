@@ -1,6 +1,28 @@
 "use client";
 
-import { Dialog, DialogBody, DialogContent, DialogDescription, DialogTitle, useToast } from "@multi-coc/ui";
+import {
+  ActionBar,
+  Button,
+  Checkbox,
+  Description,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+  Field,
+  Input,
+  Label,
+  Select,
+  SplitLayout,
+  StickyRouteFrame,
+  StickyStackItem,
+  Tab,
+  Tabs,
+  Textarea,
+  useToast,
+} from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState, LoadingState } from "./request-state";
@@ -99,12 +121,13 @@ export default function AdminPanel({
   const [initialLoading, setInitialLoading] = useState(false);
   const [initialLoadFailed, setInitialLoadFailed] = useState(false);
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<AdminSection>(initialSection);
+  const section = initialSection;
   const [exportText, setExportText] = useState("");
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [clockNow, setClockNow] = useState(adminLoadedAt);
   const [newLabel, setNewLabel] = useState("");
+  const [villageSearch, setVillageSearch] = useState("");
   const [editing, setEditing] = useState<Account | null>(null);
   const [accountForm, setAccountForm] = useState({
     label: "",
@@ -115,12 +138,12 @@ export default function AdminPanel({
     resourcePreparationMinutes: 60,
   });
   const [resourcePrompt, setResourcePrompt] = useState<{ accountId: string } | null>(null);
+  const [deletePromptOpen, setDeletePromptOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [resourceResponding, setResourceResponding] = useState(false);
   const reviewSequence = useRef(0);
   const reviewingText = useRef("");
   const lastReviewedText = useRef("");
-  const initialAccountApplied = useRef(false);
   const appliedQuickPaste = useRef<number | null>(null);
   const confirmImportButton = useRef<HTMLButtonElement | null>(null);
 
@@ -163,21 +186,6 @@ export default function AdminPanel({
       setEditing((current) =>
         current ? accountResult.accounts.find((item: Account) => item.id === current.id) || null : null,
       );
-      if (!initialAccountApplied.current && initialAccountId) {
-        const account = accountResult.accounts.find((item: Account) => item.id === initialAccountId);
-        if (account) {
-          setEditing(account);
-          setAccountForm({
-            label: account.label,
-            color: account.color,
-            tags: (account.tags || []).join(", "),
-            resourceStatus: account.resourceStatus,
-            resourcePreparationEnabled: account.resourcePreparationMinutes != null,
-            resourcePreparationMinutes: account.resourcePreparationMinutes || 60,
-          });
-        }
-        initialAccountApplied.current = true;
-      }
       setGroupOrder(dashboardSettings.groupOrder || []);
       setError("");
       setInitialLoadFailed(false);
@@ -187,7 +195,7 @@ export default function AdminPanel({
     } finally {
       setInitialLoading(false);
     }
-  }, [initialAccountId, request, token]);
+  }, [request, token]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -210,6 +218,26 @@ export default function AdminPanel({
     const timer = window.setTimeout(() => setMessage(""), 4_500);
     return () => window.clearTimeout(timer);
   }, [message]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!initialAccountId) {
+        setEditing(null);
+        return;
+      }
+      const account = accounts.find((item) => item.id === initialAccountId);
+      if (!account) return;
+      setEditing(account);
+      setAccountForm({
+        label: account.label,
+        color: account.color,
+        tags: (account.tags || []).join(", "),
+        resourceStatus: account.resourceStatus,
+        resourcePreparationEnabled: account.resourcePreparationMinutes != null,
+        resourcePreparationMinutes: account.resourcePreparationMinutes || 60,
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accounts, initialAccountId]);
   useEffect(() => {
     const id = "admin-mutation-feedback";
     if (!token || initialLoadFailed) {
@@ -287,7 +315,6 @@ export default function AdminPanel({
     const timer = window.setTimeout(() => {
       appliedQuickPaste.current = quickPasteRequest.id;
       onQuickPasteApplied?.(quickPasteRequest.id);
-      setSection("import");
       onSectionChange?.("import");
       if (quickPasteRequest.text) replaceExportText(quickPasteRequest.text);
       else if (quickPasteRequest.clipboardError) setError(t("clipboardUnavailable"));
@@ -327,11 +354,6 @@ export default function AdminPanel({
       resourcePreparationMinutes: item.resourcePreparationMinutes || 60,
     });
     onVillageChange?.(item.id);
-    if (window.matchMedia("(max-width: 760px)").matches)
-      window.setTimeout(
-        () => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-        0,
-      );
   };
 
   const availableGroups = (() => {
@@ -350,6 +372,14 @@ export default function AdminPanel({
         .sort((a, b) => a.localeCompare(b)),
     ];
   })();
+  const normalizedVillageSearch = villageSearch.trim().toLocaleLowerCase();
+  const visibleAccounts = normalizedVillageSearch
+    ? accounts.filter((account) =>
+        [account.label, account.playerTag, ...(account.tags || [])].some((value) =>
+          value.toLocaleLowerCase().includes(normalizedVillageSearch),
+        ),
+      )
+    : accounts;
 
   const moveGroup = async (index: number, offset: -1 | 1) => {
     const target = index + offset;
@@ -416,29 +446,25 @@ export default function AdminPanel({
   const openVillageSettings = (account: Account | undefined) => {
     if (!account) return;
     chooseAccount(account);
-    setSection("villages");
     onSectionChange?.("villages");
-    window.setTimeout(
-      () => document.getElementById("village-settings-card")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      0,
-    );
   };
 
   if (!authReady)
     return (
-      <section className="admin-shell">
+      <section className="settings-page">
         <LoadingState compact />
       </section>
     );
   if (!token)
     return (
-      <section className="admin-shell">
-        <div className="admin-login">
-          <p className="eyebrow">ADMIN</p>
+      <section className="settings-page">
+        <div className="settings-login settings-surface">
+          <p className="settings-eyebrow">ADMIN</p>
           <h1>{t("authentication")}</h1>
           <p>{t("authenticationHelp")}</p>
-          {error && <p className="admin-alert error">{error}</p>}
+          {error && <p className="settings-inline-error">{error}</p>}
           <form
+            className="settings-login-form"
             onSubmit={(event) => {
               event.preventDefault();
               const value = String(new FormData(event.currentTarget).get("token") || "").trim();
@@ -448,517 +474,575 @@ export default function AdminPanel({
               setToken(value);
             }}
           >
-            <input name="token" type="password" required autoComplete="current-password" autoFocus />
-            <button>{t("signIn")}</button>
+            <Field>
+              <Label className="ui-visually-hidden">{t("authentication")}</Label>
+              <Input name="token" type="password" required autoComplete="current-password" autoFocus />
+            </Field>
+            <Button>{t("signIn")}</Button>
           </form>
         </div>
       </section>
     );
   if (initialLoading && !accounts.length)
     return (
-      <section className="admin-shell">
+      <section className="settings-page">
         <LoadingState compact />
       </section>
     );
   if (initialLoadFailed && !accounts.length)
     return (
-      <section className="admin-shell">
+      <section className="settings-page">
         <ErrorState compact message={error} retry={() => void load()} />
       </section>
     );
 
   return (
-    <section className="admin-shell">
-      <div className="admin-title">
+    <section className="settings-page">
+      <div className="settings-page-header">
         <div>
-          <p className="eyebrow">VILLAGE DATA</p>
+          <p className="settings-eyebrow">VILLAGE DATA</p>
           <h1>{t("title")}</h1>
         </div>
-        <button
-          className="secondary"
+        <Button
+          tone="secondary"
           onClick={() => {
             localStorage.removeItem("multi-coc-admin-token");
             setToken("");
           }}
         >
           {t("signOut")}
-        </button>
+        </Button>
       </div>
-      <div className="admin-sections section-tabs" role="navigation" aria-label={t("settingsSections")}>
-        <button
-          className={section === "import" ? "active" : ""}
-          onClick={() => {
-            setSection("import");
-            onSectionChange?.("import");
+      <StickyStackItem order={10} className="settings-tabs-sticky ui-sticky-surface">
+        <Tabs
+          className="settings-tabs"
+          label={t("settingsSections")}
+          value={section}
+          onValueChange={(value) => {
+            const next = value as AdminSection;
+            onSectionChange?.(next);
           }}
         >
-          {t("updateData")}
-        </button>
-        <button
-          className={section === "alerts" ? "active" : ""}
-          onClick={() => {
-            setSection("alerts");
-            onSectionChange?.("alerts");
-          }}
-        >
-          {t("upgradeAlerts")}
-        </button>
-        <button
-          className={section === "villages" ? "active" : ""}
-          onClick={() => {
-            setSection("villages");
-            onSectionChange?.("villages");
-          }}
-        >
-          {t("manageVillages")}
-        </button>
-        <button
-          className={section === "groups" ? "active" : ""}
-          onClick={() => {
-            setSection("groups");
-            onSectionChange?.("groups");
-          }}
-        >
-          {t("manageGroups")}
-        </button>
-      </div>
-      {section === "import" && (
-        <div className="import-flow">
-          <article
-            className={`admin-card export-card primary-card import-step ${preview ? "step-complete" : "step-current"}`}
-            aria-current={!preview ? "step" : undefined}
-          >
-            <p className="step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
-              01 · PASTE
-            </p>
-            <h2>{t("pasteJson")}</h2>
-            <p>{t("pasteJsonHelp")}</p>
-            <textarea
-              value={exportText}
-              onChange={(event) => replaceExportText(event.target.value)}
-              placeholder='{"tag":"#...","timestamp":...}'
-              autoFocus
-              spellCheck={false}
-              autoCapitalize="off"
-              aria-busy={previewLoading}
-            />
-            <div className="review-action" aria-live="polite">
-              <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
-              <span>
-                <button type="button" className="secondary" onClick={pasteFromClipboard}>
-                  {t("pasteClipboard")}
-                </button>
-                <button
-                  type="button"
-                  disabled={!exportText.trim() || previewLoading}
-                  onClick={() => reviewExport(exportText)}
-                >
-                  {previewLoading ? t("reviewingData") : t("reviewData")}
-                </button>
-              </span>
-            </div>
-          </article>
-
-          {preview && (
-            <article className="admin-card preview-card import-step step-current" aria-current="step">
-              <p className="step-label" data-step-state={t("stepNow")}>
-                02 · REVIEW
+          <Tab value="import">{t("updateData")}</Tab>
+          <Tab value="alerts">{t("upgradeAlerts")}</Tab>
+          <Tab value="villages">{t("manageVillages")}</Tab>
+          <Tab value="groups">{t("manageGroups")}</Tab>
+        </Tabs>
+      </StickyStackItem>
+      <StickyRouteFrame className="settings-route-frame" scrollKey={section}>
+        {section === "import" && (
+          <div className="settings-import-flow">
+            <article
+              className={`settings-surface settings-export settings-step ${preview ? "step-complete" : "step-current"}`}
+              aria-current={!preview ? "step" : undefined}
+            >
+              <p className="settings-step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
+                01 · PASTE
               </p>
-              <div className="preview-heading">
-                <div>
-                  <h2>{preview.account?.label || t("newVillage")}</h2>
-                  <p>
-                    {preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}
-                  </p>
-                </div>
-                <span className={preview.isNew ? "new-badge" : "match-badge"}>
-                  {preview.isNew ? t("newBadge") : t("matchedBadge")}
+              <h2>{t("pasteJson")}</h2>
+              <p>{t("pasteJsonHelp")}</p>
+              <Field>
+                <Label className="ui-visually-hidden">{t("pasteJson")}</Label>
+                <Textarea
+                  value={exportText}
+                  onChange={(event) => replaceExportText(event.target.value)}
+                  placeholder='{"tag":"#...","timestamp":...}'
+                  autoFocus
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  aria-busy={previewLoading}
+                />
+              </Field>
+              <div className="settings-review-action" aria-live="polite">
+                <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
+                <span>
+                  <Button type="button" tone="secondary" onClick={pasteFromClipboard}>
+                    {t("pasteClipboard")}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={!exportText.trim() || previewLoading}
+                    pending={previewLoading}
+                    onClick={() => reviewExport(exportText)}
+                  >
+                    {previewLoading ? t("reviewingData") : t("reviewData")}
+                  </Button>
                 </span>
               </div>
-              <section className="preview-changes" aria-live="polite">
-                <h3>{t("changesTitle")}</h3>
-                {!preview.changes.hasPrevious ? (
-                  <p>{t("changesFirstExport")}</p>
-                ) : !preview.changes.started.length &&
-                  !preview.changes.ended.length &&
-                  !preview.changes.slots.length ? (
-                  <p>{t("changesNone")}</p>
-                ) : (
-                  <>
-                    {!!preview.changes.started.length && (
-                      <div className="change-group started">
-                        <b>{t("changesStarted")}</b>
-                        {preview.changes.started.map((item) => (
-                          <span key={item.id}>
-                            + {item.name}{" "}
-                            <small>
-                              Lv. {item.level} → {item.nextLevel}
-                            </small>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {!!preview.changes.ended.length && (
-                      <div className="change-group ended">
-                        <b>{t("changesEnded")}</b>
-                        {preview.changes.ended.map((item) => (
-                          <span key={item.id}>
-                            − {item.name}{" "}
-                            <small>
-                              Lv. {item.level} → {item.nextLevel}
-                            </small>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {!!preview.changes.slots.length && (
-                      <div className="change-group slots">
-                        <b>{t("changesSlots")}</b>
-                        {preview.changes.slots.map((item) => (
-                          <span key={item.slot}>
-                            {t(`changeSlot_${item.slot}`)}{" "}
-                            <small>
-                              {t("changeValue", {
-                                before:
-                                  typeof item.before === "boolean"
-                                    ? t(item.before ? "available" : "busy")
-                                    : (item.before ?? "—"),
-                                after:
-                                  typeof item.after === "boolean"
-                                    ? t(item.after ? "available" : "busy")
-                                    : (item.after ?? "—"),
-                              })}
-                            </small>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-              <div className="preview-stats compact">
-                <div>
-                  <span>{t("inProgress")}</span>
-                  <b>{preview.upgrades.length}</b>
-                </div>
-                <div>
-                  <span>{t("unknownItems")}</span>
-                  <b>{preview.unknownDataIds.length}</b>
-                </div>
-              </div>
-              <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
-              {preview.isNew && (
-                <label className="new-label">
-                  {t("displayName")}
-                  <input
-                    required
-                    autoFocus
-                    value={newLabel}
-                    onChange={(event) => setNewLabel(event.target.value)}
-                    placeholder={t("displayNamePlaceholder")}
-                  />
-                  <small>{t("newVillageHelp")}</small>
-                </label>
-              )}
-              <div className="preview-upgrades">
-                {preview.upgrades.slice(0, 8).map((item) => (
-                  <div key={item.id}>
-                    <span>
-                      <b>{item.name}</b>
-                      <small>
-                        Lv. {item.level} → {item.nextLevel}
-                      </small>
-                    </span>
-                    <time>
-                      {formatDateTime(item.finishAt)}
-                      <small>{t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })}</small>
-                    </time>
-                  </div>
-                ))}
-                {preview.upgrades.length > 8 && <p>+ {preview.upgrades.length - 8}</p>}
-              </div>
-              <div className="confirm-row">
-                <button className="secondary" onClick={() => setPreview(null)}>
-                  {t("pasteAgain")}
-                </button>
-                <button
-                  ref={confirmImportButton}
-                  disabled={importing || (preview.isNew && !newLabel.trim())}
-                  onClick={submitImport}
-                >
-                  {preview.isNew ? t("addAndImport") : t("importVillage")}
-                </button>
-              </div>
             </article>
-          )}
-        </div>
-      )}
 
-      {section === "alerts" && (
-        <article className="admin-card wide-card">
-          <h2>{t("upgradeAlertsTitle")}</h2>
-          <p>{t("upgradeAlertsHelp")}</p>
-          <div className="upgrade-admin-list">
-            {upgrades.some((item) => item.status === "active") ? (
-              upgrades
-                .filter((item) => item.status === "active")
-                .map((item) => {
-                  const account = accounts.find((a) => a.id === item.accountId);
-                  const draft = upgradeAlertDrafts[item.id] || { mode: "inherit", minutes: 60 };
-                  return (
-                    <div className="upgrade-alert-row" key={item.id}>
-                      <div className="upgrade-alert-heading">
-                        <span>
-                          <b>
-                            {account?.label} · {item.name}
-                          </b>
-                          <small>
-                            {formatDateTime(item.finishAt)} ·{" "}
-                            {t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })} ·{" "}
-                            {t("source_export")}
-                          </small>
-                        </span>
-                        <span className="policy-badge">
-                          {t(`resourcePolicy_${account?.resourceStatus || "unanswered"}`)}
-                        </span>
-                      </div>
-                      <div className="upgrade-alert-controls">
-                        <label>
-                          {t("preparationAlertSetting")}
-                          <select
-                            value={draft.mode}
-                            onChange={(event) =>
-                              setUpgradeAlertDrafts({
-                                ...upgradeAlertDrafts,
-                                [item.id]: { ...draft, mode: event.target.value as UpgradeAlertDraft["mode"] },
-                              })
-                            }
-                          >
-                            <option value="inherit">
-                              {t("preparationInherit", {
-                                minutes: account?.resourcePreparationMinutes ?? t("disabled"),
-                              })}
-                            </option>
-                            <option value="disabled">{t("preparationDisabled")}</option>
-                            <option value="custom">{t("preparationCustom")}</option>
-                          </select>
-                        </label>
-                        {draft.mode === "custom" && (
-                          <label>
-                            {t("resourcePreparationMinutes")}
-                            <input
-                              type="number"
-                              min="1"
-                              max="525600"
-                              required
-                              value={draft.minutes}
+            {preview && (
+              <article className="settings-surface settings-preview settings-step step-current" aria-current="step">
+                <p className="settings-step-label" data-step-state={t("stepNow")}>
+                  02 · REVIEW
+                </p>
+                <div className="settings-preview-heading">
+                  <div>
+                    <h2>{preview.account?.label || t("newVillage")}</h2>
+                    <p>
+                      {preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}
+                    </p>
+                  </div>
+                  <span className={preview.isNew ? "settings-new-badge" : "settings-match-badge"}>
+                    {preview.isNew ? t("newBadge") : t("matchedBadge")}
+                  </span>
+                </div>
+                <section className="settings-preview-changes" aria-live="polite">
+                  <h3>{t("changesTitle")}</h3>
+                  {!preview.changes.hasPrevious ? (
+                    <p>{t("changesFirstExport")}</p>
+                  ) : !preview.changes.started.length &&
+                    !preview.changes.ended.length &&
+                    !preview.changes.slots.length ? (
+                    <p>{t("changesNone")}</p>
+                  ) : (
+                    <>
+                      {!!preview.changes.started.length && (
+                        <div className="settings-change-group started">
+                          <b>{t("changesStarted")}</b>
+                          {preview.changes.started.map((item) => (
+                            <span key={item.id}>
+                              + {item.name}{" "}
+                              <small>
+                                Lv. {item.level} → {item.nextLevel}
+                              </small>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {!!preview.changes.ended.length && (
+                        <div className="settings-change-group ended">
+                          <b>{t("changesEnded")}</b>
+                          {preview.changes.ended.map((item) => (
+                            <span key={item.id}>
+                              − {item.name}{" "}
+                              <small>
+                                Lv. {item.level} → {item.nextLevel}
+                              </small>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {!!preview.changes.slots.length && (
+                        <div className="settings-change-group slots">
+                          <b>{t("changesSlots")}</b>
+                          {preview.changes.slots.map((item) => (
+                            <span key={item.slot}>
+                              {t(`changeSlot_${item.slot}`)}{" "}
+                              <small>
+                                {t("changeValue", {
+                                  before:
+                                    typeof item.before === "boolean"
+                                      ? t(item.before ? "available" : "busy")
+                                      : (item.before ?? "—"),
+                                  after:
+                                    typeof item.after === "boolean"
+                                      ? t(item.after ? "available" : "busy")
+                                      : (item.after ?? "—"),
+                                })}
+                              </small>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </section>
+                <div className="settings-preview-stats">
+                  <div>
+                    <span>{t("inProgress")}</span>
+                    <b>{preview.upgrades.length}</b>
+                  </div>
+                  <div>
+                    <span>{t("unknownItems")}</span>
+                    <b>{preview.unknownDataIds.length}</b>
+                  </div>
+                </div>
+                <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
+                {preview.isNew && (
+                  <Field className="settings-new-label">
+                    <Label>{t("displayName")}</Label>
+                    <Input
+                      required
+                      autoFocus
+                      value={newLabel}
+                      onChange={(event) => setNewLabel(event.target.value)}
+                      placeholder={t("displayNamePlaceholder")}
+                    />
+                    <Description>{t("newVillageHelp")}</Description>
+                  </Field>
+                )}
+                <div className="settings-preview-upgrades">
+                  {preview.upgrades.slice(0, 8).map((item) => (
+                    <div key={item.id}>
+                      <span>
+                        <b>{item.name}</b>
+                        <small>
+                          Lv. {item.level} → {item.nextLevel}
+                        </small>
+                      </span>
+                      <time>
+                        {formatDateTime(item.finishAt)}
+                        <small>{t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })}</small>
+                      </time>
+                    </div>
+                  ))}
+                  {preview.upgrades.length > 8 && <p>+ {preview.upgrades.length - 8}</p>}
+                </div>
+                <div className="settings-confirm-row">
+                  <Button tone="secondary" onClick={() => setPreview(null)}>
+                    {t("pasteAgain")}
+                  </Button>
+                  <Button
+                    ref={confirmImportButton}
+                    disabled={importing || (preview.isNew && !newLabel.trim())}
+                    pending={importing}
+                    onClick={submitImport}
+                  >
+                    {preview.isNew ? t("addAndImport") : t("importVillage")}
+                  </Button>
+                </div>
+              </article>
+            )}
+          </div>
+        )}
+
+        {section === "alerts" && (
+          <article className="settings-surface settings-wide">
+            <h2>{t("upgradeAlertsTitle")}</h2>
+            <p>{t("upgradeAlertsHelp")}</p>
+            <div className="settings-upgrade-list">
+              {upgrades.some((item) => item.status === "active") ? (
+                upgrades
+                  .filter((item) => item.status === "active")
+                  .map((item) => {
+                    const account = accounts.find((a) => a.id === item.accountId);
+                    const draft = upgradeAlertDrafts[item.id] || { mode: "inherit", minutes: 60 };
+                    return (
+                      <div className="settings-upgrade-row" key={item.id}>
+                        <div className="settings-upgrade-heading">
+                          <span>
+                            <b>
+                              {account?.label} · {item.name}
+                            </b>
+                            <small>
+                              {formatDateTime(item.finishAt)} ·{" "}
+                              {t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })} ·{" "}
+                              {t("source_export")}
+                            </small>
+                          </span>
+                          <span className="settings-policy-badge">
+                            {t(`resourcePolicy_${account?.resourceStatus || "unanswered"}`)}
+                          </span>
+                        </div>
+                        <div className="settings-upgrade-controls">
+                          <Field>
+                            <Label>{t("preparationAlertSetting")}</Label>
+                            <Select
+                              value={draft.mode}
                               onChange={(event) =>
                                 setUpgradeAlertDrafts({
                                   ...upgradeAlertDrafts,
-                                  [item.id]: { ...draft, minutes: Number(event.target.value) },
+                                  [item.id]: { ...draft, mode: event.target.value as UpgradeAlertDraft["mode"] },
                                 })
                               }
-                            />
-                          </label>
-                        )}
-                        <div className="upgrade-alert-actions">
-                          <button type="button" className="secondary" onClick={() => openVillageSettings(account)}>
-                            {t("goToVillageSettings")}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              savingUpgradeId === item.id ||
-                              (draft.mode === "custom" &&
-                                (!Number.isInteger(draft.minutes) || draft.minutes < 1 || draft.minutes > 525600))
-                            }
-                            onClick={() => saveUpgradeAlert(item)}
-                          >
-                            {savingUpgradeId === item.id ? t("saving") : t("saveNotifications")}
-                          </button>
+                            >
+                              <option value="inherit">
+                                {t("preparationInherit", {
+                                  minutes: account?.resourcePreparationMinutes ?? t("disabled"),
+                                })}
+                              </option>
+                              <option value="disabled">{t("preparationDisabled")}</option>
+                              <option value="custom">{t("preparationCustom")}</option>
+                            </Select>
+                          </Field>
+                          {draft.mode === "custom" && (
+                            <Field>
+                              <Label>{t("resourcePreparationMinutes")}</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="525600"
+                                required
+                                value={draft.minutes}
+                                onChange={(event) =>
+                                  setUpgradeAlertDrafts({
+                                    ...upgradeAlertDrafts,
+                                    [item.id]: { ...draft, minutes: Number(event.target.value) },
+                                  })
+                                }
+                              />
+                            </Field>
+                          )}
+                          <div className="settings-upgrade-actions">
+                            <Button type="button" tone="secondary" onClick={() => openVillageSettings(account)}>
+                              {t("goToVillageSettings")}
+                            </Button>
+                            <Button
+                              type="button"
+                              pending={savingUpgradeId === item.id}
+                              disabled={
+                                savingUpgradeId === item.id ||
+                                (draft.mode === "custom" &&
+                                  (!Number.isInteger(draft.minutes) || draft.minutes < 1 || draft.minutes > 525600))
+                              }
+                              onClick={() => saveUpgradeAlert(item)}
+                            >
+                              {savingUpgradeId === item.id ? t("saving") : t("saveNotifications")}
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <p>{t("noTrackedUpgrades")}</p>
-            )}
-          </div>
-        </article>
-      )}
-
-      {section === "villages" && (
-        <div className="village-admin-layout">
-          <article className="admin-card village-list-card">
-            <h2>{t("registeredVillages")}</h2>
-            <p>{t("registeredVillagesHelp")}</p>
-            <div className="admin-list village-picker">
-              {accounts.map((item) => (
-                <button
-                  key={item.id}
-                  className={editing?.id === item.id ? "selected" : ""}
-                  onClick={() => chooseAccount(item)}
-                >
-                  <i style={{ background: item.color }} />
-                  <span>
-                    <b>{item.label}</b>
-                    <small>
-                      {item.playerTag}
-                      {item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}
-                    </small>
-                  </span>
-                </button>
-              ))}
-              {!accounts.length && <p>{t("noVillages")}</p>}
+                    );
+                  })
+              ) : (
+                <p>{t("noTrackedUpgrades")}</p>
+              )}
             </div>
           </article>
-          <article className="admin-card village-settings-card" id="village-settings-card">
-            {editing ? (
-              <>
-                <h2>{t("villageSettings")}</h2>
-                <p>{editing.playerTag}</p>
-                <form
-                  className="admin-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void run(
-                      () =>
-                        request(`/api/admin/accounts/${editing.id}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({
-                            ...accountForm,
-                            resourcePreparationMinutes: accountForm.resourcePreparationEnabled
-                              ? accountForm.resourcePreparationMinutes
-                              : null,
-                          }),
-                        }),
-                      t("settingsSaved"),
-                    );
-                  }}
-                >
-                  <label>
-                    {t("displayName")}
-                    <input
-                      required
-                      value={accountForm.label}
-                      onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    {t("color")}
-                    <input
-                      type="color"
-                      value={accountForm.color}
-                      onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })}
-                    />
-                  </label>
-                  <label className="wide">
-                    {t("accountTags")}
-                    <input
-                      value={accountForm.tags}
-                      onChange={(e) => setAccountForm({ ...accountForm, tags: e.target.value })}
-                      placeholder={t("accountTagsPlaceholder")}
-                    />
-                    <small>{t("accountTagsHelp")}</small>
-                  </label>
-                  <label className="wide">
-                    {t("resourceStatus")}
-                    <select
-                      value={accountForm.resourceStatus}
-                      onChange={(e) =>
-                        setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })
-                      }
-                    >
-                      <option value="abundant">{t("resourceAbundant")}</option>
-                      <option value="sufficient">{t("resourceSufficient")}</option>
-                      <option value="insufficient">{t("resourceInsufficient")}</option>
-                      <option value="unanswered">{t("resourceUnanswered")}</option>
-                    </select>
-                    <small>{t("resourceStatusHelp")}</small>
-                  </label>
-                  <label className="wide check-label">
-                    <input
-                      type="checkbox"
-                      checked={accountForm.resourcePreparationEnabled}
-                      onChange={(e) => setAccountForm({ ...accountForm, resourcePreparationEnabled: e.target.checked })}
-                    />
-                    {t("resourcePreparationEnabled")}
-                  </label>
-                  {accountForm.resourcePreparationEnabled && (
-                    <label className="wide">
-                      {t("resourcePreparationMinutes")}
-                      <input
-                        type="number"
-                        min="1"
-                        max="525600"
-                        required
-                        value={accountForm.resourcePreparationMinutes}
-                        onChange={(e) =>
-                          setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })
-                        }
-                      />
-                    </label>
-                  )}
-                  <button className="wide" disabled={mutationPending}>
-                    {mutationPending ? t("saving") : t("saveSettings")}
-                  </button>
-                </form>
-                <button
-                  className="danger standalone-danger"
-                  disabled={mutationPending}
-                  onClick={() =>
-                    confirm(t("deleteConfirm")) &&
-                    run(async () => {
-                      await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" });
-                      setEditing(null);
-                    }, t("deleted"))
-                  }
-                >
-                  {t("deleteVillage")}
-                </button>
-              </>
-            ) : (
-              <div className="empty settings-empty">{t("chooseVillage")}</div>
-            )}
-          </article>
-        </div>
-      )}
+        )}
 
-      {section === "groups" && (
-        <article className="admin-card group-order-card">
-          <h2>{t("groupOrder")}</h2>
-          <p>{t("groupOrderHelp")}</p>
-          <div className="group-order-settings standalone-group-order">
-            {availableGroups.map((tag, index) => (
-              <div key={tag}>
-                <span>#{tag}</span>
-                <span>
+        {section === "villages" && (
+          <SplitLayout className="settings-village-layout">
+            <article className="settings-surface settings-village-list-card ui-sticky-surface">
+              <h2>{t("registeredVillages")}</h2>
+              <p>{t("registeredVillagesHelp")}</p>
+              <Field className="village-search">
+                <Label>{t("searchVillages")}</Label>
+                <Input
+                  type="search"
+                  value={villageSearch}
+                  onChange={(event) => setVillageSearch(event.target.value)}
+                  placeholder={t("searchVillages")}
+                />
+              </Field>
+              <div className="settings-village-picker">
+                {visibleAccounts.map((item) => (
                   <button
-                    type="button"
-                    className="secondary"
-                    disabled={index === 0}
-                    onClick={() => moveGroup(index, -1)}
-                    aria-label={t("moveGroupUp", { tag })}
+                    key={item.id}
+                    className={editing?.id === item.id ? "selected" : ""}
+                    onClick={() => chooseAccount(item)}
                   >
-                    ↑
+                    <i style={{ background: item.color }} />
+                    <span>
+                      <b>{item.label}</b>
+                      <small>
+                        {item.playerTag}
+                        {item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}
+                      </small>
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={index === availableGroups.length - 1}
-                    onClick={() => moveGroup(index, 1)}
-                    aria-label={t("moveGroupDown", { tag })}
-                  >
-                    ↓
-                  </button>
-                </span>
+                ))}
+                {!visibleAccounts.length && <p>{accounts.length ? t("noVillageMatches") : t("noVillages")}</p>}
               </div>
-            ))}
-            {!availableGroups.length && <small>{t("noGroups")}</small>}
-          </div>
-        </article>
-      )}
+            </article>
+            {editing && (
+              <button
+                type="button"
+                className="settings-sheet-backdrop"
+                aria-label={t("chooseVillage")}
+                onClick={() => setEditing(null)}
+              />
+            )}
+            <article
+              className={`settings-surface settings-village-editor-card ${editing ? "is-open" : ""}`}
+              id="village-settings-card"
+            >
+              {editing ? (
+                <>
+                  <div className="village-editor-heading">
+                    <div>
+                      <h2>{t("villageSettings")}</h2>
+                      <p>{editing.playerTag}</p>
+                    </div>
+                    <Button
+                      className="settings-sheet-close"
+                      type="button"
+                      size="small"
+                      tone="secondary"
+                      onClick={() => setEditing(null)}
+                    >
+                      {t("chooseVillage")}
+                    </Button>
+                  </div>
+                  <div className="village-editor-scroll">
+                    <form
+                      id="village-settings-form"
+                      className="settings-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void run(
+                          () =>
+                            request(`/api/admin/accounts/${editing.id}`, {
+                              method: "PATCH",
+                              body: JSON.stringify({
+                                ...accountForm,
+                                resourcePreparationMinutes: accountForm.resourcePreparationEnabled
+                                  ? accountForm.resourcePreparationMinutes
+                                  : null,
+                              }),
+                            }),
+                          t("settingsSaved"),
+                        );
+                      }}
+                    >
+                      <Field>
+                        <Label>{t("displayName")}</Label>
+                        <Input
+                          required
+                          value={accountForm.label}
+                          onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })}
+                        />
+                      </Field>
+                      <Field>
+                        <Label>{t("color")}</Label>
+                        <Input
+                          type="color"
+                          value={accountForm.color}
+                          onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })}
+                        />
+                      </Field>
+                      <Field className="wide">
+                        <Label>{t("accountTags")}</Label>
+                        <Input
+                          value={accountForm.tags}
+                          onChange={(e) => setAccountForm({ ...accountForm, tags: e.target.value })}
+                          placeholder={t("accountTagsPlaceholder")}
+                        />
+                        <Description>{t("accountTagsHelp")}</Description>
+                      </Field>
+                      <Field className="wide">
+                        <Label>{t("resourceStatus")}</Label>
+                        <Select
+                          value={accountForm.resourceStatus}
+                          onChange={(e) =>
+                            setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })
+                          }
+                        >
+                          <option value="abundant">{t("resourceAbundant")}</option>
+                          <option value="sufficient">{t("resourceSufficient")}</option>
+                          <option value="insufficient">{t("resourceInsufficient")}</option>
+                          <option value="unanswered">{t("resourceUnanswered")}</option>
+                        </Select>
+                        <Description>{t("resourceStatusHelp")}</Description>
+                      </Field>
+                      <Checkbox
+                        className="wide"
+                        checked={accountForm.resourcePreparationEnabled}
+                        onChange={(e) =>
+                          setAccountForm({ ...accountForm, resourcePreparationEnabled: e.target.checked })
+                        }
+                        label={t("resourcePreparationEnabled")}
+                      />
+                      {accountForm.resourcePreparationEnabled && (
+                        <Field className="wide">
+                          <Label>{t("resourcePreparationMinutes")}</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="525600"
+                            required
+                            value={accountForm.resourcePreparationMinutes}
+                            onChange={(e) =>
+                              setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })
+                            }
+                          />
+                        </Field>
+                      )}
+                    </form>
+                    <ActionBar className="settings-action-bar" sticky>
+                      <Button
+                        type="button"
+                        tone="danger"
+                        disabled={mutationPending}
+                        onClick={() => setDeletePromptOpen(true)}
+                      >
+                        {t("deleteVillage")}
+                      </Button>
+                      <Button form="village-settings-form" pending={mutationPending}>
+                        {mutationPending ? t("saving") : t("saveSettings")}
+                      </Button>
+                    </ActionBar>
+                  </div>
+                </>
+              ) : (
+                <div className="settings-no-selection">{t("chooseVillage")}</div>
+              )}
+            </article>
+          </SplitLayout>
+        )}
+
+        {section === "groups" && (
+          <article className="settings-surface settings-group-card">
+            <h2>{t("groupOrder")}</h2>
+            <p>{t("groupOrderHelp")}</p>
+            <div className="settings-group-list">
+              {availableGroups.map((tag, index) => (
+                <div key={tag}>
+                  <span>#{tag}</span>
+                  <span>
+                    <Button
+                      type="button"
+                      size="small"
+                      tone="secondary"
+                      disabled={index === 0}
+                      onClick={() => moveGroup(index, -1)}
+                      aria-label={t("moveGroupUp", { tag })}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      type="button"
+                      size="small"
+                      tone="secondary"
+                      disabled={index === availableGroups.length - 1}
+                      onClick={() => moveGroup(index, 1)}
+                      aria-label={t("moveGroupDown", { tag })}
+                    >
+                      ↓
+                    </Button>
+                  </span>
+                </div>
+              ))}
+              {!availableGroups.length && <small>{t("noGroups")}</small>}
+            </div>
+          </article>
+        )}
+      </StickyRouteFrame>
+      <Dialog
+        open={deletePromptOpen}
+        onOpenChange={(open) => {
+          if (!mutationPending) setDeletePromptOpen(open);
+        }}
+      >
+        <DialogContent
+          closeLabel={t("cancel")}
+          onEscapeKeyDown={(event) => mutationPending && event.preventDefault()}
+          onPointerDownOutside={(event) => mutationPending && event.preventDefault()}
+        >
+          <DialogTitle>{t("deleteVillage")}</DialogTitle>
+          <DialogDescription>{t("deleteConfirm")}</DialogDescription>
+          <DialogFooter>
+            <Button tone="secondary" disabled={mutationPending} onClick={() => setDeletePromptOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              tone="danger"
+              pending={mutationPending}
+              onClick={() => {
+                if (!editing) return;
+                void run(async () => {
+                  await request(`/api/admin/accounts/${editing.id}`, { method: "DELETE" });
+                  setDeletePromptOpen(false);
+                  setEditing(null);
+                }, t("deleted"));
+              }}
+            >
+              {t("deleteVillage")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(resourcePrompt)}
         onOpenChange={(open) => {
@@ -975,19 +1059,19 @@ export default function AdminPanel({
           <DialogDescription>{t("resourcePromptHelp")}</DialogDescription>
           <DialogBody className="resource-dialog-body">
             <div className="resource-dialog-options">
-              <button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
+              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
                 {t("resourceAbundant")}
-              </button>
-              <button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
+              </Button>
+              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
                 {t("resourceSufficient")}
-              </button>
-              <button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
+              </Button>
+              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
                 {t("resourceInsufficient")}
-              </button>
+              </Button>
             </div>
-            <button className="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>
+            <Button tone="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>
               {t("resourceAnswerLater")}
-            </button>
+            </Button>
           </DialogBody>
         </DialogContent>
       </Dialog>

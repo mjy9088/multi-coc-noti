@@ -216,6 +216,8 @@
     "noTrackedUpgrades": "No upgrades are in progress. Import fresh game JSON to populate this list.",
     "registeredVillages": "Registered villages",
     "registeredVillagesHelp": "Choose a village to rename it or change integrations.",
+    "searchVillages": "Search by display name, player tag, or group",
+    "noVillageMatches": "No villages match this search.",
     "noVillages": "No villages yet. Add one by importing JSON.",
     "villageSettings": "Village settings",
     "settingsSaved": "Village settings saved.",
@@ -247,6 +249,7 @@
     "noGroups": "Add account tags to configure group order.",
     "saveSettings": "Save settings",
     "deleteConfirm": "Delete this village and its related data?",
+    "cancel": "Cancel",
     "deleted": "Deleted.",
     "deleteVillage": "Delete village",
     "chooseVillage": "Choose a village on the left."

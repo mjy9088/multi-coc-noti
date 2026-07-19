@@ -1,6 +1,8 @@
 "use client";
 
+import { Button, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -92,38 +94,52 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <QuickPasteContext value={quickPasteContext}>
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">M</div>
-          <div>
-            <strong>MULTI VILLAGE</strong>
-            <span>COMMAND CENTER</span>
+      <StickyStackProvider>
+        <StickyStackItem as="header" order={0} className="app-shell-header">
+          <Link className="app-brand" href="/" aria-label={t("dashboard")}>
+            <div className="app-brand-mark">M</div>
+            <div className="app-brand-copy">
+              <strong>MULTI VILLAGE</strong>
+              <span>COMMAND CENTER</span>
+            </div>
+          </Link>
+          <nav className="app-primary-nav" aria-label="Dashboard menu">
+            <Link className="app-nav-link" href="/" aria-current={view === "dashboard" ? "page" : undefined}>
+              {t("dashboard")}
+            </Link>
+            <Link
+              className="app-nav-link"
+              href="/history/upgrades"
+              aria-current={view === "history" ? "page" : undefined}
+            >
+              {t("history")}
+            </Link>
+            <Link
+              className="app-nav-link"
+              href="/settings/paste"
+              aria-current={view === "settings" ? "page" : undefined}
+            >
+              {t("settings")}
+            </Link>
+            <Button className="app-quick-paste" size="small" pending={quickPasteLoading} onClick={quickPaste}>
+              {quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}
+            </Button>
+          </nav>
+          <div className="app-shell-tools">
+            <PwaInstall />
+            <div className="app-sync-state" role="status">
+              <i />
+              <span className="app-sync-copy">
+                {dashboardQuery.data
+                  ? `${t("synced")}${clockNow ? ` ${formatRelative(dashboardQuery.data.generatedAt, clockNow)}` : ""}`
+                  : t("awaiting")}
+              </span>
+            </div>
+            <LocaleSwitcher />
           </div>
-        </div>
-        <nav aria-label="Dashboard menu">
-          <button className={view === "dashboard" ? "nav-active" : ""} onClick={() => router.push("/")}>
-            {t("dashboard")}
-          </button>
-          <button className={view === "history" ? "nav-active" : ""} onClick={() => router.push("/history/upgrades")}>
-            {t("history")}
-          </button>
-          <button className={view === "settings" ? "nav-active" : ""} onClick={() => router.push("/settings/paste")}>
-            {t("settings")}
-          </button>
-          <button className="quick-paste-nav" disabled={quickPasteLoading} onClick={quickPaste}>
-            {quickPasteLoading ? t("quickPasteReading") : t("quickPaste")}
-          </button>
-        </nav>
-        <PwaInstall />
-        <div className="sync">
-          <i />
-          {dashboardQuery.data
-            ? `${t("synced")}${clockNow ? ` ${formatRelative(dashboardQuery.data.generatedAt, clockNow)}` : ""}`
-            : t("awaiting")}
-          <LocaleSwitcher />
-        </div>
-      </header>
-      {children}
+        </StickyStackItem>
+        {children}
+      </StickyStackProvider>
     </QuickPasteContext>
   );
 }

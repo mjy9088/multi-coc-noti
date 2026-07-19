@@ -28,10 +28,92 @@ test("bottom-sticky action rows direct authors to ActionBar", () => {
   assert.match(diagnostics[0].message, /ActionBar sticky/);
 });
 
+test("feature layout may reposition the owned sticky ActionBar responsively", () => {
+  const diagnostics = lintCss(`
+    .feature-actions.ui-action-bar-sticky {
+      --ui-surface-context: var(--ui-color-surface);
+      position: sticky;
+      bottom: 0;
+      background: var(--ui-color-surface);
+    }
+  `);
+  assert.deepEqual(diagnostics, []);
+});
+
 test("sticky regions explain the shared surface strategy", () => {
   const [diagnostic] = lintCss(`.filters { position: sticky; top: 0; background: transparent; }`);
   assert.equal(diagnostic.ruleId, "sticky-surface");
   assert.match(diagnostic.message, /ui-sticky-surface/);
+});
+
+test("stacked sticky navigation uses one semantic offset", () => {
+  const [diagnostic] = lintCss(`
+    .route-tabs {
+      position: sticky;
+      top: calc(var(--app-header-height) + 1rem);
+      background: var(--ui-color-surface);
+    }
+  `);
+  assert.equal(diagnostic.ruleId, "sticky-stack-offset");
+  assert.match(diagnostic.message, /fully visible/);
+  assert.deepEqual(
+    lintCss(`
+      .route-tabs {
+        --ui-surface-context: var(--ui-color-surface);
+        position: sticky;
+        top: var(--app-sticky-route-offset);
+        background: var(--ui-color-surface);
+      }
+    `),
+    [],
+  );
+});
+
+test("viewport content uses the measured sticky stack height", () => {
+  const [diagnostic] = lintCss(
+    `.feature-pane { height: calc(100dvh - var(--app-shell-height) - 3rem); }`,
+    "apps/dashboard/app/feature.css",
+  );
+  assert.equal(diagnostic.ruleId, "viewport-stack-height");
+  assert.match(diagnostic.message, /StickyStackProvider/);
+  assert.deepEqual(
+    lintCss(
+      `.feature-pane { height: calc(var(--ui-viewport-available-height) - var(--ui-space-4)); }`,
+      "apps/dashboard/app/feature.css",
+    ),
+    [],
+  );
+});
+
+test("sticky viewport panes use the shared composition", () => {
+  const [diagnostic] = lintCss(
+    `
+      .feature-layout {
+        position: sticky;
+        top: var(--feature-sticky-content-offset);
+        height: var(--ui-viewport-available-height);
+        background: var(--ui-color-canvas);
+      }
+    `,
+    "apps/dashboard/app/feature.css",
+  );
+  assert.equal(diagnostic.ruleId, "sticky-viewport-component");
+  assert.match(diagnostic.message, /StickyStackViewport/);
+});
+
+test("sticky viewport gaps describe both block edges", () => {
+  const [diagnostic] = lintCss(`.feature-layout { --ui-sticky-viewport-block-start-gap: 1rem; }`);
+  assert.equal(diagnostic.ruleId, "sticky-viewport-gap-pair");
+  assert.match(diagnostic.message, /block-end-gap/);
+  assert.deepEqual(
+    lintCss(`
+      .feature-layout {
+        --ui-sticky-viewport-block-start-gap: 1rem;
+        --ui-sticky-viewport-block-end-gap: 1rem;
+      }
+    `),
+    [],
+  );
 });
 
 test("bleed variables remain paired", () => {

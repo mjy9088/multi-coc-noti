@@ -77,6 +77,101 @@ const rules = {
       };
     },
   },
+  "no-js-viewport-breakpoint": {
+    meta: {
+      type: "problem",
+      docs: { description: "Keep responsive layout decisions out of duplicated JavaScript breakpoints" },
+      messages: {
+        default:
+          "Do not duplicate a width breakpoint with matchMedia in feature code. Prefer CSS/container queries; when behavior truly depends on measured layout, expose it through an owned responsive context.",
+      },
+      schema: [],
+    },
+    create(context) {
+      return {
+        CallExpression(node) {
+          if (
+            node.callee.type !== "MemberExpression" ||
+            node.callee.property.type !== "Identifier" ||
+            node.callee.property.name !== "matchMedia"
+          )
+            return;
+          const query = node.arguments[0];
+          if (
+            query?.type === "Literal" &&
+            typeof query.value === "string" &&
+            /\b(?:min|max)-width\s*:/i.test(query.value)
+          ) {
+            context.report({ node, messageId: "default" });
+          }
+        },
+      };
+    },
+  },
+  "no-magic-layout-threshold": {
+    meta: {
+      type: "problem",
+      docs: { description: "Derive geometry thresholds from the owning measured layout" },
+      messages: {
+        default:
+          "Do not compare measured element geometry with a numeric layout threshold. Use StickyStackProvider/useStickyStack or another owner-provided measurement instead of duplicating an offset.",
+      },
+      schema: [],
+    },
+    create(context) {
+      const source = context.sourceCode;
+      return {
+        BinaryExpression(node) {
+          if (!/[<>]=?/.test(node.operator)) return;
+          const hasNumber =
+            (node.left.type === "Literal" && typeof node.left.value === "number") ||
+            (node.right.type === "Literal" && typeof node.right.value === "number");
+          if (
+            hasNumber &&
+            /getBoundingClientRect\(\)\.(?:top|right|bottom|left|width|height)/.test(source.getText(node))
+          ) {
+            context.report({ node, messageId: "default" });
+          }
+        },
+      };
+    },
+  },
+  "sticky-tabs-route-frame": {
+    meta: {
+      type: "problem",
+      docs: { description: "Keep short route content aligned below sticky tabs" },
+      messages: {
+        missingFrame:
+          "A StickyStackItem containing route Tabs needs a following StickyRouteFrame sibling. The frame owns the stable viewport and internal route scrolling without adding blank height to feature content.",
+        missingKey:
+          "StickyRouteFrame after route Tabs needs a route-specific scrollKey so each destination starts at the top of its internal scroll viewport.",
+      },
+      schema: [],
+    },
+    create(context) {
+      return {
+        JSXElement(node) {
+          if (elementName(node.openingElement) !== "StickyStackItem") return;
+          const ownsTabs = node.children.some(
+            (child) => child.type === "JSXElement" && elementName(child.openingElement) === "Tabs",
+          );
+          if (!ownsTabs || node.parent?.type !== "JSXElement") return;
+          const siblings = node.parent.children;
+          const index = siblings.indexOf(node);
+          const routeFrame = siblings
+            .slice(index + 1)
+            .find(
+              (sibling) => sibling.type === "JSXElement" && elementName(sibling.openingElement) === "StickyRouteFrame",
+            );
+          if (!routeFrame) {
+            context.report({ node: node.openingElement, messageId: "missingFrame" });
+          } else if (!attribute(routeFrame.openingElement, "scrollKey")) {
+            context.report({ node: routeFrame.openingElement, messageId: "missingKey" });
+          }
+        },
+      };
+    },
+  },
 };
 
 export default { rules };

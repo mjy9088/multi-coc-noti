@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import Dashboard from "../../page";
 
-const sections = { paste: "import", upgrades: "alerts", villages: "villages", groups: "groups" } as const;
+const sections = new Set(["paste", "upgrades", "villages", "groups"]);
 
 export default async function SettingsSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
-  if (!(section in sections)) notFound();
-  return <Dashboard initialSettingsSection={sections[section as keyof typeof sections]} />;
+  if (!sections.has(section)) notFound();
+  return null;
 }

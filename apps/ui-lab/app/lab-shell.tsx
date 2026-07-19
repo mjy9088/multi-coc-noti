@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@multi-coc/ui";
+import { Button, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -19,8 +19,8 @@ export function LabShell({ children }: { children: ReactNode }) {
   const [note, setNote] = useState("");
 
   return (
-    <div className="lab-shell">
-      <header className="lab-header">
+    <StickyStackProvider className="lab-shell">
+      <StickyStackItem as="header" order={0} className="lab-header">
         <div className="lab-brand">
           <strong>Multi CoC UI Lab</strong>
           <span>Shared tokens, primitives, and persistent App Router layout</span>
@@ -54,8 +54,8 @@ export function LabShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-      </header>
+      </StickyStackItem>
       <main className="lab-main">{children}</main>
-    </div>
+    </StickyStackProvider>
   );
 }

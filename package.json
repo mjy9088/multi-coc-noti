@@ -13,6 +13,7 @@
     "build": "pnpm --filter @multi-coc/dashboard build",
     "build:ui": "pnpm --filter @multi-coc/ui-lab build",
     "test:ui": "pnpm --filter @multi-coc/ui-lab test:e2e",
+    "test:settings-ui": "pnpm --filter @multi-coc/dashboard test:e2e",
     "start": "pnpm --filter @multi-coc/dashboard start",
     "collector": "pnpm --filter @multi-coc/collector start",
     "notifier": "pnpm --filter @multi-coc/notifier start",

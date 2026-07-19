@@ -17,6 +17,7 @@
   --ui-color-accent: #397a5d;
   --ui-color-accent-hover: #2f684f;
   --ui-color-accent-soft: #e7f2ec;
+  --ui-color-success: var(--ui-color-accent);
   --ui-color-danger: #9b463d;
   --ui-color-danger-hover: #843b34;
   --ui-color-danger-soft: #f7e8e3;
@@ -45,7 +46,9 @@
   --ui-shadow-overlay: 0 18px 50px #17202a2e;
   --ui-shadow-sticky: 0 -0.75rem 1rem -1rem var(--ui-color-text-muted);
   --ui-shadow-selected: 0 0 0 2px var(--ui-color-accent-soft);
+  --ui-shadow-selected-edge: inset 3px 0 var(--ui-color-accent);
   --ui-shadow-marker: 0 0 0 1px var(--ui-color-accent);
+  --ui-shadow-status-success: 0 0 0 4px var(--ui-color-accent-soft);
   --ui-layer-behind: -1;
   --ui-layer-local-base: 1;
   --ui-layer-local-raised: 2;
@@ -53,6 +56,8 @@
   --ui-layer-local-backdrop: 10;
   --ui-layer-local-overlay: 11;
   --ui-layer-app-sticky: 20;
+  --ui-layer-sticky: var(--ui-layer-app-sticky);
+  --ui-layer-popover: 40;
   --ui-layer-feedback: 60;
   --ui-layer-modal-backdrop: 100;
   --ui-layer-modal: 101;

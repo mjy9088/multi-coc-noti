@@ -15,5 +15,12 @@ export { Checkbox, Description, Field, FieldError, Input, Label, Select, Textare
 export { IconButton, type IconButtonProps } from "./components/icon-button";
 export { SplitLayout } from "./components/split-layout";
 export { EmptyState, RequestState, Skeleton, Spinner, StaleNotice } from "./components/status";
+export {
+  StickyRouteFrame,
+  StickyStackItem,
+  StickyStackProvider,
+  StickyStackViewport,
+  useStickyStack,
+} from "./components/sticky-stack";
 export { type ToastInput, type ToastIntent, ToastProvider, useToast } from "./components/toast";
 export { cn } from "./lib/cn";

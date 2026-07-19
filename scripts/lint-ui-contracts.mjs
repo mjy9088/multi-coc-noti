@@ -15,6 +15,14 @@ const messages = {
     "Do not hand-roll a bottom-sticky action row. Use `ActionBar sticky` so surface color, bleed, safe area, and stacking stay consistent.",
   "sticky-surface":
     "A sticky region needs an explicit surface strategy. Add `ui-sticky-surface` and inherit `--ui-surface-context`, or declare an intentional non-transparent background.",
+  "sticky-stack-offset":
+    "A non-zero sticky top must use one semantic `--*-sticky-*-offset` variable. Define the complete stack offset beside its owning shell so navigation is fully visible instead of partially covered.",
+  "viewport-stack-height":
+    "Do not subtract shell or sticky heights from 100dvh manually. Register sticky chrome with StickyStackProvider/StickyStackItem and size content from `--ui-viewport-available-height`.",
+  "sticky-viewport-component":
+    "Do not hand-roll a sticky viewport-bounded pane. Use StickyStackViewport so its cumulative top offset and available height cannot drift apart.",
+  "sticky-viewport-gap-pair":
+    "A sticky viewport inset must define both `--ui-sticky-viewport-block-start-gap` and `--ui-sticky-viewport-block-end-gap`. This keeps the pane from accidentally touching one viewport edge.",
   "sticky-bleed-pair":
     "Sticky surface bleed must describe both axes. Define `--ui-sticky-surface-inline-bleed` and `--ui-sticky-surface-block-end-bleed` together.",
   "split-layout-component":
@@ -134,6 +142,16 @@ export function lintCss(source, from = "input.css") {
     const position = declarations.get("position")?.toLowerCase();
     const borderRadius = declarations.get("border-radius");
 
+    if (
+      !isPrimitiveOrLab &&
+      !/(?:sheet|dialog|overlay|backdrop)/i.test(selector) &&
+      ["height", "min-height", "max-height"].some((property) =>
+        /calc\(\s*100dvh\s*-/i.test(declarations.get(property) ?? ""),
+      )
+    ) {
+      report(rule, "viewport-stack-height");
+    }
+
     if (/(?:sheet|dialog-content)/i.test(selector) && borderRadius && hasTopOnlyCorners(borderRadius)) {
       if (!isZero(declarations.get("bottom") ?? "")) report(rule, "bottom-sheet-edge");
       const marginBottom = declarations.get("margin-bottom");
@@ -147,9 +165,23 @@ export function lintCss(source, from = "input.css") {
     }
 
     if (position === "sticky") {
+      const top = declarations.get("top");
+      if (
+        top &&
+        !isZero(top) &&
+        !/^var\(--[\w-]*sticky[\w-]*-offset\)$/.test(top) &&
+        !(
+          normalizedFrom.endsWith("packages/ui/src/styles/components.css") &&
+          selector.includes("ui-sticky-stack-viewport")
+        )
+      ) {
+        report(rule, "sticky-stack-offset");
+      }
+
       if (
         isZero(declarations.get("bottom") ?? "") &&
-        !normalizedFrom.endsWith("packages/ui/src/styles/components.css")
+        !normalizedFrom.endsWith("packages/ui/src/styles/components.css") &&
+        !selector.includes("ui-action-bar-sticky")
       ) {
         report(rule, "sticky-action-component");
       }
@@ -160,9 +192,21 @@ export function lintCss(source, from = "input.css") {
       if (!hasVisibleBackground && !usesSurfaceStrategy) report(rule, "sticky-surface");
     }
 
+    if (
+      !isPrimitiveOrLab &&
+      position === "sticky" &&
+      [...declarations.values()].some((value) => value.includes("--ui-viewport-available-height"))
+    ) {
+      report(rule, "sticky-viewport-component");
+    }
+
     const hasInlineBleed = declarations.has("--ui-sticky-surface-inline-bleed");
     const hasBottomBleed = declarations.has("--ui-sticky-surface-block-end-bleed");
     if (hasInlineBleed !== hasBottomBleed) report(rule, "sticky-bleed-pair");
+
+    const hasViewportStartGap = declarations.has("--ui-sticky-viewport-block-start-gap");
+    const hasViewportEndGap = declarations.has("--ui-sticky-viewport-block-end-gap");
+    if (hasViewportStartGap !== hasViewportEndGap) report(rule, "sticky-viewport-gap-pair");
 
     if (
       declarations.get("display") === "grid" &&

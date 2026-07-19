@@ -33,6 +33,14 @@ inventory live alongside this plan under `docs/ui/`.
   or semantic token.
 - Dashboard mounts the shared Toast provider at its persistent layout boundary. Settings mutation feedback uses it, and its
   resource-status prompt uses the owned Dialog primitive.
+- The production App Shell now uses owned tokens, Button, and semantic route Links. Settings uses the owned Tabs, Button,
+  ActionBar, Dialog, and Toast paths with a dedicated token-based composition stylesheet; remaining feature migrations must
+  not add new dependencies on the legacy shell or Settings selectors.
+- Settings and History use persistent nested App Router layouts. Their URL-backed tab pages validate route parameters but do
+  not recreate the client feature shell, preventing authentication/data loading flashes and navigation movement.
+- Settings markup uses Settings-owned class names plus the shared form/action/layout primitives. Its standalone retired
+  selector blocks have been removed from `legacy.css`; the remaining legacy file serves screens that have not migrated yet. Product browser E2E covers 36-village
+  desktop/mobile scroll ownership and persistent tab navigation.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual
@@ -206,7 +214,7 @@ Exit criteria:
   primitives.
 - Existing Toast and request-state components have migrated or become thin compatibility adapters.
 
-### Phase 3: shared application chrome
+### Phase 3: shared application chrome — in progress
 
 Migrate the persistent App Shell, top-level navigation, locale switcher, install action, synchronization indicator, section
 tabs, page container, and common headers. Preserve route persistence, sticky behavior, horizontal mobile scrolling, Quick
@@ -218,6 +226,9 @@ Exit criteria:
 - Route transitions do not remount the App Shell or reintroduce the previous tab flicker.
 - Corresponding legacy selectors are deleted in the same change that removes their final consumer.
 
+The persistent top-level shell plus Settings and History section navigation are migrated. Dashboard section navigation and
+common page headers remain in this phase, so the legacy chrome selectors cannot all be removed yet.
+
 ### Phase 4: feature migration
 
 Migrate one independently verifiable slice at a time in this order:
@@ -226,9 +237,9 @@ Migrate one independently verifiable slice at a time in this order:
 2. common form controls and action rows;
 3. History filters, cards, pagination, and section navigation;
 4. village detail cards, metrics, cooldowns, equipment, and actions;
-5. Settings shell and authentication;
-6. Settings Update Data flow;
-7. upgrade-alert, village, and group-order settings;
+5. [Done] Settings shell and authentication;
+6. [Done] Settings Update Data visual composition;
+7. [Done] upgrade-alert, village, and group-order visual composition;
 8. Dashboard filters, village cards, queue, availability panel, and charts.
 
 Dashboard is last because it has the greatest amount of screen-specific visualization and responsive behavior. Do not

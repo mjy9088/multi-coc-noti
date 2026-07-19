@@ -17,6 +17,7 @@ const allowedDevOrigins = (() => {
 })();
 
 export default withNextIntl({
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   output: "standalone",
   transpilePackages: ["@multi-coc/ui"],
   outputFileTracingRoot: path.join(dashboardRoot, "../.."),

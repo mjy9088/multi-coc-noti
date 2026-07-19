@@ -12,6 +12,15 @@ export default defineConfig([
       "ui-contracts/icon-button-label": "error",
       "ui-contracts/no-legacy-feedback": "error",
       "ui-contracts/no-noninteractive-click": "error",
+      "ui-contracts/no-js-viewport-breakpoint": "error",
+      "ui-contracts/no-magic-layout-threshold": "error",
+      "ui-contracts/sticky-tabs-route-frame": "error",
+    },
+  },
+  {
+    files: ["tests/**/*.{ts,tsx}"],
+    rules: {
+      "ui-contracts/no-magic-layout-threshold": "off",
     },
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),

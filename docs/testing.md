@@ -47,6 +47,7 @@ Do not change contract expectations merely because of a refactor. One ID represe
 | `DISPLAY-SUMMARY-001` | Total idle Home Village builder/laboratory/Pet House slots while keeping Builder Base builder/laboratory slots in a separate total. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `DISPLAY-FILTER-001` | Distinguish Home Village availability from availability in either village so the single-choice slot filter has stable semantics. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
 | `DISPLAY-CHART-001` | Project completion bins, active work, and released slots for Home Village and the combined bases on one timeline. | [Dashboard](dashboard-guide.md#dashboard) | Display-calculation unit |
+| `UI-SETTINGS-001` | Preserve the mounted Settings shell across URL-backed tabs, hand pointer scrolling from the outer page to the fixed route frame, and give desktop/mobile village panes one intentional scroll owner. | [UI screens: Persistent App Shell](ui/screens.md#persistent-app-shell) | Dashboard browser E2E |
 | `DB-MIGRATION-001` | Create fresh databases from generated migrations and baseline existing schemas without losing data. | [Operations: Data storage](operations.md#data-storage) | PostgreSQL integration |
 | `DB-HISTORY-001` | Restore raw export history and rebuild its tracked-upgrade projection atomically. | [Operations: Backup and restore](operations.md#backup-and-restore) | PostgreSQL integration |
 | `DB-NOTIFICATION-001` | Claim notifications exclusively and release resource suppression when delivery fails. | [Operations: Separate Notifier deployment](operations.md#separate-notifier-deployment) | PostgreSQL integration |
@@ -60,7 +61,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 
 1. The full import flow from initial unanswered storage to a separately saved resource response
 2. Admin authentication, preview/import, new-account creation, and newest-export precedence
-3. Mobile fast import from clipboard through Review and save, preservation of input after failure, appropriate route/Dialog presentation, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, and the 30-minute update-required browser filter
+3. Mobile fast import from clipboard through Review and save, preservation of input after failure, appropriate route/Dialog presentation, visible guided focus, completed-step dimming, focus movement without browser auto-zoom, sticky tabs, responsive ordering, Settings village search and list/editor-sheet scroll ownership, persistent App Shell geometry, and the 30-minute update-required browser filter
 4. Group ordering, tag groups, and upgrade-ready sorting in the browser
 5. Maintenance CLI JSONL compatibility plus seed/reseed behavior
 6. The 24-hour stale-village notification's DB eligibility, cancellation after fresh data, and per-village deduplication
@@ -68,7 +69,7 @@ These documented behaviors are not directly protected by `pnpm test`. Treat them
 8. PWA installation prompts and manifest/service-worker behavior through chained HTTPS reverse proxies
 9. Village card → `/villages/<uuid>` → `/settings/villages/<uuid>` navigation, URL-backed settings tabs, direct reload and missing-village handling, hidden empty detail sections, official-stat rendering, and cooldown transition to available
 10. REST upgrade-history filtering and pagination, the global History screen, `Load more`, and village-detail prefiltered navigation
-11. Route loading/error boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
+11. Persistent Settings/History route layouts, non-replacing route loading boundaries, initial-failure, stale-data, saved-token hydration, retry states, and visible mutation feedback across Dashboard, History, and Settings
 12. URL-backed Upgrade/Sync History sections, sync-history village filtering and pagination, and export/import timestamp plus state-summary rendering
 
 Prioritize notification DB integration, import API integration, then the core mobile update browser flow. Notification duplication and loss are user-visible, and transaction behavior cannot be proven by planning-function unit tests.

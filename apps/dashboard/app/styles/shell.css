@@ -1,0 +1,227 @@
+.app-shell-header {
+  --ui-surface-context: var(--ui-color-surface);
+
+  z-index: var(--ui-layer-sticky);
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) auto minmax(11rem, 1fr);
+  gap: var(--ui-space-4);
+  align-items: center;
+  border-bottom: 1px solid var(--ui-color-border);
+  background: color-mix(in srgb, var(--ui-color-surface) 92%, transparent);
+  padding: var(--ui-space-3) max(var(--ui-space-4), 3.5vw);
+  backdrop-filter: blur(14px);
+}
+
+.app-brand {
+  min-width: 0;
+  display: flex;
+  gap: var(--ui-space-3);
+  align-items: center;
+  color: var(--ui-color-text);
+  text-decoration: none;
+}
+
+.app-brand-mark {
+  width: 2.35rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--ui-color-text);
+  clip-path: polygon(50% 0, 92% 16%, 86% 78%, 50% 100%, 14% 78%, 8% 16%);
+  color: var(--ui-color-text-inverse);
+  font-weight: 900;
+}
+
+.app-brand-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.app-brand-copy strong,
+.app-brand-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-brand-copy strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+.app-brand-copy span {
+  color: var(--ui-color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+}
+
+.app-primary-nav {
+  min-width: 0;
+  display: flex;
+  gap: var(--ui-space-1);
+  align-items: center;
+}
+
+.app-nav-link {
+  min-height: var(--ui-control-medium);
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: var(--ui-radius-small);
+  padding: 0 var(--ui-space-3);
+  color: var(--ui-color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app-nav-link:hover {
+  background: var(--ui-color-surface-inset);
+  color: var(--ui-color-text);
+}
+
+.app-nav-link[aria-current="page"] {
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-accent);
+}
+
+.app-quick-paste {
+  margin-left: var(--ui-space-2);
+}
+
+.app-shell-tools {
+  min-width: 0;
+  display: flex;
+  gap: var(--ui-space-2);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.app-sync-state {
+  min-width: 0;
+  display: flex;
+  gap: var(--ui-space-2);
+  align-items: center;
+  color: var(--ui-color-text-muted);
+  font-size: 0.72rem;
+}
+
+.app-sync-state > i {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ui-color-success);
+  box-shadow: var(--ui-shadow-status-success);
+}
+
+.app-sync-copy {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-header .locale-toggle {
+  --ui-surface-context: var(--ui-color-surface);
+
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface);
+}
+
+.app-shell-header .locale-toggle button,
+.app-shell-header .pwa-install > button {
+  --ui-surface-context: var(--ui-color-surface);
+
+  min-height: var(--ui-control-small);
+  border: 0;
+  background: transparent;
+  padding: 0 var(--ui-space-2);
+  color: var(--ui-color-text-secondary);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-shell-header .locale-toggle button.selected {
+  background: var(--ui-color-text);
+  color: var(--ui-color-text-inverse);
+}
+
+.app-shell-header .pwa-install {
+  position: relative;
+  margin: 0;
+}
+
+.app-shell-header .pwa-install > button {
+  --ui-surface-context: var(--ui-color-surface);
+
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface);
+  white-space: nowrap;
+}
+
+.app-shell-header .pwa-install > p {
+  --ui-surface-context: var(--ui-color-surface);
+
+  position: absolute;
+  z-index: var(--ui-layer-popover);
+  top: calc(100% + var(--ui-space-2));
+  right: 0;
+  width: min(16rem, calc(100vw - 2rem));
+  margin: 0;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-medium);
+  background: var(--ui-color-surface);
+  padding: var(--ui-space-3);
+  box-shadow: var(--ui-shadow-overlay);
+  color: var(--ui-color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 880px) {
+  .app-shell-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .app-primary-nav {
+    min-width: 0;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    overflow-x: auto;
+    border-top: 1px solid var(--ui-color-border-subtle);
+    padding-top: var(--ui-space-2);
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell-header {
+    gap: var(--ui-space-2);
+    padding-inline: var(--ui-space-3);
+  }
+
+  .app-brand-copy span,
+  .app-sync-copy {
+    display: none;
+  }
+
+  .app-shell-tools {
+    gap: var(--ui-space-1);
+  }
+
+  .app-nav-link {
+    padding-inline: var(--ui-space-2);
+  }
+
+  .app-quick-paste {
+    margin-left: auto;
+  }
+}

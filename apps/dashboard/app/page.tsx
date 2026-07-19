@@ -1,5 +1,6 @@
 "use client";
 
+import { useStickyStack } from "@multi-coc/ui";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import {
   applyDisplayOptions,
@@ -9,17 +10,13 @@ import {
   observeAvailability,
   summarizeAvailability,
 } from "@multi-coc/upgrade-availability";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import AdminPanel from "./admin-panel";
-import { useQuickPasteRequest } from "./app-shell";
-import HistoryPanel from "./history-panel";
 import { dashboardQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
-import SyncHistoryPanel from "./sync-history-panel";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -72,10 +69,6 @@ type Village = {
 };
 
 type DashboardData = { generatedAt: string; accounts: Village[]; groupOrder?: string[] };
-type SettingsSection = "import" | "alerts" | "villages" | "groups";
-const settingsPath = (section: SettingsSection) =>
-  `/settings/${section === "import" ? "paste" : section === "alerts" ? "upgrades" : section}`;
-
 const emptyData: DashboardData = { generatedAt: new Date(0).toISOString(), accounts: [] };
 const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE;
 const browserApiBase = () =>
@@ -90,19 +83,7 @@ function Shield({ level, color }: { level: number; color: string }) {
   );
 }
 
-export default function Home({
-  initialVillageId = null,
-  initialSettingsSection = null,
-  initialSettingsVillageId = null,
-  initialHistoryVillageId,
-  initialHistorySection = "upgrades",
-}: {
-  initialVillageId?: string | null;
-  initialSettingsSection?: SettingsSection | null;
-  initialSettingsVillageId?: string | null;
-  initialHistoryVillageId?: string;
-  initialHistorySection?: "upgrades" | "syncs";
-} = {}) {
+export default function Home({ initialVillageId = null }: { initialVillageId?: string | null } = {}) {
   const t = useTranslations("Dashboard");
   const router = useRouter();
   const { formatDateTime, formatDuration, formatQueueDate, formatRelative, lowerCase } = useDashboardFormat();
@@ -113,21 +94,11 @@ export default function Home({
   const [refreshOnly, setRefreshOnly] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(defaultDisplayOptions);
   const [prioritizeAvailable, setPrioritizeAvailable] = useState(false);
-  const [view] = useState<"dashboard" | "village" | "history" | "settings">(
-    initialHistoryVillageId !== undefined || initialHistorySection === "syncs"
-      ? "history"
-      : initialVillageId
-        ? "village"
-        : initialSettingsSection || initialSettingsVillageId
-          ? "settings"
-          : "dashboard",
-  );
+  const [view] = useState<"dashboard" | "village">(initialVillageId ? "village" : "dashboard");
   const [selectedVillageId] = useState<string | null>(initialVillageId);
   const [dashboardSection, setDashboardSection] = useState<"villages" | "queue">("villages");
-  const [manageVillageId] = useState<string | null>(initialSettingsVillageId);
-  const quickPaste = useQuickPasteRequest();
+  const { totalHeight: stickyStackHeight } = useStickyStack();
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
-  const queryClient = useQueryClient();
   const dashboardQuery = useQuery({
     queryKey: dashboardQueryKey(apiBase),
     queryFn: async () => {
@@ -182,12 +153,12 @@ export default function Home({
     if (view !== "dashboard") return;
     const updateSection = () => {
       const queue = document.getElementById("upgrade-queue");
-      setDashboardSection(queue && queue.getBoundingClientRect().top <= 150 ? "queue" : "villages");
+      setDashboardSection(queue && queue.getBoundingClientRect().top <= stickyStackHeight ? "queue" : "villages");
     };
     updateSection();
     window.addEventListener("scroll", updateSection, { passive: true });
     return () => window.removeEventListener("scroll", updateSection);
-  }, [view]);
+  }, [stickyStackHeight, view]);
 
   const scrollToDashboardSection = (section: "villages" | "queue") => {
     setDashboardSection(section);
@@ -286,30 +257,11 @@ export default function Home({
 
   return (
     <main>
-      {view === "settings" && (
-        <AdminPanel
-          apiBase={apiBase}
-          onChanged={() => {
-            void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-            void queryClient.invalidateQueries({ queryKey: ["upgrade-history"] });
-          }}
-          onSectionChange={(section) => router.push(settingsPath(section))}
-          onVillageChange={(accountId) => router.push(`/settings/villages/${encodeURIComponent(accountId)}`)}
-          initialSection={manageVillageId ? "villages" : initialSettingsSection || "import"}
-          initialAccountId={manageVillageId}
-          quickPasteRequest={quickPaste.request}
-          onQuickPasteApplied={quickPaste.consume}
-        />
-      )}
-      {view === "history" && initialHistorySection === "upgrades" && (
-        <HistoryPanel apiBase={apiBase} initialVillageId={initialHistoryVillageId} />
-      )}
-      {view === "history" && initialHistorySection === "syncs" && <SyncHistoryPanel apiBase={apiBase} />}
-      {view !== "settings" && view !== "history" && dashboardLoading && !data.accounts.length && <LoadingState />}
-      {view !== "settings" && view !== "history" && dashboardError && !data.accounts.length && (
+      {dashboardLoading && !data.accounts.length && <LoadingState />}
+      {dashboardError && !data.accounts.length && (
         <ErrorState message={dashboardError || t("dashboardLoadFailed")} retry={() => void dashboardQuery.refetch()} />
       )}
-      {view !== "settings" && view !== "history" && dashboardError && data.accounts.length > 0 && (
+      {dashboardError && data.accounts.length > 0 && (
         <div className="shell stale-warning" role="status">
           {t("staleDataWarning")}
           <button onClick={() => void dashboardQuery.refetch()}>{t("retry")}</button>
@@ -493,7 +445,7 @@ export default function Home({
           </button>
         </div>
 
-        <section id="village-list" className="dashboard-scroll-section">
+        <section id="village-list" className="dashboard-scroll-section ui-sticky-scroll-target">
           <div className="village-grid">
             {accounts.map((account) => {
               const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(
@@ -545,7 +497,7 @@ export default function Home({
           </div>
         </section>
 
-        <section className="queue-section dashboard-scroll-section" id="upgrade-queue">
+        <section className="queue-section dashboard-scroll-section ui-sticky-scroll-target" id="upgrade-queue">
           <div className="section-title">
             <div>
               <p className="eyebrow">UPGRADE QUEUE</p>

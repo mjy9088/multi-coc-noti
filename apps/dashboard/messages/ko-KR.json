@@ -216,6 +216,8 @@
     "noTrackedUpgrades": "진행 중인 업그레이드가 없습니다. 새 게임 JSON을 반영하면 여기에 표시됩니다.",
     "registeredVillages": "등록된 마을",
     "registeredVillagesHelp": "이름을 정리하거나 연동 설정을 변경할 마을을 선택하세요.",
+    "searchVillages": "표시 이름, 플레이어 태그 또는 그룹 검색",
+    "noVillageMatches": "검색 조건에 맞는 마을이 없습니다.",
     "noVillages": "등록된 마을이 없습니다. JSON을 붙여넣어 추가하세요.",
     "villageSettings": "마을 설정",
     "settingsSaved": "마을 설정을 저장했습니다.",
@@ -247,6 +249,7 @@
     "noGroups": "계정 태그를 추가하면 그룹 순서를 지정할 수 있습니다.",
     "saveSettings": "설정 저장",
     "deleteConfirm": "마을과 관련 데이터를 삭제할까요?",
+    "cancel": "취소",
     "deleted": "삭제했습니다.",
     "deleteVillage": "마을 삭제",
     "chooseVillage": "왼쪽에서 마을을 선택하세요."

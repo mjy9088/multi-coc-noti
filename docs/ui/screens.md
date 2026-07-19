@@ -26,6 +26,25 @@ Important behavior:
 - the fast import action preserves the user's context unless the review genuinely needs the full Update Data screen;
 - global Toast feedback renders above route content but does not change layout.
 
+Implementation status: the production shell uses semantic route links and owned Button/token styling. At narrow widths its
+primary navigation owns horizontal scrolling on a stable second row, while global tools remain beside the product identity.
+Settings and History own persistent nested layouts, so URL-backed tab changes do not remount their authentication, heading,
+navigation, or cached client state. Their route-loading boundaries leave the mounted shell visible instead of replacing it
+with a full-page loading screen.
+
+Route tabs remain fully visible immediately below the App Shell while scrolling; page titles and descriptions may leave the
+viewport. A navigation strip must be either intentionally visible or intentionally hidden, never partially covered by
+another sticky layer. Sticky stack offsets are semantic shell-owned variables rather than repeated local calculations.
+The shared sticky stack measures the App Shell and route wrapper, so horizontal overflow does not change the vertical
+sticky containing block and viewport-bounded content uses the actual remaining height rather than a duplicated estimate.
+<!-- contract: UI-SETTINGS-001 -->
+
+All Settings destinations share one viewport frame below the sticky tabs. The outer document scrolls only until that frame
+reaches the sticky stack; afterward, long destination content scrolls inside the frame. Short destinations retain their
+natural content height without a synthetic blank tail, while Village Settings fills the same frame with its list/editor
+layout. Pointer scrolling over route content follows the same ownership handoff instead of being trapped by the not-yet-fixed
+frame. Route changes reset only the frame's internal scroll position.
+
 ## Dashboard — `/`
 
 Purpose: answer “which village can start work now, what is currently upgrading, and what finishes next?” across all
@@ -131,9 +150,17 @@ Purpose: manage village identity, tags, color, player tag, resource policy, and 
 The UUID route selects a village directly and must survive reload. The settings list and editor must make the selected
 village obvious on mobile and desktop. On mobile, the village list fills the available master pane and scrolls internally;
 selecting a village opens the editor sheet without leaving a large unused area below a capped list.
+The list supports searching dozens of villages by Display Name, player tag, or group tag.
+
+On desktop, the village list and editor share one viewport-bounded pane height. Each pane owns its content scrolling so a
+long list or form cannot make the two surfaces diverge in height, and the editor ActionBar remains available at its bottom.
 
 Deletion is destructive and requires a confirmation Dialog. Saving uses immediate pending feedback followed by Toast
 success or error feedback.
+
+The production mobile composition keeps the scrollable village list as the base screen and opens the selected editor as a
+near-full-height bottom sheet. The editor owns its form scroll, while its shared ActionBar remains visible and includes both
+the destructive and save actions. Closing the sheet returns to the same village list without changing the Settings route.
 
 ## Group settings — `/settings/groups`
 
