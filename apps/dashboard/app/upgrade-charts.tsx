@@ -1,15 +1,7 @@
-import {
-  ChartCard,
-  ChartCardBody,
-  ChartCardHeader,
-  ChartCardTitle,
-  EmptyState,
-  SectionHeader,
-  SectionHeaderContent,
-  SectionHeaderDescription,
-  SectionHeaderTitle,
-} from "@multi-coc/ui";
+import { EmptyState } from "@multi-coc/ui";
 import type { CompletionBin, UpgradeTimelinePoint } from "@multi-coc/upgrade-availability";
+import { UpgradeChartBody, UpgradeChartPanel } from "../components/charts/upgrade-chart-layout";
+import { DashboardSection } from "../components/layout/product-compositions";
 
 const WIDTH = 720;
 const HEIGHT = 150;
@@ -46,17 +38,19 @@ function AreaPlot({
     `${line(key)} L${x(end)},${HEIGHT - BOTTOM} L${x(start)},${HEIGHT - BOTTOM} Z`;
   const first = points[0];
   return (
-    <ChartCard className="upgrade-area-chart">
-      <ChartCardHeader className="upgrade-chart-heading">
-        <ChartCardTitle>{label}</ChartCardTitle>
+    <UpgradeChartPanel
+      kind="area"
+      title={label}
+      legend={
         <span>
           <b className="legend-home" />
           {homeLabel} {first?.[homeKey] || 0}
           <b className="legend-all" />
           {allLabel} {first?.[allKey] || 0}
         </span>
-      </ChartCardHeader>
-      <ChartCardBody>
+      }
+    >
+      <UpgradeChartBody>
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="img"
@@ -81,8 +75,8 @@ function AreaPlot({
             {formatTime(end)}
           </text>
         </svg>
-      </ChartCardBody>
-    </ChartCard>
+      </UpgradeChartBody>
+    </UpgradeChartPanel>
   );
 }
 
@@ -109,29 +103,30 @@ export default function UpgradeCharts({
   const maximum = Math.max(1, ...bins.map((bin) => bin.all));
   const hasUpgrades = timeline[0]?.activeAll > 0;
   return (
-    <section className="upgrade-outlook" aria-labelledby="upgrade-outlook-title">
-      <SectionHeader className="section-title">
-        <SectionHeaderContent>
-          <p className="eyebrow">UPGRADE OUTLOOK</p>
-          <SectionHeaderTitle id="upgrade-outlook-title">{labels.title}</SectionHeaderTitle>
-        </SectionHeaderContent>
-        <SectionHeaderDescription>{labels.description}</SectionHeaderDescription>
-      </SectionHeader>
+    <DashboardSection
+      kind="outlook"
+      headingId="upgrade-outlook-title"
+      eyebrow="UPGRADE OUTLOOK"
+      title={labels.title}
+      actions={labels.description}
+    >
       {!hasUpgrades ? (
         <EmptyState title={labels.empty} />
       ) : (
         <div className="upgrade-chart-layout">
-          <ChartCard className="completion-chart">
-            <ChartCardHeader className="upgrade-chart-heading">
-              <ChartCardTitle>{labels.completions}</ChartCardTitle>
+          <UpgradeChartPanel
+            kind="completion"
+            title={labels.completions}
+            legend={
               <span>
                 <b className="legend-home" />
                 {labels.home}
                 <b className="legend-all" />
                 {labels.all}
               </span>
-            </ChartCardHeader>
-            <ChartCardBody className="completion-bars" role="img" aria-label={labels.completions}>
+            }
+          >
+            <UpgradeChartBody kind="bars" role="img" aria-label={labels.completions}>
               {bins.map((bin, index) => (
                 <div className="completion-bin" key={bin.start}>
                   <div className="bar-space">
@@ -146,8 +141,8 @@ export default function UpgradeCharts({
                   </small>
                 </div>
               ))}
-            </ChartCardBody>
-          </ChartCard>
+            </UpgradeChartBody>
+          </UpgradeChartPanel>
           <AreaPlot
             points={timeline}
             homeKey="activeHome"
@@ -168,6 +163,6 @@ export default function UpgradeCharts({
           />
         </div>
       )}
-    </section>
+    </DashboardSection>
   );
 }

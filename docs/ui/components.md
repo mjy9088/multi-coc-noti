@@ -20,7 +20,11 @@ Keep the ownership layers explicit instead of moving every repeated product shap
 3. **Data-display patterns** provide semantic repeated structures without knowing routes or domain models: StatGrid,
    KeyValueGrid, DataList, StatusIndicator, EntityHeader, Timeline, and ChartCard. They live under
    `packages/ui/src/components/data-display`.
-4. **Product feature components** know villages, upgrades, exports, translations, queries, or mutations and remain in the
+4. **Application compositions** translate typed product layout variants such as `queue`, `history`, `village-detail`, and
+   `settings-step` into shared components and centrally owned app class names. They live under
+   `apps/dashboard/components`; feature screens normally consume this layer instead of passing `className` to shared
+   compositions directly.
+5. **Product feature components** know villages, upgrades, exports, translations, queries, or mutations and remain in the
    consuming app.
 
 Higher layers may import lower layers; primitives and generic layouts must not import data-display or product features.
@@ -36,6 +40,8 @@ domain-specific color mapping, and exceptional responsive composition.
 | `Button`, `IconButton` | Action priority, sizing, focus, disabled and pending presentation | Mutation, navigation, permission, or confirmation policy |
 | `Field`, `Label`, `Description`, `FieldError` | Accessible form relationships and validation presentation | Form state or server validation |
 | `Input`, `Textarea`, `Select` | Consistent native-control sizing and states | Parsing, debounce, options, or persistence |
+| `InputField`, `SelectField`, `TextareaField` | Concise labelled controls with description, error, and hidden-label policy | Product state, option meaning, or cross-field validation |
+| `FormGrid` | Typed one-, two-, or auto-column field layout with compact collapse | Submission, conditional field policy, or schema interpretation |
 | `Checkbox`, `RadioGroup`, `ToggleGroup` | Accessible boolean and single-choice interaction | Filter meaning or storage |
 | `Card` and its structural parts | Generic surface and header/body/footer alignment | Product record mapping |
 | `Badge`, `Separator`, `StatusIndicator` | Compact semantic metadata and visual separation | Critical information without visible text |
@@ -54,6 +60,7 @@ domain-specific color mapping, and exceptional responsive composition.
 | `Stack`, `Cluster` | Repeated vertical or wrapping horizontal rhythm | Product-specific responsive priority |
 | `ContentGrid`, `ResponsiveGrid` | Common sidebar and auto-fit grid behavior | Domain card minimums not expressible as component input |
 | `PageHeader`, `SectionHeader` families | Title, description and action wrapping | Product copy or breadcrumb policy |
+| `PageIntro`, `ContentSection` | Concise title/eyebrow/description/action composition, typed spacing, optional sticky-scroll target | Product section kinds or domain records |
 | `Toolbar` | Bounded wrapping control surface | Filter state or query behavior |
 | `SplitLayout` | Equal-height adjacent panes and intrinsic-size reset | Column proportions and mobile product meaning |
 | `MasterDetailLayout`, `MasterPane`, `DetailPane`, `DetailPaneBackdrop` | Desktop paired panes and compact bottom-sheet transition | Selected entity state, close decision, or editor contents |
@@ -78,6 +85,31 @@ domain-specific color mapping, and exceptional responsive composition.
 `cn` is the package class-name utility, and `useStickyStack` exposes the measured sticky height for behavior that cannot be
 expressed with CSS alone. Neither is a visual component.
 
+## Typed application composition
+
+Feature screens should express meaning rather than CSS selectors. Repeated product layout rules therefore belong in
+`apps/dashboard/components`, whose props use narrow literal unions and booleans. For example, use
+`<DashboardSection kind="queue" ...>` or `<VillagePanel kind="cooldown">` instead of attaching queue or cooldown classes
+to `ContentSection` or `Card`. Settings uses the same boundary for surface kinds, steps, route frames, and village
+master/detail panes.
+
+`className` remains available on generic package APIs as an implementation escape hatch. Direct use is expected in the UI
+package, UI Lab experiments, application-composition implementations, and genuinely unique visualization internals. The
+Dashboard ESLint rule `no-shared-composition-classname` rejects it on shared compositions in route and feature screens and
+points authors to a typed shared variant or app wrapper. Do not create a wrapper that only renames an element: it must
+centralize a repeated layout rule, semantic variant, accessibility behavior, or product composition.
+
+Use the composed field components for the common `Field + Label + control + Description/FieldError` shape. Use the lower
+level Field family only when a control group or unusual label relationship needs custom composition. Dashboard's fixed
+availability choices are wrapped as one product component so its allowed values, labels, layout, and change callback stay
+in sync. Settings field placement is a typed `default`, `wide`, `search`, or `new-village` option rather than a selector in
+the feature screen.
+
+Do not introduce a general `fields={[...]}` renderer for ordinary forms. Configuration arrays are appropriate only when a
+form is genuinely schema-driven; otherwise they obscure conditional JSX, event types, focus refs, translated option
+content, and field-specific validation. `FormGrid` plus concise field components removes repetitive markup without turning
+static forms into a runtime schema.
+
 ## Implemented owned components
 
 ### Button
@@ -97,9 +129,9 @@ coverage.
 
 ### Actions, forms, and containers
 
-UI Lab now catalogues the owned `IconButton`, `Field`, `Label`, `Description`, `FieldError`, `Input`, `Textarea`, `Select`,
-`Checkbox`, `RadioGroup`, `ToggleGroup`, structured `Card`, `Badge`, and `Separator` APIs. Field controls derive stable
-accessible relationships from their parent `Field`; icon-only actions require a label.
+UI Lab now catalogues the owned `IconButton`, low-level Field family, concise `InputField`, `SelectField`, `TextareaField`,
+`FormGrid`, `Checkbox`, `RadioGroup`, `ToggleGroup`, structured `Card`, `Badge`, and `Separator` APIs. Field controls derive
+stable accessible relationships from their parent `Field`; icon-only actions require a label.
 
 `ActionBar` groups final actions. Its sticky variant inherits the nearest `--ui-surface-context` through transparent
 wrappers and owns a stacking context, top boundary, shadow, and safe-area padding so scrolled content never shows through
@@ -188,7 +220,8 @@ their layout CSS uses shared semantic tokens rather than becoming generic compon
 
 ### Layout compositions and data-display patterns
 
-The generic middle layer now includes PageContainer, Stack, Cluster, PageHeader and SectionHeader compositions, Toolbar,
+The generic middle layer now includes PageContainer, Stack, Cluster, concise PageIntro and ContentSection APIs, PageHeader
+and SectionHeader escape-hatch compositions, Toolbar,
 ContentGrid, ResponsiveGrid, SplitLayout, responsive MasterDetail panes, ScrollablePane, StatGrid, KeyValueGrid, DataList,
 SelectionList, StatusIndicator, EntityHeader, Timeline, Progress, Disclosure, and ChartCard with ChartLegend. These
 components own common semantics, wrapping, spacing, narrow-screen behavior, and overflow safety. They deliberately accept

@@ -1,4 +1,4 @@
-import { Button, Field, Input, Label } from "@multi-coc/ui";
+import { Button, InputField } from "@multi-coc/ui";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "../../auth";
 import { testCredentialsConfig } from "../../test-credentials";
@@ -40,14 +40,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           <form className="auth-test-form" action={signInWithTestCredentials}>
             <p>Local test login</p>
             {testError === "invalid" && <p role="alert">The test username or password is incorrect.</p>}
-            <Field>
-              <Label>Username</Label>
-              <Input name="username" autoComplete="username" required />
-            </Field>
-            <Field>
-              <Label>Password</Label>
-              <Input name="password" type="password" autoComplete="current-password" required />
-            </Field>
+            <InputField label="Username" name="username" autoComplete="username" required />
+            <InputField label="Password" name="password" type="password" autoComplete="current-password" required />
             <Button type="submit">Sign in for testing</Button>
           </form>
         )}

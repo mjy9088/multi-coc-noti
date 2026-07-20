@@ -18,6 +18,7 @@ const config = {
     "ui-contracts/no-noninteractive-click": "error",
     "ui-contracts/no-js-viewport-breakpoint": "error",
     "ui-contracts/no-magic-layout-threshold": "error",
+    "ui-contracts/no-shared-composition-classname": "error",
     "ui-contracts/sticky-tabs-route-frame": "error",
   },
 };
@@ -84,6 +85,20 @@ test("sticky tab routes use a shared internal-scroll frame", () => {
         <StickyRouteFrame scrollKey={route}>Short route</StickyRouteFrame>
       </main>
     `),
+    [],
+  );
+});
+
+test("shared compositions direct feature styling through typed app wrappers", () => {
+  const [message] = messages(
+    'import { ContentSection } from "@multi-coc/ui"; export const View = () => <ContentSection className="queue" />;',
+  );
+  assert.equal(message.ruleId, "ui-contracts/no-shared-composition-classname");
+  assert.match(message.message, /typed semantic variant/);
+  assert.deepEqual(
+    messages(
+      'import { ContentSection } from "@multi-coc/ui"; export const View = () => <ContentSection spacing="loose" />;',
+    ),
     [],
   );
 });

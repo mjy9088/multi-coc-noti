@@ -17,9 +17,9 @@ import {
   ChartLegendItem,
   Checkbox,
   Cluster,
+  ContentSection,
   DataList,
   DataListItem,
-  Description,
   DetailPane,
   DetailPaneBackdrop,
   Dialog,
@@ -40,9 +40,10 @@ import {
   EntityHeaderMeta,
   EntityHeaderTitle,
   Field,
-  FieldError,
+  FormGrid,
   IconButton,
   Input,
+  InputField,
   KeyValueGrid,
   KeyValueItem,
   Label,
@@ -50,24 +51,14 @@ import {
   MasterPane,
   NavLink,
   PageContainer,
-  PageHeader,
-  PageHeaderActions,
-  PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderEyebrow,
-  PageHeaderTitle,
+  PageIntro,
   Progress,
   RadioGroup,
   RadioGroupItem,
   RequestState,
   ResponsiveGrid,
   ScrollablePane,
-  SectionHeader,
-  SectionHeaderActions,
-  SectionHeaderContent,
-  SectionHeaderDescription,
-  SectionHeaderTitle,
-  Select,
+  SelectField,
   SelectionList,
   SelectionListContent,
   SelectionListDescription,
@@ -86,7 +77,7 @@ import {
   StatusIndicator,
   Tab,
   Tabs,
-  Textarea,
+  TextareaField,
   Timeline,
   TimelineContent,
   TimelineItem,
@@ -243,43 +234,39 @@ export default function ComponentsShowcase() {
             Headers, actions, toolbars, and responsive grids arrange arbitrary feature content without owning its data.
           </p>
           <Stack>
-            <PageHeader>
-              <PageHeaderContent>
-                <PageHeaderEyebrow>Dashboard</PageHeaderEyebrow>
-                <PageHeaderTitle>Manage every village at a glance</PageHeaderTitle>
-                <PageHeaderDescription>
-                  Long descriptions wrap while actions keep a predictable alignment at narrow widths.
-                </PageHeaderDescription>
-              </PageHeaderContent>
-              <PageHeaderActions>
-                <Button tone="secondary">Display options</Button>
-                <Button>Quick Paste</Button>
-              </PageHeaderActions>
-            </PageHeader>
+            <PageIntro
+              eyebrow="Dashboard"
+              title="Manage every village at a glance"
+              description="Long descriptions wrap while actions keep a predictable alignment at narrow widths."
+              actions={
+                <>
+                  <Button tone="secondary">Display options</Button>
+                  <Button>Quick Paste</Button>
+                </>
+              }
+            />
             <Toolbar aria-label="Village filters">
               <StatusIndicator tone="success">36 villages synced</StatusIndicator>
               <Button size="small" tone="secondary">
                 Filters
               </Button>
             </Toolbar>
-            <SectionHeader>
-              <SectionHeaderContent>
-                <SectionHeaderTitle>Available villages</SectionHeaderTitle>
-                <SectionHeaderDescription>
-                  Reusable section context stays separate from page identity.
-                </SectionHeaderDescription>
-              </SectionHeaderContent>
-              <SectionHeaderActions>
+            <ContentSection
+              title="Available villages"
+              description="Reusable section context stays separate from page identity."
+              actions={
                 <Button size="small" tone="quiet">
                   View all
                 </Button>
-              </SectionHeaderActions>
-            </SectionHeader>
-            <ResponsiveGrid minItemWidth="12rem">
-              <Card>Main village</Card>
-              <Card>Builder focus</Card>
-              <Card>War mini</Card>
-            </ResponsiveGrid>
+              }
+              spacing="compact"
+            >
+              <ResponsiveGrid minItemWidth="12rem">
+                <Card>Main village</Card>
+                <Card>Builder focus</Card>
+                <Card>War mini</Card>
+              </ResponsiveGrid>
+            </ContentSection>
           </Stack>
         </section>
         <section className="lab-section wide">
@@ -464,31 +451,25 @@ export default function ComponentsShowcase() {
         <section className="lab-section wide">
           <h2>Fields</h2>
           <p>Labels, descriptions, and errors are connected to their controls.</p>
-          <div className="lab-form-grid">
-            <Field>
-              <Label>Display name</Label>
-              <Description>Shown throughout Dashboard instead of the in-game name.</Description>
-              <Input defaultValue="Main village" />
-            </Field>
-            <Field invalid>
-              <Label>Player tag</Label>
-              <Description>Include or omit the leading #.</Description>
-              <Input defaultValue="INVALID!" />
-              <FieldError>Use only valid tag characters.</FieldError>
-            </Field>
-            <Field>
-              <Label>Resource policy</Label>
-              <Select defaultValue="unknown">
-                <option value="unknown">Ask after import</option>
-                <option value="enough">Enough resources</option>
-                <option value="short">Resources needed</option>
-              </Select>
-            </Field>
-            <Field>
-              <Label>Export JSON</Label>
-              <Textarea placeholder="Paste export JSON" />
-            </Field>
-          </div>
+          <FormGrid columns="two">
+            <InputField
+              label="Display name"
+              description="Shown throughout Dashboard instead of the in-game name."
+              defaultValue="Main village"
+            />
+            <InputField
+              label="Player tag"
+              description="Include or omit the leading #."
+              error="Use only valid tag characters."
+              defaultValue="INVALID!"
+            />
+            <SelectField label="Resource policy" defaultValue="unknown">
+              <option value="unknown">Ask after import</option>
+              <option value="enough">Enough resources</option>
+              <option value="short">Resources needed</option>
+            </SelectField>
+            <TextareaField label="Export JSON" placeholder="Paste export JSON" />
+          </FormGrid>
           <Separator />
           <div className="lab-stack">
             <Checkbox

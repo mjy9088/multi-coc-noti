@@ -16,3 +16,4 @@ export {
   SectionHeaderTitle,
   Toolbar,
 } from "./page-layout";
+export { ContentSection, type ContentSectionProps, PageIntro, type PageIntroProps } from "./section";

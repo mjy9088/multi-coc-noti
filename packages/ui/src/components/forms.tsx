@@ -1,5 +1,6 @@
 "use client";
 
+import { Slot } from "@radix-ui/react-slot";
 import {
   createContext,
   type HTMLAttributes,
@@ -96,6 +97,105 @@ export function Select({
   return (
     <select className={cn("ui-input ui-select", className)} {...fieldControlProps(context, describedBy)} {...props} />
   );
+}
+
+type FieldCompositionProps = {
+  label: ReactNode;
+  description?: ReactNode;
+  error?: ReactNode;
+  labelVisibility?: "visible" | "hidden";
+  className?: string;
+};
+
+function FieldComposition({
+  label,
+  description,
+  error,
+  labelVisibility = "visible",
+  className,
+  children,
+}: FieldCompositionProps & { children: ReactNode }) {
+  return (
+    <Field invalid={Boolean(error)} className={className}>
+      <Label className={labelVisibility === "hidden" ? "ui-visually-hidden" : undefined}>{label}</Label>
+      {children}
+      {description && <Description>{description}</Description>}
+      {error && <FieldError>{error}</FieldError>}
+    </Field>
+  );
+}
+
+export function InputField({
+  label,
+  description,
+  error,
+  labelVisibility,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & FieldCompositionProps) {
+  return (
+    <FieldComposition
+      label={label}
+      description={description}
+      error={error}
+      labelVisibility={labelVisibility}
+      className={className}
+    >
+      <Input {...props} />
+    </FieldComposition>
+  );
+}
+
+export function SelectField({
+  label,
+  description,
+  error,
+  labelVisibility,
+  className,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & FieldCompositionProps) {
+  return (
+    <FieldComposition
+      label={label}
+      description={description}
+      error={error}
+      labelVisibility={labelVisibility}
+      className={className}
+    >
+      <Select {...props} />
+    </FieldComposition>
+  );
+}
+
+export function TextareaField({
+  label,
+  description,
+  error,
+  labelVisibility,
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & FieldCompositionProps) {
+  return (
+    <FieldComposition
+      label={label}
+      description={description}
+      error={error}
+      labelVisibility={labelVisibility}
+      className={className}
+    >
+      <Textarea {...props} />
+    </FieldComposition>
+  );
+}
+
+export function FormGrid({
+  columns = "auto",
+  asChild = false,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { columns?: "one" | "two" | "auto"; asChild?: boolean }) {
+  const Component = asChild ? Slot : "div";
+  return <Component className={cn("ui-form-grid", className)} data-columns={columns} {...props} />;
 }
 
 export function Checkbox({

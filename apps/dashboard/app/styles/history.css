@@ -17,7 +17,7 @@
   background: var(--ui-color-canvas);
 }
 
-.history-section-header {
+.history-section > .ui-section-header {
   margin-block: var(--ui-space-6) var(--ui-space-4);
 }
 

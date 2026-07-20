@@ -140,6 +140,15 @@
   margin-block-start: var(--ui-space-7);
 }
 
+.upgrade-outlook > .ui-section-header .ui-section-header-actions {
+  max-width: 15rem;
+  text-align: end;
+}
+
+.queue-section > .ui-section-header {
+  align-items: end;
+}
+
 .upgrade-chart-layout {
   gap: var(--ui-space-3);
 }

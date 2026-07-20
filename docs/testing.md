@@ -96,6 +96,10 @@ Dashboard ESLint remains enabled for Next.js and React-specific rules. The curre
 `apps/dashboard/app/styles/legacy.css` is intentionally excluded to avoid a noisy mechanical rewrite before the planned UI
 redesign.
 
+Dashboard ESLint also prevents route and feature screens from attaching `className` directly to shared layout and
+data-display compositions. Its diagnostic directs authors to add a typed semantic variant to `@multi-coc/ui` or a
+product-specific wrapper under `apps/dashboard/components`; those implementation layers retain the low-level escape hatch.
+
 `pnpm lint:ui-contracts` parses owned CSS with PostCSS and rejects layout patterns for which the design system already has
 a safer solution. It currently enforces bottom-sheet edge attachment, sticky-surface ownership, `ActionBar` use for
 bottom-sticky actions, paired sticky bleed variables, `SplitLayout` use for top-aligned multi-pane layouts, mobile-safe form

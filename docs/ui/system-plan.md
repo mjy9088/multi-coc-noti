@@ -43,6 +43,9 @@ inventory live alongside this plan under `docs/ui/`.
   selector blocks have been removed from `legacy.css`; the remaining legacy file is compatibility debt for incremental
   selector removal rather than the target API. Product browser E2E covers 36-village
   desktop/mobile scroll ownership and persistent tab navigation.
+- Route and feature screens now use typed Dashboard application compositions for repeated section, history, settings,
+  village-detail, summary, and chart layouts. Shared component `className` customization is confined to those implementation
+  layers by ESLint, so product variants remain discoverable literal unions rather than scattered selector strings.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual
@@ -158,6 +161,10 @@ Dark mode is not part of the initial migration, but semantic tokens must keep it
 - Use `forwardRef` only where consumers actually need DOM focus or measurement; do not add it preemptively.
 - A primitive must not hide navigation, mutation, or data-fetching side effects.
 - Avoid wrapper components that only rename one HTML element without enforcing styling, accessibility, or behavior.
+- Keep `className` as a low-level escape hatch. Normal feature code selects typed semantic variants from the shared package
+  or Dashboard application-composition layer; only those implementation layers translate variants into class names.
+- Prefer concise typed field compositions over repeated label/control markup. Avoid configuration-array form renderers
+  unless the form is actually driven by runtime schema data; static conditional forms remain clearer and safer as JSX.
 
 ## Migration phases
 

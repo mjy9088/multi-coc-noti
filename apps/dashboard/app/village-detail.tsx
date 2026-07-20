@@ -2,19 +2,23 @@
 
 import {
   Button,
-  Card,
   DataList,
   DataListItem,
   EmptyState,
-  EntityHeader,
   EntityHeaderActions,
   EntityHeaderIdentity,
   EntityHeaderMeta,
   EntityHeaderTitle,
   Stat,
-  StatGrid,
 } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
+import {
+  VillageDetailLayout,
+  VillageIdentity,
+  VillageMetricGrid,
+  VillagePanel,
+  VillageTextStat,
+} from "../components/layout/product-compositions";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
 type DetailVillage = {
@@ -86,7 +90,7 @@ export default function VillageDetail({
   const typeCount = (type: string) => village.upgrades.filter((item) => item.type === type).length;
   const stats = village.officialStats;
   return (
-    <section className="village-detail shell">
+    <VillageDetailLayout>
       <div className="village-detail-actions">
         <Button tone="secondary" onClick={onBack}>
           ← {t("backToDashboard")}
@@ -98,7 +102,7 @@ export default function VillageDetail({
           <Button onClick={onSettings}>{t("villageSettings")}</Button>
         </span>
       </div>
-      <EntityHeader className="village-detail-header" style={{ "--accent": village.color } as React.CSSProperties}>
+      <VillageIdentity style={{ "--accent": village.color } as React.CSSProperties}>
         <EntityHeaderIdentity>
           <p className="eyebrow">VILLAGE</p>
           <EntityHeaderTitle>{village.name}</EntityHeaderTitle>
@@ -109,39 +113,39 @@ export default function VillageDetail({
         <EntityHeaderActions>
           {t("updated")} {formatDateTime(village.lastSeen)}
         </EntityHeaderActions>
-      </EntityHeader>
+      </VillageIdentity>
       <div className="village-detail-grid">
-        <Card className="village-detail-card">
+        <VillagePanel kind="availability">
           <h2>{t("upgradeAvailability")}</h2>
           <UpgradeAvailabilityPanel builders={village.builders} upgradeSlots={village.upgradeSlots} />
-        </Card>
-        <Card className="village-detail-card">
+        </VillagePanel>
+        <VillagePanel kind="metrics">
           <h2>{t("upgradeSummary")}</h2>
-          <StatGrid className="metric-grid">
+          <VillageMetricGrid>
             <Stat label={t("homeVillage")} value={homeUpgrades.length} />
             <Stat label={t("builderBase")} value={builderUpgrades.length} />
             <Stat label={t("building")} value={typeCount("building")} />
             <Stat label={t("hero")} value={typeCount("hero")} />
             <Stat label={t("research")} value={typeCount("research")} />
             <Stat label={t("pet")} value={typeCount("pet")} />
-          </StatGrid>
-        </Card>
+          </VillageMetricGrid>
+        </VillagePanel>
         {stats && (
-          <Card className="village-detail-card">
+          <VillagePanel kind="metrics">
             <h2>{t("playerStats")}</h2>
-            <StatGrid className="metric-grid">
-              {stats.league && <Stat label={t("league")} value={stats.league} className="metric-text" />}
+            <VillageMetricGrid>
+              {stats.league && <VillageTextStat label={t("league")} value={stats.league} />}
               <Stat label={t("trophies")} value={stats.trophies.toLocaleString()} />
               <Stat label={t("bestTrophies")} value={stats.bestTrophies.toLocaleString()} />
               <Stat label={t("warStars")} value={stats.warStars.toLocaleString()} />
               <Stat label={t("donations")} value={stats.donations.toLocaleString()} />
               <Stat label={t("donationsReceived")} value={stats.donationsReceived.toLocaleString()} />
               <Stat label={t("capitalContributions")} value={stats.capitalContributions.toLocaleString()} />
-            </StatGrid>
-          </Card>
+            </VillageMetricGrid>
+          </VillagePanel>
         )}
         {village.cooldowns?.clockTower && (
-          <Card className="village-detail-card cooldown-card">
+          <VillagePanel kind="cooldown">
             <h2>{t("cooldowns")}</h2>
             <div className="cooldown-grid">
               {village.cooldowns?.clockTower && (
@@ -151,10 +155,10 @@ export default function VillageDetail({
                 </div>
               )}
             </div>
-          </Card>
+          </VillagePanel>
         )}
         {!!village.helpers?.length && (
-          <Card className="village-detail-card">
+          <VillagePanel kind="helpers">
             <h2>{t("villageHelpers")}</h2>
             <div className="detail-item-grid">
               {village.helpers.map((helper) => (
@@ -169,11 +173,11 @@ export default function VillageDetail({
                 </div>
               ))}
             </div>
-          </Card>
+          </VillagePanel>
         )}
       </div>
       {!!village.heroEquipment?.length && (
-        <Card className="village-detail-card equipment-card">
+        <VillagePanel kind="equipment">
           <h2>{t("heroEquipment")}</h2>
           <div className="equipment-grid">
             {village.heroEquipment.map((item) => (
@@ -185,9 +189,9 @@ export default function VillageDetail({
               </div>
             ))}
           </div>
-        </Card>
+        </VillagePanel>
       )}
-      <Card className="village-detail-card village-upgrades">
+      <VillagePanel kind="upgrades">
         <h2>{t("activeVillageUpgrades")}</h2>
         {village.upgrades.length ? (
           <DataList>
@@ -210,7 +214,7 @@ export default function VillageDetail({
         ) : (
           <EmptyState title={t("empty")} />
         )}
-      </Card>
-    </section>
+      </VillagePanel>
+    </VillageDetailLayout>
   );
 }

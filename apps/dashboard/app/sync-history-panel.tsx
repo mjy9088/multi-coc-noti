@@ -1,24 +1,15 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  DataList,
-  DataListItem,
-  EmptyState,
-  Field,
-  Label,
-  SectionHeader,
-  SectionHeaderContent,
-  SectionHeaderDescription,
-  SectionHeaderTitle,
-  Select,
-  StaleNotice,
-  Toolbar,
-} from "@multi-coc/ui";
+import { Badge, Button, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import {
+  HistoryFilters,
+  HistoryResult,
+  HistoryResults,
+  HistorySection,
+} from "../components/layout/product-compositions";
 import { syncHistoryQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -64,39 +55,28 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
   const error = syncQuery.error instanceof Error ? syncQuery.error.message : "";
 
   return (
-    <section className="history-section">
-      <SectionHeader className="history-section-header">
-        <SectionHeaderContent>
-          <p className="eyebrow">SYNC HISTORY</p>
-          <SectionHeaderTitle>{t("syncTitle")}</SectionHeaderTitle>
-          <SectionHeaderDescription>{t("syncDescription")}</SectionHeaderDescription>
-        </SectionHeaderContent>
-      </SectionHeader>
-      <Toolbar className="history-filters sync-history-filters">
-        <Field>
-          <Label>{t("village")}</Label>
-          <Select value={village} onChange={(event) => setVillage(event.target.value)}>
-            <option value="">{t("allVillages")}</option>
-            {villages.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} · {item.playerTag}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </Toolbar>
+    <HistorySection eyebrow="SYNC HISTORY" title={t("syncTitle")} description={t("syncDescription")}>
+      <HistoryFilters size="single">
+        <SelectField label={t("village")} value={village} onChange={(event) => setVillage(event.target.value)}>
+          <option value="">{t("allVillages")}</option>
+          {villages.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name} · {item.playerTag}
+            </option>
+          ))}
+        </SelectField>
+      </HistoryFilters>
       {error && syncs.length > 0 && (
         <StaleNotice onRetry={() => void syncQuery.refetch()} retryLabel={t("retry")}>
           {error}
         </StaleNotice>
       )}
       {error && !syncs.length && <ErrorState compact message={error} retry={() => void syncQuery.refetch()} />}
-      <DataList className="history-list sync-history-list">
+      <HistoryResults kind="syncs">
         {syncs.map((sync) => {
           const account = villageById.get(sync.accountId);
           return (
-            <DataListItem
-              className="history-card"
+            <HistoryResult
               key={sync.id}
               style={{ "--accent": account?.color || "var(--ui-color-accent)" } as React.CSSProperties}
             >
@@ -119,17 +99,17 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
                 <time>{formatDateTime(sync.importedAt)}</time>
                 <small>{t("exportedAt", { date: formatDateTime(sync.exportedAt) })}</small>
               </div>
-            </DataListItem>
+            </HistoryResult>
           );
         })}
         {!loading && !syncs.length && <EmptyState title={t("syncEmpty")} />}
-      </DataList>
+      </HistoryResults>
       {syncQuery.hasNextPage && (
         <Button className="history-more" pending={loading} onClick={() => void syncQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}
         </Button>
       )}
       {loading && !syncs.length && <LoadingState compact />}
-    </section>
+    </HistorySection>
   );
 }

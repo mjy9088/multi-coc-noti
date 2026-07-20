@@ -1,41 +1,45 @@
 "use client";
 
 import {
-  ActionBar,
   Button,
   Checkbox,
-  Description,
-  DetailPane,
-  DetailPaneBackdrop,
   Dialog,
   DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-  Field,
-  Input,
-  Label,
-  MasterDetailLayout,
-  MasterPane,
   RequestState,
-  ScrollablePane,
-  Select,
   SelectionList,
   SelectionListContent,
   SelectionListDescription,
   SelectionListItem,
   SelectionListLeading,
   SelectionListTitle,
-  StickyRouteFrame,
   StickyStackItem,
   Tab,
   Tabs,
-  Textarea,
   useToast,
 } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  SettingsActions,
+  SettingsFields,
+  SettingsInputField,
+  SettingsIntro,
+  SettingsPage,
+  SettingsRouteFrame,
+  SettingsSelectField,
+  SettingsSurface,
+  SettingsTextareaField,
+  SettingsVillageBackdrop,
+  SettingsVillageEditor,
+  SettingsVillageEditorScroll,
+  SettingsVillageLayout,
+  SettingsVillageListPane,
+  SettingsVillagePicker,
+} from "../components/settings/settings-layout";
 import { ErrorState, LoadingState } from "./request-state";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import { useApiRequest } from "./use-api-request";
@@ -501,27 +505,20 @@ export default function SettingsPanel({
 
   if (initialLoading && !accounts.length)
     return (
-      <section className="settings-page">
+      <SettingsPage>
         <LoadingState compact />
-      </section>
+      </SettingsPage>
     );
   if (initialLoadFailed && !accounts.length)
     return (
-      <section className="settings-page">
+      <SettingsPage>
         <ErrorState compact message={error} retry={() => void load()} />
-      </section>
+      </SettingsPage>
     );
 
   return (
-    <section className={`settings-page${embedded ? " settings-page-embedded" : ""}`}>
-      {!embedded && (
-        <div className="settings-page-header">
-          <div>
-            <p className="settings-eyebrow">VILLAGE DATA</p>
-            <h1>{t("title")}</h1>
-          </div>
-        </div>
-      )}
+    <SettingsPage embedded={embedded}>
+      {!embedded && <SettingsIntro eyebrow="VILLAGE DATA" title={t("title")} />}
       {!embedded && (
         <StickyStackItem order={10} className="settings-tabs-sticky ui-sticky-surface">
           <Tabs
@@ -541,15 +538,16 @@ export default function SettingsPanel({
           </Tabs>
         </StickyStackItem>
       )}
-      <StickyRouteFrame className="settings-route-frame" contained={embedded} scrollKey={section}>
+      <SettingsRouteFrame contained={embedded} scrollKey={section}>
         {section === "import" && (
           <div className="settings-import-flow">
             {error && !initialLoadFailed && (
               <RequestState className="settings-import-error" tone="error" title={error} />
             )}
             {(!embedded || !resourcePrompt) && (
-              <article
-                className={`settings-surface settings-export settings-step ${preview ? "step-complete" : "step-current"}`}
+              <SettingsSurface
+                kind="import"
+                step={preview ? "complete" : "current"}
                 aria-current={!preview ? "step" : undefined}
               >
                 <p className="settings-step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
@@ -557,18 +555,17 @@ export default function SettingsPanel({
                 </p>
                 <h2>{t("pasteJson")}</h2>
                 <p>{t("pasteJsonHelp")}</p>
-                <Field>
-                  <Label className="ui-visually-hidden">{t("pasteJson")}</Label>
-                  <Textarea
-                    value={exportText}
-                    onChange={(event) => replaceExportText(event.target.value)}
-                    placeholder='{"tag":"#...","timestamp":...}'
-                    autoFocus
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    aria-busy={previewLoading}
-                  />
-                </Field>
+                <SettingsTextareaField
+                  label={t("pasteJson")}
+                  labelVisibility="hidden"
+                  value={exportText}
+                  onChange={(event) => replaceExportText(event.target.value)}
+                  placeholder='{"tag":"#...","timestamp":...}'
+                  autoFocus
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  aria-busy={previewLoading}
+                />
                 <div className="settings-review-action" aria-live="polite">
                   <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
                   <span>
@@ -585,11 +582,11 @@ export default function SettingsPanel({
                     </Button>
                   </span>
                 </div>
-              </article>
+              </SettingsSurface>
             )}
 
             {preview && (!embedded || !resourcePrompt) && (
-              <article className="settings-surface settings-preview settings-step step-current" aria-current="step">
+              <SettingsSurface kind="preview" step="current" aria-current="step">
                 <p className="settings-step-label" data-step-state={t("stepNow")}>
                   02 · REVIEW
                 </p>
@@ -677,17 +674,16 @@ export default function SettingsPanel({
                 </div>
                 <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
                 {preview.isNew && (
-                  <Field className="settings-new-label">
-                    <Label>{t("displayName")}</Label>
-                    <Input
-                      required
-                      autoFocus
-                      value={newLabel}
-                      onChange={(event) => setNewLabel(event.target.value)}
-                      placeholder={t("displayNamePlaceholder")}
-                    />
-                    <Description>{t("newVillageHelp")}</Description>
-                  </Field>
+                  <SettingsInputField
+                    placement="new-village"
+                    label={t("displayName")}
+                    description={t("newVillageHelp")}
+                    required
+                    autoFocus
+                    value={newLabel}
+                    onChange={(event) => setNewLabel(event.target.value)}
+                    placeholder={t("displayNamePlaceholder")}
+                  />
                 )}
                 <div className="settings-preview-upgrades">
                   {preview.upgrades.slice(0, 8).map((item) => (
@@ -719,10 +715,10 @@ export default function SettingsPanel({
                     {preview.isNew ? t("addAndImport") : t("importVillage")}
                   </Button>
                 </div>
-              </article>
+              </SettingsSurface>
             )}
             {embedded && resourcePrompt && (
-              <article className="settings-surface resource-inline-step" aria-live="polite">
+              <SettingsSurface kind="resource-prompt" aria-live="polite">
                 <h2>{t("resourcePromptTitle")}</h2>
                 <p>{t("resourcePromptHelp")}</p>
                 <div className="resource-dialog-options">
@@ -746,13 +742,13 @@ export default function SettingsPanel({
                 >
                   {t("resourceAnswerLater")}
                 </Button>
-              </article>
+              </SettingsSurface>
             )}
           </div>
         )}
 
         {section === "channels" && (
-          <article className="settings-surface settings-wide settings-notification-channels">
+          <SettingsSurface kind="channels">
             <h2>{t("barkChannels")}</h2>
             <p>{t("barkChannelsHelp")}</p>
             <div className="settings-upgrade-list">
@@ -779,44 +775,38 @@ export default function SettingsPanel({
                 </div>
               ))}
             </div>
-            <form className="settings-upgrade-controls" onSubmit={addBarkChannel}>
-              <Field>
-                <Label>{t("channelName")}</Label>
-                <Input
-                  required
-                  value={barkChannelForm.label}
-                  onChange={(event) => setBarkChannelForm({ ...barkChannelForm, label: event.target.value })}
-                />
-              </Field>
-              <Field>
-                <Label>{t("barkDeviceKey")}</Label>
-                <Input
-                  required
-                  type="password"
-                  autoComplete="off"
-                  value={barkChannelForm.deviceKey}
-                  onChange={(event) => setBarkChannelForm({ ...barkChannelForm, deviceKey: event.target.value })}
-                />
-              </Field>
-              <Field>
-                <Label>{t("notificationLanguage")}</Label>
-                <Select
-                  value={barkChannelForm.locale}
-                  onChange={(event) =>
-                    setBarkChannelForm({ ...barkChannelForm, locale: event.target.value === "en" ? "en" : "ko" })
-                  }
-                >
-                  <option value="ko">한국어</option>
-                  <option value="en">English</option>
-                </Select>
-              </Field>
+            <SettingsFields as="form" layout="controls" onSubmit={addBarkChannel}>
+              <SettingsInputField
+                label={t("channelName")}
+                required
+                value={barkChannelForm.label}
+                onChange={(event) => setBarkChannelForm({ ...barkChannelForm, label: event.target.value })}
+              />
+              <SettingsInputField
+                label={t("barkDeviceKey")}
+                required
+                type="password"
+                autoComplete="off"
+                value={barkChannelForm.deviceKey}
+                onChange={(event) => setBarkChannelForm({ ...barkChannelForm, deviceKey: event.target.value })}
+              />
+              <SettingsSelectField
+                label={t("notificationLanguage")}
+                value={barkChannelForm.locale}
+                onChange={(event) =>
+                  setBarkChannelForm({ ...barkChannelForm, locale: event.target.value === "en" ? "en" : "ko" })
+                }
+              >
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+              </SettingsSelectField>
               <Button type="submit">{t("addNotificationChannel")}</Button>
-            </form>
-          </article>
+            </SettingsFields>
+          </SettingsSurface>
         )}
 
         {section === "upgrades" && (
-          <article className="settings-surface settings-wide settings-upgrade-alerts">
+          <SettingsSurface kind="upgrades">
             <h2>{t("upgradeAlertsTitle")}</h2>
             <p>{t("upgradeAlertsHelp")}</p>
             <div className="settings-upgrade-list">
@@ -843,44 +833,40 @@ export default function SettingsPanel({
                             {t(`resourcePolicy_${account?.resourceStatus || "unanswered"}`)}
                           </span>
                         </div>
-                        <div className="settings-upgrade-controls">
-                          <Field>
-                            <Label>{t("preparationAlertSetting")}</Label>
-                            <Select
-                              value={draft.mode}
+                        <SettingsFields layout="controls">
+                          <SettingsSelectField
+                            label={t("preparationAlertSetting")}
+                            value={draft.mode}
+                            onChange={(event) =>
+                              setUpgradeAlertDrafts({
+                                ...upgradeAlertDrafts,
+                                [item.id]: { ...draft, mode: event.target.value as UpgradeAlertDraft["mode"] },
+                              })
+                            }
+                          >
+                            <option value="inherit">
+                              {t("preparationInherit", {
+                                minutes: account?.resourcePreparationMinutes ?? t("disabled"),
+                              })}
+                            </option>
+                            <option value="disabled">{t("preparationDisabled")}</option>
+                            <option value="custom">{t("preparationCustom")}</option>
+                          </SettingsSelectField>
+                          {draft.mode === "custom" && (
+                            <SettingsInputField
+                              label={t("resourcePreparationMinutes")}
+                              type="number"
+                              min="1"
+                              max="525600"
+                              required
+                              value={draft.minutes}
                               onChange={(event) =>
                                 setUpgradeAlertDrafts({
                                   ...upgradeAlertDrafts,
-                                  [item.id]: { ...draft, mode: event.target.value as UpgradeAlertDraft["mode"] },
+                                  [item.id]: { ...draft, minutes: Number(event.target.value) },
                                 })
                               }
-                            >
-                              <option value="inherit">
-                                {t("preparationInherit", {
-                                  minutes: account?.resourcePreparationMinutes ?? t("disabled"),
-                                })}
-                              </option>
-                              <option value="disabled">{t("preparationDisabled")}</option>
-                              <option value="custom">{t("preparationCustom")}</option>
-                            </Select>
-                          </Field>
-                          {draft.mode === "custom" && (
-                            <Field>
-                              <Label>{t("resourcePreparationMinutes")}</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="525600"
-                                required
-                                value={draft.minutes}
-                                onChange={(event) =>
-                                  setUpgradeAlertDrafts({
-                                    ...upgradeAlertDrafts,
-                                    [item.id]: { ...draft, minutes: Number(event.target.value) },
-                                  })
-                                }
-                              />
-                            </Field>
+                            />
                           )}
                           <div className="settings-upgrade-actions">
                             <Button type="button" tone="secondary" onClick={() => openVillageSettings(account)}>
@@ -899,7 +885,7 @@ export default function SettingsPanel({
                               {savingUpgradeId === item.id ? t("saving") : t("saveNotifications")}
                             </Button>
                           </div>
-                        </div>
+                        </SettingsFields>
                       </div>
                     );
                   })
@@ -907,24 +893,23 @@ export default function SettingsPanel({
                 <p>{t("noTrackedUpgrades")}</p>
               )}
             </div>
-          </article>
+          </SettingsSurface>
         )}
 
         {section === "villages" && (
-          <MasterDetailLayout className="settings-village-layout">
-            <MasterPane className="settings-surface settings-village-list-card ui-sticky-surface">
+          <SettingsVillageLayout>
+            <SettingsVillageListPane>
               <h2>{t("registeredVillages")}</h2>
               <p>{t("registeredVillagesHelp")}</p>
-              <Field className="village-search">
-                <Label>{t("searchVillages")}</Label>
-                <Input
-                  type="search"
-                  value={villageSearch}
-                  onChange={(event) => setVillageSearch(event.target.value)}
-                  placeholder={t("searchVillages")}
-                />
-              </Field>
-              <ScrollablePane className="settings-village-picker" boundary="contain" activation="sticky-frame">
+              <SettingsInputField
+                placement="search"
+                label={t("searchVillages")}
+                type="search"
+                value={villageSearch}
+                onChange={(event) => setVillageSearch(event.target.value)}
+                placeholder={t("searchVillages")}
+              />
+              <SettingsVillagePicker>
                 <SelectionList>
                   {visibleAccounts.map((item) => (
                     <SelectionListItem
@@ -946,19 +931,14 @@ export default function SettingsPanel({
                   ))}
                   {!visibleAccounts.length && <p>{accounts.length ? t("noVillageMatches") : t("noVillages")}</p>}
                 </SelectionList>
-              </ScrollablePane>
-            </MasterPane>
-            <DetailPaneBackdrop
+              </SettingsVillagePicker>
+            </SettingsVillageListPane>
+            <SettingsVillageBackdrop
               open={Boolean(editing)}
-              className="settings-sheet-backdrop"
               label={t("chooseVillage")}
               onClick={() => setEditing(null)}
             />
-            <DetailPane
-              open={Boolean(editing)}
-              className="settings-surface settings-village-editor-card"
-              id="village-settings-card"
-            >
+            <SettingsVillageEditor open={Boolean(editing)} id="village-settings-card">
               {editing ? (
                 <>
                   <div className="village-editor-heading">
@@ -976,14 +956,11 @@ export default function SettingsPanel({
                       {t("chooseVillage")}
                     </Button>
                   </div>
-                  <ScrollablePane
-                    className="village-editor-scroll"
-                    boundary="contain"
-                    activation="sticky-frame-or-compact"
-                  >
-                    <form
+                  <SettingsVillageEditorScroll>
+                    <SettingsFields
+                      as="form"
+                      layout="form"
                       id="village-settings-form"
-                      className="settings-form"
                       onSubmit={(event) => {
                         event.preventDefault();
                         void run(
@@ -1001,46 +978,40 @@ export default function SettingsPanel({
                         );
                       }}
                     >
-                      <Field>
-                        <Label>{t("displayName")}</Label>
-                        <Input
-                          required
-                          value={accountForm.label}
-                          onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })}
-                        />
-                      </Field>
-                      <Field>
-                        <Label>{t("color")}</Label>
-                        <Input
-                          type="color"
-                          value={accountForm.color}
-                          onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })}
-                        />
-                      </Field>
-                      <Field className="wide">
-                        <Label>{t("accountTags")}</Label>
-                        <Input
-                          value={accountForm.tags}
-                          onChange={(e) => setAccountForm({ ...accountForm, tags: e.target.value })}
-                          placeholder={t("accountTagsPlaceholder")}
-                        />
-                        <Description>{t("accountTagsHelp")}</Description>
-                      </Field>
-                      <Field className="wide">
-                        <Label>{t("resourceStatus")}</Label>
-                        <Select
-                          value={accountForm.resourceStatus}
-                          onChange={(e) =>
-                            setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })
-                          }
-                        >
-                          <option value="abundant">{t("resourceAbundant")}</option>
-                          <option value="sufficient">{t("resourceSufficient")}</option>
-                          <option value="insufficient">{t("resourceInsufficient")}</option>
-                          <option value="unanswered">{t("resourceUnanswered")}</option>
-                        </Select>
-                        <Description>{t("resourceStatusHelp")}</Description>
-                      </Field>
+                      <SettingsInputField
+                        label={t("displayName")}
+                        required
+                        value={accountForm.label}
+                        onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })}
+                      />
+                      <SettingsInputField
+                        label={t("color")}
+                        type="color"
+                        value={accountForm.color}
+                        onChange={(e) => setAccountForm({ ...accountForm, color: e.target.value })}
+                      />
+                      <SettingsInputField
+                        placement="wide"
+                        label={t("accountTags")}
+                        description={t("accountTagsHelp")}
+                        value={accountForm.tags}
+                        onChange={(e) => setAccountForm({ ...accountForm, tags: e.target.value })}
+                        placeholder={t("accountTagsPlaceholder")}
+                      />
+                      <SettingsSelectField
+                        placement="wide"
+                        label={t("resourceStatus")}
+                        description={t("resourceStatusHelp")}
+                        value={accountForm.resourceStatus}
+                        onChange={(e) =>
+                          setAccountForm({ ...accountForm, resourceStatus: e.target.value as ResourceStatus })
+                        }
+                      >
+                        <option value="abundant">{t("resourceAbundant")}</option>
+                        <option value="sufficient">{t("resourceSufficient")}</option>
+                        <option value="insufficient">{t("resourceInsufficient")}</option>
+                        <option value="unanswered">{t("resourceUnanswered")}</option>
+                      </SettingsSelectField>
                       <Checkbox
                         className="wide"
                         checked={accountForm.resourcePreparationEnabled}
@@ -1050,22 +1021,21 @@ export default function SettingsPanel({
                         label={t("resourcePreparationEnabled")}
                       />
                       {accountForm.resourcePreparationEnabled && (
-                        <Field className="wide">
-                          <Label>{t("resourcePreparationMinutes")}</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="525600"
-                            required
-                            value={accountForm.resourcePreparationMinutes}
-                            onChange={(e) =>
-                              setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })
-                            }
-                          />
-                        </Field>
+                        <SettingsInputField
+                          placement="wide"
+                          label={t("resourcePreparationMinutes")}
+                          type="number"
+                          min="1"
+                          max="525600"
+                          required
+                          value={accountForm.resourcePreparationMinutes}
+                          onChange={(e) =>
+                            setAccountForm({ ...accountForm, resourcePreparationMinutes: Number(e.target.value) })
+                          }
+                        />
                       )}
-                    </form>
-                    <ActionBar className="settings-action-bar" sticky>
+                    </SettingsFields>
+                    <SettingsActions>
                       <Button
                         type="button"
                         tone="danger"
@@ -1077,18 +1047,18 @@ export default function SettingsPanel({
                       <Button form="village-settings-form" pending={mutationPending}>
                         {mutationPending ? t("saving") : t("saveSettings")}
                       </Button>
-                    </ActionBar>
-                  </ScrollablePane>
+                    </SettingsActions>
+                  </SettingsVillageEditorScroll>
                 </>
               ) : (
                 <div className="settings-no-selection">{t("chooseVillage")}</div>
               )}
-            </DetailPane>
-          </MasterDetailLayout>
+            </SettingsVillageEditor>
+          </SettingsVillageLayout>
         )}
 
         {section === "groups" && (
-          <article className="settings-surface settings-group-card">
+          <SettingsSurface kind="groups">
             <h2>{t("groupOrder")}</h2>
             <p>{t("groupOrderHelp")}</p>
             <div className="settings-group-list">
@@ -1121,9 +1091,9 @@ export default function SettingsPanel({
               ))}
               {!availableGroups.length && <small>{t("noGroups")}</small>}
             </div>
-          </article>
+          </SettingsSurface>
         )}
-      </StickyRouteFrame>
+      </SettingsRouteFrame>
       {!embedded && (
         <Dialog
           open={deletePromptOpen}
@@ -1194,6 +1164,6 @@ export default function SettingsPanel({
           </DialogContent>
         </Dialog>
       )}
-    </section>
+    </SettingsPage>
   );
 }

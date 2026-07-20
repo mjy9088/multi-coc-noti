@@ -1,24 +1,15 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  DataList,
-  DataListItem,
-  EmptyState,
-  Field,
-  Label,
-  SectionHeader,
-  SectionHeaderContent,
-  SectionHeaderDescription,
-  SectionHeaderTitle,
-  Select,
-  StaleNotice,
-  Toolbar,
-} from "@multi-coc/ui";
+import { Badge, Button, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import {
+  HistoryFilters,
+  HistoryResult,
+  HistoryResults,
+  HistorySection,
+} from "../components/layout/product-compositions";
 import { historyQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
 import { useDashboardFormat } from "./use-dashboard-format";
@@ -77,65 +68,53 @@ export default function HistoryPanel({
   };
 
   return (
-    <section className="history-section">
-      <SectionHeader className="history-section-header">
-        <SectionHeaderContent>
-          <p className="eyebrow">UPGRADE HISTORY</p>
-          <SectionHeaderTitle>{t("title")}</SectionHeaderTitle>
-          <SectionHeaderDescription>{t("description")}</SectionHeaderDescription>
-        </SectionHeaderContent>
-      </SectionHeader>
-      <Toolbar className="history-filters">
-        <Field>
-          <Label>{t("village")}</Label>
-          <Select value={filters.village} onChange={(event) => setFilter("village", event.target.value)}>
-            <option value="">{t("allVillages")}</option>
-            {villages.map((village) => (
-              <option key={village.id} value={village.id}>
-                {village.name} · {village.playerTag}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field>
-          <Label>{t("base")}</Label>
-          <Select value={filters.base} onChange={(event) => setFilter("base", event.target.value)}>
-            <option value="">{t("all")}</option>
-            <option value="home">{t("home")}</option>
-            <option value="builder">{t("builderBase")}</option>
-          </Select>
-        </Field>
-        <Field>
-          <Label>{t("status")}</Label>
-          <Select value={filters.active} onChange={(event) => setFilter("active", event.target.value)}>
-            <option value="">{t("all")}</option>
-            <option value="true">{t("active")}</option>
-            <option value="false">{t("inactive")}</option>
-          </Select>
-        </Field>
-        <Field>
-          <Label>{t("type")}</Label>
-          <Select value={filters.type} onChange={(event) => setFilter("type", event.target.value)}>
-            <option value="">{t("all")}</option>
-            <option value="building">{t("building")}</option>
-            <option value="hero">{t("hero")}</option>
-            <option value="pet">{t("pet")}</option>
-            <option value="research">{t("research")}</option>
-          </Select>
-        </Field>
-      </Toolbar>
+    <HistorySection eyebrow="UPGRADE HISTORY" title={t("title")} description={t("description")}>
+      <HistoryFilters>
+        <SelectField
+          label={t("village")}
+          value={filters.village}
+          onChange={(event) => setFilter("village", event.target.value)}
+        >
+          <option value="">{t("allVillages")}</option>
+          {villages.map((village) => (
+            <option key={village.id} value={village.id}>
+              {village.name} · {village.playerTag}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField label={t("base")} value={filters.base} onChange={(event) => setFilter("base", event.target.value)}>
+          <option value="">{t("all")}</option>
+          <option value="home">{t("home")}</option>
+          <option value="builder">{t("builderBase")}</option>
+        </SelectField>
+        <SelectField
+          label={t("status")}
+          value={filters.active}
+          onChange={(event) => setFilter("active", event.target.value)}
+        >
+          <option value="">{t("all")}</option>
+          <option value="true">{t("active")}</option>
+          <option value="false">{t("inactive")}</option>
+        </SelectField>
+        <SelectField label={t("type")} value={filters.type} onChange={(event) => setFilter("type", event.target.value)}>
+          <option value="">{t("all")}</option>
+          <option value="building">{t("building")}</option>
+          <option value="hero">{t("hero")}</option>
+          <option value="pet">{t("pet")}</option>
+          <option value="research">{t("research")}</option>
+        </SelectField>
+      </HistoryFilters>
       {error && upgrades.length > 0 && (
         <StaleNotice onRetry={() => void historyQuery.refetch()} retryLabel={t("retry")}>
           {error}
         </StaleNotice>
       )}
       {error && !upgrades.length && <ErrorState compact message={error} retry={() => void historyQuery.refetch()} />}
-      <DataList className="history-list">
+      <HistoryResults>
         {upgrades.map((upgrade) => {
           const village = villageById.get(upgrade.accountId);
           return (
-            <DataListItem
-              className="history-card"
+            <HistoryResult
               key={upgrade.id}
               style={{ "--accent": village?.color || "var(--ui-color-accent)" } as React.CSSProperties}
             >
@@ -154,17 +133,17 @@ export default function HistoryPanel({
                 <Badge tone={upgrade.active ? "accent" : "neutral"}>{t(upgrade.active ? "active" : "inactive")}</Badge>
                 <time>{formatDateTime(upgrade.finishAt)}</time>
               </div>
-            </DataListItem>
+            </HistoryResult>
           );
         })}
         {!loading && !upgrades.length && <EmptyState title={t("empty")} />}
-      </DataList>
+      </HistoryResults>
       {historyQuery.hasNextPage && (
         <Button className="history-more" pending={loading} onClick={() => void historyQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}
         </Button>
       )}
       {loading && !upgrades.length && <LoadingState compact />}
-    </section>
+    </HistorySection>
   );
 }

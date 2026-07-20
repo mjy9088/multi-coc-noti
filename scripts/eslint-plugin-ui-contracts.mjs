@@ -1,5 +1,26 @@
 const interactiveElements = new Set(["button", "a", "input", "select", "textarea", "summary"]);
 const containerElements = new Set(["article", "div", "section", "span"]);
+const sharedCompositionElements = new Set([
+  "Card",
+  "ContentSection",
+  "DataList",
+  "DataListItem",
+  "DetailPane",
+  "EntityHeader",
+  "FormGrid",
+  "InputField",
+  "MasterDetailLayout",
+  "MasterPane",
+  "PageHeader",
+  "PageIntro",
+  "ScrollablePane",
+  "SelectField",
+  "SectionHeader",
+  "Stat",
+  "StatGrid",
+  "Toolbar",
+  "TextareaField",
+]);
 
 function attribute(node, name) {
   return node.attributes.find((item) => item.type === "JSXAttribute" && item.name.name === name);
@@ -161,13 +182,45 @@ const rules = {
           const routeFrame = siblings
             .slice(index + 1)
             .find(
-              (sibling) => sibling.type === "JSXElement" && elementName(sibling.openingElement) === "StickyRouteFrame",
+              (sibling) =>
+                sibling.type === "JSXElement" &&
+                ["StickyRouteFrame", "SettingsRouteFrame"].includes(elementName(sibling.openingElement)),
             );
           if (!routeFrame) {
             context.report({ node: node.openingElement, messageId: "missingFrame" });
           } else if (!attribute(routeFrame.openingElement, "scrollKey")) {
             context.report({ node: routeFrame.openingElement, messageId: "missingKey" });
           }
+        },
+      };
+    },
+  },
+  "no-shared-composition-classname": {
+    meta: {
+      type: "suggestion",
+      docs: { description: "Keep feature layout rules behind typed app compositions" },
+      messages: {
+        default:
+          "Do not style shared {{name}} directly from a route or feature screen. Add a typed semantic variant to @multi-coc/ui, or wrap it in apps/dashboard/components when the rule is product-specific. Keep className as an escape hatch inside those implementation layers.",
+      },
+      schema: [],
+    },
+    create(context) {
+      const imported = new Set();
+      return {
+        ImportDeclaration(node) {
+          if (node.source.value !== "@multi-coc/ui") return;
+          for (const specifier of node.specifiers) {
+            if (specifier.type !== "ImportSpecifier") continue;
+            const importedName =
+              specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value;
+            if (sharedCompositionElements.has(importedName)) imported.add(specifier.local.name);
+          }
+        },
+        JSXOpeningElement(node) {
+          const name = elementName(node);
+          if (!name || !imported.has(name) || !attribute(node, "className")) return;
+          context.report({ node, messageId: "default", data: { name } });
         },
       };
     },

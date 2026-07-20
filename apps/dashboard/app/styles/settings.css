@@ -47,14 +47,6 @@
   letter-spacing: -0.045em;
 }
 
-.settings-eyebrow {
-  margin: 0 0 var(--ui-space-2);
-  color: var(--ui-color-accent);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
 .settings-tabs-sticky {
   --ui-surface-context: var(--ui-color-canvas);
 

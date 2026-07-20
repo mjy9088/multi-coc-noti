@@ -14,7 +14,14 @@ const eslintConfig = defineConfig([
       "ui-contracts/no-noninteractive-click": "error",
       "ui-contracts/no-js-viewport-breakpoint": "error",
       "ui-contracts/no-magic-layout-threshold": "error",
+      "ui-contracts/no-shared-composition-classname": "error",
       "ui-contracts/sticky-tabs-route-frame": "error",
+    },
+  },
+  {
+    files: ["components/**/*.{ts,tsx}"],
+    rules: {
+      "ui-contracts/no-shared-composition-classname": "off",
     },
   },
   {

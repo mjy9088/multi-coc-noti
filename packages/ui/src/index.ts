@@ -57,11 +57,26 @@ export {
   TabContent,
   Tabs,
 } from "./components/display";
-export { Checkbox, Description, Field, FieldError, Input, Label, Select, Textarea } from "./components/forms";
+export {
+  Checkbox,
+  Description,
+  Field,
+  FieldError,
+  FormGrid,
+  Input,
+  InputField,
+  Label,
+  Select,
+  SelectField,
+  Textarea,
+  TextareaField,
+} from "./components/forms";
 export { IconButton, type IconButtonProps } from "./components/icon-button";
 export {
   Cluster,
   ContentGrid,
+  ContentSection,
+  type ContentSectionProps,
   DetailPane,
   DetailPaneBackdrop,
   MasterDetailLayout,
@@ -73,6 +88,8 @@ export {
   PageHeaderDescription,
   PageHeaderEyebrow,
   PageHeaderTitle,
+  PageIntro,
+  type PageIntroProps,
   ResponsiveGrid,
   ScrollablePane,
   SectionHeader,
