@@ -3,14 +3,17 @@ import test from "node:test";
 import { createCollectorApp } from "../src/http/app.ts";
 import type { CollectorState } from "../src/services/collector-state.ts";
 
-const state = {
-  accounts: [],
-  accountsFor: () => [],
-  officialStates: new Map(),
-  officialProfiles: new Map(),
-} as unknown as CollectorState;
-
-test("Hono collector app preserves health, CORS, session authentication, and route matching", async () => {
+test("[DB-HISTORY-001] Collector refreshes externally restored villages before authenticated API reads", async () => {
+  let refreshes = 0;
+  const state = {
+    accounts: [],
+    accountsFor: () => [],
+    refreshAccounts: async () => {
+      refreshes += 1;
+    },
+    officialStates: new Map(),
+    officialProfiles: new Map(),
+  } as unknown as CollectorState;
   const app = createCollectorApp({
     state,
     corsOrigin: "https://dashboard.example",
@@ -23,9 +26,12 @@ test("Hono collector app preserves health, CORS, session authentication, and rou
   assert.equal(health.status, 200);
   assert.equal(health.headers.get("access-control-allow-origin"), "https://dashboard.example");
   assert.deepEqual(await health.json(), { ok: true, database: true });
+  assert.equal(refreshes, 0);
 
   assert.equal((await app.request("/api/villages")).status, 401);
+  assert.equal(refreshes, 0);
   assert.equal((await app.request("/api/villages", { headers: { Cookie: "authjs.session-token=valid" } })).status, 200);
+  assert.equal(refreshes, 1);
   assert.equal(
     (
       await app.request("/api/villages/not-a-uuid", {

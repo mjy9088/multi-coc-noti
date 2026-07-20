@@ -81,15 +81,16 @@ export async function saveVillageExport(
   }
 }
 
-export async function exportVillageHistories(selector?: string): Promise<VillageHistoryBundle[]> {
+export async function exportVillageHistories(userId: string, selector?: string): Promise<VillageHistoryBundle[]> {
   const selected = selector?.trim() || null;
   const { rows: accountRows } = await database().query(
     `
     SELECT * FROM accounts
-    WHERE $1::text IS NULL OR id::text=$1 OR upper(player_tag)=upper($1) OR lower(label)=lower($1)
+    WHERE user_id=$1
+      AND ($2::text IS NULL OR id::text=$2 OR upper(player_tag)=upper($2) OR lower(label)=lower($2))
     ORDER BY lower(label),created_at
   `,
-    [selected],
+    [userId, selected],
   );
   const bundles: VillageHistoryBundle[] = [];
   for (const row of accountRows) {
@@ -138,7 +139,10 @@ export async function exportVillageHistories(selector?: string): Promise<Village
   return bundles;
 }
 
-export async function importVillageHistory(bundle: VillageHistoryBundle): Promise<VillageHistoryImportResult> {
+export async function importVillageHistory(
+  bundle: VillageHistoryBundle,
+  userId: string,
+): Promise<VillageHistoryImportResult> {
   if (bundle.format !== "multi-coc-village-exports" || bundle.version !== 2)
     throw new Error("unsupported village history format");
   if (!bundle.account?.label || !Array.isArray(bundle.villageExports))
@@ -148,10 +152,17 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
     await client.query("BEGIN");
     const playerTag = String(bundle.account.playerTag || "");
     let accountRow = playerTag
-      ? (await client.query("SELECT * FROM accounts WHERE upper(player_tag)=upper($1)", [playerTag])).rows[0]
+      ? (
+          await client.query("SELECT * FROM accounts WHERE user_id=$1 AND upper(player_tag)=upper($2)", [
+            userId,
+            playerTag,
+          ])
+        ).rows[0]
       : null;
     if (!accountRow && !playerTag && bundle.account.id)
-      accountRow = (await client.query("SELECT * FROM accounts WHERE id::text=$1", [bundle.account.id])).rows[0];
+      accountRow = (
+        await client.query("SELECT * FROM accounts WHERE user_id=$1 AND id::text=$2", [userId, bundle.account.id])
+      ).rows[0];
     let created = false;
     if (!accountRow) {
       const validOriginalId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -163,11 +174,12 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       const id = validOriginalId && !idTaken ? bundle.account.id : randomUUID();
       const result = await client.query(
         `
-        INSERT INTO accounts (id,label,player_tag,color,tags,resource_status,resource_status_updated_at,resource_preparation_minutes)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+        INSERT INTO accounts (id,user_id,label,player_tag,color,tags,resource_status,resource_status_updated_at,resource_preparation_minutes)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
       `,
         [
           id,
+          userId,
           bundle.account.label,
           playerTag,
           bundle.account.color || "#4c9a79",
@@ -179,13 +191,37 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
       );
       accountRow = result.rows[0];
       created = true;
+    } else {
+      accountRow = (
+        await client.query(
+          `
+          UPDATE accounts SET
+            label=$2,
+            player_tag=$3,
+            color=$4,
+            tags=$5,
+            resource_status=$6,
+            resource_status_updated_at=$7,
+            resource_preparation_minutes=$8,
+            updated_at=now()
+          WHERE id=$1 AND user_id=$9
+          RETURNING *
+        `,
+          [
+            accountRow.id,
+            bundle.account.label,
+            playerTag,
+            bundle.account.color || "#4c9a79",
+            bundle.account.tags || [],
+            bundle.account.resourceStatus || "unanswered",
+            bundle.account.resourceStatusUpdatedAt || new Date().toISOString(),
+            bundle.account.resourcePreparationMinutes === undefined ? 60 : bundle.account.resourcePreparationMinutes,
+            userId,
+          ],
+        )
+      ).rows[0];
     }
     const accountId = String(accountRow.id);
-    const existingUpgradeIds = new Set(
-      (await client.query("SELECT id FROM tracked_upgrades WHERE account_id=$1", [accountId])).rows.map((row) =>
-        String(row.id),
-      ),
-    );
     let exportCount = 0;
     for (const item of bundle.villageExports) {
       const existing = (
@@ -215,7 +251,7 @@ export async function importVillageHistory(bundle: VillageHistoryBundle): Promis
           setting.sourceKey,
         ])
       ).rows[0];
-      if (!target || existingUpgradeIds.has(String(target.id))) continue;
+      if (!target) continue;
       const offsets = normalizeOffsets(setting.notificationOffsets);
       await client.query(
         `

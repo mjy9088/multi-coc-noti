@@ -145,12 +145,26 @@ just data seed
 just data reseed        # stop just dev first; recreates the development DB
 ```
 
-Backups are JSON Lines v2: the first line contains village metadata, resource policy, and upgrade alert settings, and each later line contains one raw game export. Import reparses exports to rebuild derived state, matches existing accounts by player tag without overwriting current village settings, restores village settings only for new accounts, skips identical duplicate records, and rejects conflicting records at the same timestamp. Legacy v1 JSON bundles remain importable; their snapshot records are ignored.
+All `just data` backup and restore commands require the optional local test login to be fully enabled in `docker/.env`.
+Export selects only the deterministic user for `AUTH_TEST_USERNAME`; import, seed, and reseed create or reuse that user and
+attach every restored village to it. Selection and matching by player tag are restricted to that user, so another user's
+village with the same tag is neither exported nor merged.
+
+Backups are JSON Lines v2: the first line contains village metadata, resource policy, and upgrade alert settings, and each
+later line contains one raw game export. Import is a development seed/restore operation: it reparses exports to rebuild
+derived state, matches existing accounts by player tag within the target test user, and reapplies the header's village,
+resource-policy, and included per-upgrade alert settings even when that village already exists. It merges export history,
+skips identical duplicate records, and rejects conflicting records at the same timestamp. Runtime user data outside the
+bundle, such as notification delivery channels, is not replaced. Legacy v1 JSON bundles remain importable; their snapshot
+records are ignored.
 
 <!-- contract: DB-HISTORY-001 -->
 
-At the Database boundary, exporting and restoring a village must preserve its raw exports and rebuild its tracked-upgrade
-projection in one transaction; a failed or conflicting restore must not leave a partial village history.
+At the Database boundary, exporting must select only the explicit source user's villages. Restoring a village must preserve
+its raw exports, reapply its backed-up village and upgrade-alert settings, attach the restore to the explicit target user
+without merging another user's matching player tag, and rebuild its tracked-upgrade projection in one transaction; a failed
+or conflicting restore must not leave a partial village history. Collector refreshes its account view before authenticated
+API requests, so a CLI restore becomes visible to an already running Dashboard without restarting the development stack.
 
 ## Separate Notifier deployment
 

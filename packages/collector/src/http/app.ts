@@ -31,6 +31,7 @@ export function createCollectorApp({ state, corsOrigin, authenticate = authentic
     const user = await authenticate(c);
     if (!user) return c.json({ error: "authentication required" }, 401);
     c.set("userId" as never, user.id as never);
+    await state.refreshAccounts();
     await next();
   });
   app.onError((error, c) => c.json({ error: error.message }, 400));

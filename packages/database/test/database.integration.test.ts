@@ -157,6 +157,7 @@ test("[DB-HISTORY-001] village history export and import rebuild exports and tra
   const {
     closeDatabase,
     createAccount,
+    database,
     deleteAccount,
     exportVillageHistories,
     importVillageHistory,
@@ -168,7 +169,22 @@ test("[DB-HISTORY-001] village history export and import rebuild exports and tra
     updateUpgradePreparationOverride,
   } = await import("../index.ts");
   await migrate();
-  const account = await createAccount({ label: "Backup village", playerTag: "#BACKUP", color: "#456789", tags: [] });
+  const sourceUserId = "history-source-user";
+  const targetUserId = "history-target-user";
+  const otherUserId = "history-other-user";
+  await database().query("INSERT INTO users (id,name) VALUES ($1,$1),($2,$2),($3,$3) ON CONFLICT (id) DO NOTHING", [
+    sourceUserId,
+    targetUserId,
+    otherUserId,
+  ]);
+  const account = await createAccount(
+    { label: "Backup village", playerTag: "#BACKUP", color: "#456789", tags: [] },
+    sourceUserId,
+  );
+  const otherAccount = await createAccount(
+    { label: "Other user's village", playerTag: "#BACKUP", color: "#654321", tags: [] },
+    otherUserId,
+  );
   const observedAt = new Date(Date.now() - 60_000).toISOString();
   const finishAt = new Date(Date.now() + 7_200_000).toISOString();
   await saveVillageExport(account.id, {
@@ -180,17 +196,46 @@ test("[DB-HISTORY-001] village history export and import rebuild exports and tra
     unknownDataIds: [],
     raw: { tag: "#BACKUP", timestamp: observedAt },
   });
-  const [bundle] = await exportVillageHistories(account.id);
+  const [sourceUpgrade] = await listTrackedUpgrades({ activeOnly: true, accountIds: [account.id] });
+  assert.ok(sourceUpgrade);
+  await updateUpgradePreparationOverride(sourceUpgrade.id, 45);
+  const bundles = await exportVillageHistories(sourceUserId);
+  assert.equal(bundles.length, 1);
+  const [bundle] = bundles;
+  assert.ok(bundle);
+  assert.equal(bundle.account.id, account.id);
   assert.equal(bundle.villageExports.length, 1);
   await deleteAccount(account.id);
-  const restored = await importVillageHistory(bundle);
+  const restored = await importVillageHistory(bundle, targetUserId);
   assert.equal(restored.created, true);
   assert.equal(restored.villageExports, 1);
-  const upgrades = await listTrackedUpgrades({ activeOnly: true });
+  assert.notEqual(restored.accountId, otherAccount.id);
+  assert.equal(
+    (await database().query("SELECT user_id FROM accounts WHERE id=$1", [restored.accountId])).rows[0]?.user_id,
+    targetUserId,
+  );
+  const upgrades = await listTrackedUpgrades({ activeOnly: true, accountIds: [restored.accountId] });
   assert.equal(upgrades.length, 1);
   const upgrade = upgrades[0];
   assert.ok(upgrade);
   assert.equal(upgrade.sourceKey, "building:100:2");
+  assert.equal(upgrade.resourcePreparationOverrideMinutes, 45);
+  await database().query("UPDATE accounts SET label='Changed after restore',tags=ARRAY['local'] WHERE id=$1", [
+    restored.accountId,
+  ]);
+  await updateUpgradePreparationOverride(upgrade.id, 5);
+  const repeated = await importVillageHistory(bundle, targetUserId);
+  assert.equal(repeated.created, false);
+  assert.equal(repeated.villageExports, 0);
+  const repeatedAccount = (await database().query("SELECT label,tags FROM accounts WHERE id=$1", [restored.accountId]))
+    .rows[0];
+  assert.equal(repeatedAccount?.label, bundle.account.label);
+  assert.deepEqual(repeatedAccount?.tags, bundle.account.tags);
+  assert.equal(
+    (await listTrackedUpgrades({ activeOnly: true, accountIds: [restored.accountId] }))[0]
+      ?.resourcePreparationOverrideMinutes,
+    45,
+  );
   assert.equal((await listUpgradeHistory({ accountId: restored.accountId, active: true }))[0]?.id, upgrade.id);
   assert.equal((await listSyncHistory({ accountId: restored.accountId }))[0]?.builderUpgrades, 0);
   assert.equal((await updateUpgradePreparationOverride(upgrade.id, null))?.resourcePreparationOverrideMinutes, null);

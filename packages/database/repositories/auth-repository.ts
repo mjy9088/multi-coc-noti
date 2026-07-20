@@ -1,8 +1,23 @@
+import { createHash } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { database, drizzleDatabase } from "../client.ts";
 import { authSessions, users } from "../schema.ts";
 
 export type AuthenticatedUser = { id: string; name: string | null; email: string | null; image: string | null };
+
+export function localTestUserId(username: string): string {
+  return `test-${createHash("sha256").update(username).digest("hex").slice(0, 32)}`;
+}
+
+export async function ensureLocalTestUser(username: string): Promise<string> {
+  const userId = localTestUserId(username);
+  await database().query(
+    `INSERT INTO users (id,name) VALUES ($1,$2)
+     ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,updated_at=now()`,
+    [userId, username],
+  );
+  return userId;
+}
 
 export async function createLocalTestSession({
   userId,

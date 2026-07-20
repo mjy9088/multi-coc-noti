@@ -1,7 +1,13 @@
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { VillageHistoryBundle } from "@multi-coc/database";
-import { closeDatabase, exportVillageHistories, importVillageHistory, migrate } from "@multi-coc/database";
+import {
+  closeDatabase,
+  ensureLocalTestUser,
+  exportVillageHistories,
+  importVillageHistory,
+  migrate,
+} from "@multi-coc/database";
 import { parseVillageExport } from "@multi-coc/village-export";
 
 type LegacyBundle = {
@@ -19,6 +25,15 @@ type LegacyBundle = {
 };
 
 const [command, target = ".local/village-history", selector] = process.argv.slice(2);
+
+function testUsername(): string {
+  if (process.env.AUTH_TEST_CREDENTIALS_ENABLED !== "true")
+    throw new Error("history import requires AUTH_TEST_CREDENTIALS_ENABLED=true");
+  const username = process.env.AUTH_TEST_USERNAME?.trim();
+  if (!username || !process.env.AUTH_TEST_PASSWORD)
+    throw new Error("history import requires AUTH_TEST_USERNAME and AUTH_TEST_PASSWORD");
+  return username;
+}
 
 function filename(bundle: VillageHistoryBundle): string {
   const identity = bundle.account.playerTag.replace(/^#/, "") || bundle.account.id;
@@ -149,7 +164,8 @@ function serialize(bundle: VillageHistoryBundle): string {
 await migrate();
 try {
   if (command === "export") {
-    const bundles = await exportVillageHistories(selector);
+    const userId = await ensureLocalTestUser(testUsername());
+    const bundles = await exportVillageHistories(userId, selector);
     if (selector && bundles.length === 0) throw new Error(`village not found: ${selector}`);
     await mkdir(target, { recursive: true });
     const expectedFiles = new Set(bundles.map(filename));
@@ -178,10 +194,11 @@ try {
     }
     console.log(`[history] exported villages=${bundles.length}`);
   } else if (command === "import") {
+    const userId = await ensureLocalTestUser(testUsername());
     let villages = 0;
     let villageExports = 0;
     for (const source of await files(target)) {
-      const result = await importVillageHistory(await readBundle(source));
+      const result = await importVillageHistory(await readBundle(source), userId);
       villages += 1;
       villageExports += result.villageExports;
       console.log(`[history] imported ${result.label} created=${result.created} exports=${result.villageExports}`);

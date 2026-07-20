@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { createLocalTestSession } from "@multi-coc/database/auth-adapter";
+import { createLocalTestSession, localTestUserId } from "@multi-coc/database/auth-adapter";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { testCredentialsConfig } from "./test-credentials";
@@ -21,7 +21,7 @@ export async function signInWithTestCredentials(formData: FormData): Promise<voi
     redirect("/sign-in?testError=invalid");
   }
 
-  const userId = `test-${createHash("sha256").update(configured.username).digest("hex").slice(0, 32)}`;
+  const userId = localTestUserId(configured.username);
   const sessionToken = randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + sessionMaxAgeSeconds * 1_000);
   await createLocalTestSession({ userId, username: configured.username, sessionToken, expires });

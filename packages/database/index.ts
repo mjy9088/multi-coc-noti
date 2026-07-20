@@ -6,6 +6,8 @@ export {
   authenticateSessionToken,
   claimUnownedLegacyData,
   createLocalTestSession,
+  ensureLocalTestUser,
+  localTestUserId,
 } from "./repositories/auth-repository.ts";
 export {
   getDashboardSettings,

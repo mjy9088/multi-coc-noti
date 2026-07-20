@@ -86,6 +86,9 @@ just data import --path .local/village-history
 just check              # tests, lint, and Compose validation
 ```
 
+The `just data` export, import, seed, and reseed commands operate only on the local test login configured by
+`AUTH_TEST_CREDENTIALS_ENABLED`, `AUTH_TEST_USERNAME`, and `AUTH_TEST_PASSWORD` in `docker/.env`.
+
 Direct pnpm commands include `pnpm typecheck`, `pnpm test`, and `pnpm --filter @multi-coc/dashboard lint`.
 
 ## Development principles
