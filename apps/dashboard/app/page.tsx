@@ -5,16 +5,31 @@ import {
   Button,
   Card,
   Checkbox,
+  Disclosure,
+  DisclosureContent,
+  DisclosureSummary,
   EmptyState,
   Field,
   Input,
   Label,
+  PageHeader,
+  PageHeaderContent,
+  PageHeaderDescription,
+  PageHeaderEyebrow,
+  PageHeaderTitle,
   RadioGroup,
   RadioGroupItem,
+  SectionHeader,
+  SectionHeaderContent,
+  SectionHeaderDescription,
+  SectionHeaderTitle,
   StaleNotice,
+  Stat,
+  StatGrid,
   StickyStackItem,
   ToggleGroup,
   ToggleGroupItem,
+  Toolbar,
   useStickyStack,
 } from "@multi-coc/ui";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
@@ -314,13 +329,15 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
         }
       >
         <section className="dashboard-hero">
-          <div className="hero-copy">
-            <p className="eyebrow">{t("eyebrow")}</p>
-            <h1>{t("title")}</h1>
-            <p className="subcopy">{t("subtitle")}</p>
-          </div>
+          <PageHeader className="hero-copy">
+            <PageHeaderContent>
+              <PageHeaderEyebrow>{t("eyebrow")}</PageHeaderEyebrow>
+              <PageHeaderTitle>{t("title")}</PageHeaderTitle>
+              <PageHeaderDescription className="subcopy">{t("subtitle")}</PageHeaderDescription>
+            </PageHeaderContent>
+          </PageHeader>
           <div className="account-controls dashboard-filters">
-            <div className="account-tools">
+            <Toolbar className="account-tools">
               <Field className="dashboard-search-field">
                 <Label>{t("search")}</Label>
                 <Input
@@ -356,9 +373,9 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
                   setActiveTag(null);
                 }}
               />
-              <details className="display-options">
-                <summary>{t("displayOptions")}</summary>
-                <div>
+              <Disclosure className="display-options">
+                <DisclosureSummary>{t("displayOptions")}</DisclosureSummary>
+                <DisclosureContent>
                   <Checkbox
                     label={t("inferGoblinResearcher")}
                     checked={displayOptions.goblinResearcher}
@@ -377,9 +394,9 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
                       localStorage.setItem("multi-village-prioritize-available", String(event.target.checked));
                     }}
                   />
-                </div>
-              </details>
-            </div>
+                </DisclosureContent>
+              </Disclosure>
+            </Toolbar>
             <ToggleGroup
               className="account-tabs"
               type="single"
@@ -398,28 +415,24 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
               ))}
             </ToggleGroup>
           </div>
-          <Card className="summary-strip">
-            <div>
-              <span>{t("accounts")}</span>
-              <strong>{accounts.length}</strong>
-            </div>
-            <div>
-              <span>{t("homeVillageIdle")}</span>
-              <strong className={availabilitySummary.homeVillage ? "green" : ""}>
-                {availabilitySummary.homeVillage}
-              </strong>
-            </div>
-            <div className="builder-base-summary">
-              <span>{t("builderBaseIdle")}</span>
-              <strong className={availabilitySummary.builderBase ? "green" : ""}>
-                {availabilitySummary.builderBase}
-              </strong>
-            </div>
-            <div>
-              <span>{t("earliest")}</span>
-              <strong className="small">{next ? formatDuration(next.finishAt, clockNow) : t("none")}</strong>
-            </div>
-          </Card>
+          <StatGrid className="summary-strip">
+            <Stat label={t("accounts")} value={accounts.length} />
+            <Stat
+              label={t("homeVillageIdle")}
+              value={availabilitySummary.homeVillage}
+              className={availabilitySummary.homeVillage ? "green" : ""}
+            />
+            <Stat
+              label={t("builderBaseIdle")}
+              value={availabilitySummary.builderBase}
+              className={`builder-base-summary${availabilitySummary.builderBase ? " green" : ""}`}
+            />
+            <Stat
+              label={t("earliest")}
+              value={next ? formatDuration(next.finishAt, clockNow) : t("none")}
+              className="small"
+            />
+          </StatGrid>
         </section>
 
         <UpgradeCharts
@@ -513,13 +526,13 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
         </section>
 
         <section className="queue-section dashboard-scroll-section ui-sticky-scroll-target" id="upgrade-queue">
-          <div className="section-title">
-            <div>
+          <SectionHeader className="section-title">
+            <SectionHeaderContent>
               <p className="eyebrow">UPGRADE QUEUE</p>
-              <h2>{t("queue")}</h2>
-            </div>
-            <span>{t("soonest")}</span>
-          </div>
+              <SectionHeaderTitle>{t("queue")}</SectionHeaderTitle>
+            </SectionHeaderContent>
+            <SectionHeaderDescription>{t("soonest")}</SectionHeaderDescription>
+          </SectionHeader>
           <div className="queue">
             {allUpgrades.map(({ account, upgrade }, index) => {
               const duration = Math.max(1, new Date(upgrade.finishAt).getTime() - clockNow);

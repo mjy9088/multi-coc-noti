@@ -1,6 +1,21 @@
 "use client";
 
-import { Badge, Button, Card, EmptyState, Field, Label, Select, StaleNotice } from "@multi-coc/ui";
+import {
+  Badge,
+  Button,
+  DataList,
+  DataListItem,
+  EmptyState,
+  Field,
+  Label,
+  SectionHeader,
+  SectionHeaderContent,
+  SectionHeaderDescription,
+  SectionHeaderTitle,
+  Select,
+  StaleNotice,
+  Toolbar,
+} from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -50,12 +65,14 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
 
   return (
     <section className="history-section">
-      <header className="history-section-header">
-        <p className="eyebrow">SYNC HISTORY</p>
-        <h2>{t("syncTitle")}</h2>
-        <p>{t("syncDescription")}</p>
-      </header>
-      <div className="history-filters sync-history-filters">
+      <SectionHeader className="history-section-header">
+        <SectionHeaderContent>
+          <p className="eyebrow">SYNC HISTORY</p>
+          <SectionHeaderTitle>{t("syncTitle")}</SectionHeaderTitle>
+          <SectionHeaderDescription>{t("syncDescription")}</SectionHeaderDescription>
+        </SectionHeaderContent>
+      </SectionHeader>
+      <Toolbar className="history-filters sync-history-filters">
         <Field>
           <Label>{t("village")}</Label>
           <Select value={village} onChange={(event) => setVillage(event.target.value)}>
@@ -67,19 +84,18 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
             ))}
           </Select>
         </Field>
-      </div>
+      </Toolbar>
       {error && syncs.length > 0 && (
         <StaleNotice onRetry={() => void syncQuery.refetch()} retryLabel={t("retry")}>
           {error}
         </StaleNotice>
       )}
       {error && !syncs.length && <ErrorState compact message={error} retry={() => void syncQuery.refetch()} />}
-      <div className="history-list sync-history-list">
+      <DataList className="history-list sync-history-list">
         {syncs.map((sync) => {
           const account = villageById.get(sync.accountId);
           return (
-            <Card
-              role="listitem"
+            <DataListItem
               className="history-card"
               key={sync.id}
               style={{ "--accent": account?.color || "var(--ui-color-accent)" } as React.CSSProperties}
@@ -103,11 +119,11 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
                 <time>{formatDateTime(sync.importedAt)}</time>
                 <small>{t("exportedAt", { date: formatDateTime(sync.exportedAt) })}</small>
               </div>
-            </Card>
+            </DataListItem>
           );
         })}
         {!loading && !syncs.length && <EmptyState title={t("syncEmpty")} />}
-      </div>
+      </DataList>
       {syncQuery.hasNextPage && (
         <Button className="history-more" pending={loading} onClick={() => void syncQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}

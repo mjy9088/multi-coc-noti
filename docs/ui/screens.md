@@ -50,8 +50,10 @@ frame. Route changes reset only the frame's internal scroll position.
 <!-- contract: UI-ROUTES-001 -->
 
 Dashboard, village detail, and both History routes compose the owned UI primitives for actions, fields, cards, badges,
-request states, and tabs. Their product-specific charts, metrics, and result rows use semantic tokens and must not create
-page-level horizontal overflow at supported desktop or mobile widths.
+request states, tabs, page/section headers, data lists, statistics, and chart frames. Settings village management uses the
+shared master-detail and selection-list compositions, including their mobile sheet and scroll handoff behavior. Product
+CSS now owns only screen-specific arrangement and data visualization details; it must not recreate those shared component
+responsibilities or create page-level horizontal overflow at supported desktop or mobile widths.
 
 Purpose: answer “which village can start work now, what is currently upgrading, and what finishes next?” across all
 villages.

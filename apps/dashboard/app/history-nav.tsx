@@ -1,6 +1,15 @@
 "use client";
 
-import { StickyStackItem, Tab, Tabs } from "@multi-coc/ui";
+import {
+  PageHeader,
+  PageHeaderContent,
+  PageHeaderDescription,
+  PageHeaderEyebrow,
+  PageHeaderTitle,
+  StickyStackItem,
+  Tab,
+  Tabs,
+} from "@multi-coc/ui";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -9,11 +18,13 @@ export default function HistoryNav({ section }: { section: "upgrades" | "syncs" 
   const t = useTranslations("History");
   return (
     <>
-      <header className="history-header">
-        <p className="eyebrow">HISTORY</p>
-        <h1>{t("historyTitle")}</h1>
-        <p>{t("historyDescription")}</p>
-      </header>
+      <PageHeader className="history-header">
+        <PageHeaderContent>
+          <PageHeaderEyebrow>HISTORY</PageHeaderEyebrow>
+          <PageHeaderTitle>{t("historyTitle")}</PageHeaderTitle>
+          <PageHeaderDescription>{t("historyDescription")}</PageHeaderDescription>
+        </PageHeaderContent>
+      </PageHeader>
       <StickyStackItem order={10} as="nav" className="history-tabs-sticky">
         <Tabs
           className="history-sections"

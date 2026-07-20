@@ -357,11 +357,8 @@
   margin-top: var(--ui-space-4);
 }
 
-.settings-village-layout.ui-split-layout {
+.settings-village-layout.ui-master-detail {
   height: 100%;
-  display: grid;
-  grid-template-columns: minmax(17rem, 0.7fr) minmax(0, 1.3fr);
-  gap: var(--ui-space-4);
   align-items: start;
 }
 
@@ -395,48 +392,15 @@
   font-size: 1rem;
 }
 
-.settings-village-picker > button {
-  width: 100%;
-  min-height: 3.75rem;
-  display: flex;
-  gap: var(--ui-space-3);
-  align-items: center;
-  border: 0;
-  border-bottom: 1px solid var(--ui-color-border-subtle);
+.settings-village-picker .ui-selection-list-item {
   border-radius: 0;
-  background: transparent;
-  padding: var(--ui-space-3);
-  color: var(--ui-color-text);
-  text-align: left;
-  cursor: pointer;
 }
 
-.settings-village-picker > button:hover {
-  background: var(--ui-color-surface-inset);
-}
-
-.settings-village-picker > button.selected {
-  background: var(--ui-color-accent-soft);
-  box-shadow: var(--ui-shadow-selected-edge);
-}
-
-.settings-village-picker i {
+.settings-village-picker .ui-selection-list-leading i {
   width: 0.65rem;
   height: 0.65rem;
-  flex: 0 0 auto;
+  display: block;
   border-radius: 50%;
-}
-
-.settings-village-picker span {
-  min-width: 0;
-  display: grid;
-  gap: var(--ui-space-1);
-}
-
-.settings-village-picker small {
-  overflow-wrap: anywhere;
-  color: var(--ui-color-text-muted);
-  font-size: 0.72rem;
 }
 
 .village-editor-heading {
@@ -474,8 +438,7 @@
   box-shadow: var(--ui-shadow-sticky);
 }
 
-.settings-sheet-close,
-.settings-sheet-backdrop {
+.settings-sheet-close {
   display: none;
 }
 
@@ -599,12 +562,11 @@
     --ui-surface-inset: var(--ui-space-4);
   }
 
-  .settings-village-layout.ui-split-layout {
+  .settings-village-layout.ui-master-detail {
     position: static;
     top: auto;
     height: 100%;
     min-height: 0;
-    display: block;
   }
 
   .settings-village-list-card {
@@ -615,37 +577,11 @@
     max-height: none;
   }
 
-  /* ui-contract-disable-next-line overlay-component -- backdrop belongs to the mobile URL-backed master-detail editor sheet */
-  .settings-sheet-backdrop {
-    position: fixed;
-    z-index: var(--ui-layer-modal-backdrop);
-    inset: 0;
-    display: block;
-    width: 100%;
-    border: 0;
-    background: var(--ui-color-overlay);
-  }
-
-  .settings-village-editor-card:not(.is-open) {
-    display: none;
-  }
-
-  /* ui-contract-disable-next-line overlay-component -- mobile master-detail keeps URL-backed settings in a persistent editor sheet, not a bounded modal task */
-  .settings-village-editor-card.is-open {
+  .settings-village-editor-card.ui-detail-pane {
     --ui-sticky-surface-inline-bleed: var(--ui-space-4);
     --ui-sticky-surface-block-end-bleed: 0px;
 
-    position: fixed;
-    z-index: var(--ui-layer-modal);
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: min(88dvh, 50rem);
-    min-height: 0;
-    overflow: hidden;
-    border-radius: var(--ui-radius-large) var(--ui-radius-large) 0 0;
     padding-bottom: 0;
-    box-shadow: var(--ui-shadow-overlay);
   }
 
   .settings-sheet-close {

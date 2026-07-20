@@ -1,4 +1,14 @@
-import { Card, CardHeader, CardTitle, EmptyState } from "@multi-coc/ui";
+import {
+  ChartCard,
+  ChartCardBody,
+  ChartCardHeader,
+  ChartCardTitle,
+  EmptyState,
+  SectionHeader,
+  SectionHeaderContent,
+  SectionHeaderDescription,
+  SectionHeaderTitle,
+} from "@multi-coc/ui";
 import type { CompletionBin, UpgradeTimelinePoint } from "@multi-coc/upgrade-availability";
 
 const WIDTH = 720;
@@ -36,41 +46,43 @@ function AreaPlot({
     `${line(key)} L${x(end)},${HEIGHT - BOTTOM} L${x(start)},${HEIGHT - BOTTOM} Z`;
   const first = points[0];
   return (
-    <Card className="upgrade-area-chart">
-      <CardHeader className="upgrade-chart-heading">
-        <CardTitle>{label}</CardTitle>
+    <ChartCard className="upgrade-area-chart">
+      <ChartCardHeader className="upgrade-chart-heading">
+        <ChartCardTitle>{label}</ChartCardTitle>
         <span>
           <b className="legend-home" />
           {homeLabel} {first?.[homeKey] || 0}
           <b className="legend-all" />
           {allLabel} {first?.[allKey] || 0}
         </span>
-      </CardHeader>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label={`${label}: ${homeLabel} ${first?.[homeKey] || 0}, ${allLabel} ${first?.[allKey] || 0}`}
-      >
-        {[0, Math.ceil(maximum / 2), maximum].map((value) => (
-          <g key={value}>
-            <line className="chart-grid" x1={LEFT} x2={WIDTH - RIGHT} y1={y(value)} y2={y(value)} />
-            <text x={LEFT - 7} y={y(value) + 3} textAnchor="end">
-              {value}
-            </text>
-          </g>
-        ))}
-        <path className="area-all" d={area(allKey)} />
-        <path className="area-home" d={area(homeKey)} />
-        <path className="line-all" d={line(allKey)} />
-        <path className="line-home" d={line(homeKey)} />
-        <text x={LEFT} y={HEIGHT - 6}>
-          {formatTime(start)}
-        </text>
-        <text x={WIDTH - RIGHT} y={HEIGHT - 6} textAnchor="end">
-          {formatTime(end)}
-        </text>
-      </svg>
-    </Card>
+      </ChartCardHeader>
+      <ChartCardBody>
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          role="img"
+          aria-label={`${label}: ${homeLabel} ${first?.[homeKey] || 0}, ${allLabel} ${first?.[allKey] || 0}`}
+        >
+          {[0, Math.ceil(maximum / 2), maximum].map((value) => (
+            <g key={value}>
+              <line className="chart-grid" x1={LEFT} x2={WIDTH - RIGHT} y1={y(value)} y2={y(value)} />
+              <text x={LEFT - 7} y={y(value) + 3} textAnchor="end">
+                {value}
+              </text>
+            </g>
+          ))}
+          <path className="area-all" d={area(allKey)} />
+          <path className="area-home" d={area(homeKey)} />
+          <path className="line-all" d={line(allKey)} />
+          <path className="line-home" d={line(homeKey)} />
+          <text x={LEFT} y={HEIGHT - 6}>
+            {formatTime(start)}
+          </text>
+          <text x={WIDTH - RIGHT} y={HEIGHT - 6} textAnchor="end">
+            {formatTime(end)}
+          </text>
+        </svg>
+      </ChartCardBody>
+    </ChartCard>
   );
 }
 
@@ -98,28 +110,28 @@ export default function UpgradeCharts({
   const hasUpgrades = timeline[0]?.activeAll > 0;
   return (
     <section className="upgrade-outlook" aria-labelledby="upgrade-outlook-title">
-      <div className="section-title">
-        <div>
+      <SectionHeader className="section-title">
+        <SectionHeaderContent>
           <p className="eyebrow">UPGRADE OUTLOOK</p>
-          <h2 id="upgrade-outlook-title">{labels.title}</h2>
-        </div>
-        <span>{labels.description}</span>
-      </div>
+          <SectionHeaderTitle id="upgrade-outlook-title">{labels.title}</SectionHeaderTitle>
+        </SectionHeaderContent>
+        <SectionHeaderDescription>{labels.description}</SectionHeaderDescription>
+      </SectionHeader>
       {!hasUpgrades ? (
         <EmptyState title={labels.empty} />
       ) : (
         <div className="upgrade-chart-layout">
-          <Card className="completion-chart">
-            <CardHeader className="upgrade-chart-heading">
-              <CardTitle>{labels.completions}</CardTitle>
+          <ChartCard className="completion-chart">
+            <ChartCardHeader className="upgrade-chart-heading">
+              <ChartCardTitle>{labels.completions}</ChartCardTitle>
               <span>
                 <b className="legend-home" />
                 {labels.home}
                 <b className="legend-all" />
                 {labels.all}
               </span>
-            </CardHeader>
-            <div className="completion-bars" role="img" aria-label={labels.completions}>
+            </ChartCardHeader>
+            <ChartCardBody className="completion-bars" role="img" aria-label={labels.completions}>
               {bins.map((bin, index) => (
                 <div className="completion-bin" key={bin.start}>
                   <div className="bar-space">
@@ -134,8 +146,8 @@ export default function UpgradeCharts({
                   </small>
                 </div>
               ))}
-            </div>
-          </Card>
+            </ChartCardBody>
+          </ChartCard>
           <AreaPlot
             points={timeline}
             homeKey="activeHome"

@@ -47,13 +47,13 @@ test("[UI-SETTINGS-001] measured sticky chrome keeps the desktop settings viewpo
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "desktop composition assertion");
   await page.goto("/settings/villages");
-  await expect(page.locator(".settings-village-picker > button")).toHaveCount(36);
+  await expect(page.locator(".settings-village-picker button")).toHaveCount(36);
 
   const settingsPage = page.locator(".settings-page");
   await settingsPage.evaluate((element) => {
     element.dataset.persistenceProbe = "mounted";
   });
-  await page.locator(".settings-village-picker > button").first().click();
+  await page.locator(".settings-village-picker button").first().click();
   await expect(page).toHaveURL(new RegExp(`/settings/villages/${villageId(1)}$`));
   await expect(page.locator(".settings-village-editor-card")).toBeVisible();
   await expect(page.locator(".village-editor-scroll")).toHaveCSS("overflow-y", "hidden");
@@ -111,10 +111,10 @@ test("[UI-SETTINGS-001] mobile village settings keep list and editor scroll owne
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile composition assertion");
   await page.goto("/settings/villages");
   const picker = page.locator(".settings-village-picker");
-  await expect(picker.locator("> button")).toHaveCount(36);
+  await expect(picker.locator("button")).toHaveCount(36);
   expect(await picker.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
 
-  await picker.locator("> button").first().click();
+  await picker.locator("button").first().click();
   const editor = page.locator(".settings-village-editor-card");
   await expect(editor).toBeVisible();
   await expect(editor).toHaveCSS("position", "fixed");

@@ -1,6 +1,19 @@
 "use client";
 
-import { Button, Card, EmptyState } from "@multi-coc/ui";
+import {
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  EmptyState,
+  EntityHeader,
+  EntityHeaderActions,
+  EntityHeaderIdentity,
+  EntityHeaderMeta,
+  EntityHeaderTitle,
+  Stat,
+  StatGrid,
+} from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 
@@ -85,18 +98,18 @@ export default function VillageDetail({
           <Button onClick={onSettings}>{t("villageSettings")}</Button>
         </span>
       </div>
-      <header className="village-detail-header" style={{ "--accent": village.color } as React.CSSProperties}>
-        <div>
+      <EntityHeader className="village-detail-header" style={{ "--accent": village.color } as React.CSSProperties}>
+        <EntityHeaderIdentity>
           <p className="eyebrow">VILLAGE</p>
-          <h1>{village.name}</h1>
-          <p>
+          <EntityHeaderTitle>{village.name}</EntityHeaderTitle>
+          <EntityHeaderMeta>
             {village.tag} · TH {village.townHall} · {t("level")} {village.level}
-          </p>
-        </div>
-        <span>
+          </EntityHeaderMeta>
+        </EntityHeaderIdentity>
+        <EntityHeaderActions>
           {t("updated")} {formatDateTime(village.lastSeen)}
-        </span>
-      </header>
+        </EntityHeaderActions>
+      </EntityHeader>
       <div className="village-detail-grid">
         <Card className="village-detail-card">
           <h2>{t("upgradeAvailability")}</h2>
@@ -104,68 +117,27 @@ export default function VillageDetail({
         </Card>
         <Card className="village-detail-card">
           <h2>{t("upgradeSummary")}</h2>
-          <div className="metric-grid">
-            <div>
-              <span>{t("homeVillage")}</span>
-              <strong>{homeUpgrades.length}</strong>
-            </div>
-            <div>
-              <span>{t("builderBase")}</span>
-              <strong>{builderUpgrades.length}</strong>
-            </div>
-            <div>
-              <span>{t("building")}</span>
-              <strong>{typeCount("building")}</strong>
-            </div>
-            <div>
-              <span>{t("hero")}</span>
-              <strong>{typeCount("hero")}</strong>
-            </div>
-            <div>
-              <span>{t("research")}</span>
-              <strong>{typeCount("research")}</strong>
-            </div>
-            <div>
-              <span>{t("pet")}</span>
-              <strong>{typeCount("pet")}</strong>
-            </div>
-          </div>
+          <StatGrid className="metric-grid">
+            <Stat label={t("homeVillage")} value={homeUpgrades.length} />
+            <Stat label={t("builderBase")} value={builderUpgrades.length} />
+            <Stat label={t("building")} value={typeCount("building")} />
+            <Stat label={t("hero")} value={typeCount("hero")} />
+            <Stat label={t("research")} value={typeCount("research")} />
+            <Stat label={t("pet")} value={typeCount("pet")} />
+          </StatGrid>
         </Card>
         {stats && (
           <Card className="village-detail-card">
             <h2>{t("playerStats")}</h2>
-            <div className="metric-grid">
-              {stats.league && (
-                <div>
-                  <span>{t("league")}</span>
-                  <strong className="metric-text">{stats.league}</strong>
-                </div>
-              )}
-              <div>
-                <span>{t("trophies")}</span>
-                <strong>{stats.trophies.toLocaleString()}</strong>
-              </div>
-              <div>
-                <span>{t("bestTrophies")}</span>
-                <strong>{stats.bestTrophies.toLocaleString()}</strong>
-              </div>
-              <div>
-                <span>{t("warStars")}</span>
-                <strong>{stats.warStars.toLocaleString()}</strong>
-              </div>
-              <div>
-                <span>{t("donations")}</span>
-                <strong>{stats.donations.toLocaleString()}</strong>
-              </div>
-              <div>
-                <span>{t("donationsReceived")}</span>
-                <strong>{stats.donationsReceived.toLocaleString()}</strong>
-              </div>
-              <div>
-                <span>{t("capitalContributions")}</span>
-                <strong>{stats.capitalContributions.toLocaleString()}</strong>
-              </div>
-            </div>
+            <StatGrid className="metric-grid">
+              {stats.league && <Stat label={t("league")} value={stats.league} className="metric-text" />}
+              <Stat label={t("trophies")} value={stats.trophies.toLocaleString()} />
+              <Stat label={t("bestTrophies")} value={stats.bestTrophies.toLocaleString()} />
+              <Stat label={t("warStars")} value={stats.warStars.toLocaleString()} />
+              <Stat label={t("donations")} value={stats.donations.toLocaleString()} />
+              <Stat label={t("donationsReceived")} value={stats.donationsReceived.toLocaleString()} />
+              <Stat label={t("capitalContributions")} value={stats.capitalContributions.toLocaleString()} />
+            </StatGrid>
           </Card>
         )}
         {village.cooldowns?.clockTower && (
@@ -218,21 +190,23 @@ export default function VillageDetail({
       <Card className="village-detail-card village-upgrades">
         <h2>{t("activeVillageUpgrades")}</h2>
         {village.upgrades.length ? (
-          village.upgrades.map((upgrade) => (
-            <div key={upgrade.id}>
-              <span>
-                <b>{upgrade.name}</b>
-                <small>
-                  {upgrade.base === "builder" ? t("builderBase") : t("homeVillage")} · {t("level")} {upgrade.level} →{" "}
-                  {upgrade.nextLevel || upgrade.level + 1}
-                </small>
-              </span>
-              <span>
-                <strong>{formatDuration(upgrade.finishAt, now)}</strong>
-                <small>{formatDateTime(upgrade.finishAt)}</small>
-              </span>
-            </div>
-          ))
+          <DataList>
+            {village.upgrades.map((upgrade) => (
+              <DataListItem key={upgrade.id}>
+                <span>
+                  <b>{upgrade.name}</b>
+                  <small>
+                    {upgrade.base === "builder" ? t("builderBase") : t("homeVillage")} · {t("level")} {upgrade.level} →{" "}
+                    {upgrade.nextLevel || upgrade.level + 1}
+                  </small>
+                </span>
+                <span>
+                  <strong>{formatDuration(upgrade.finishAt, now)}</strong>
+                  <small>{formatDateTime(upgrade.finishAt)}</small>
+                </span>
+              </DataListItem>
+            ))}
+          </DataList>
         ) : (
           <EmptyState title={t("empty")} />
         )}

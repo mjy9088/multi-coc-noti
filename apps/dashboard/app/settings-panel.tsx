@@ -5,6 +5,8 @@ import {
   Button,
   Checkbox,
   Description,
+  DetailPane,
+  DetailPaneBackdrop,
   Dialog,
   DialogBody,
   DialogContent,
@@ -14,10 +16,17 @@ import {
   Field,
   Input,
   Label,
+  MasterDetailLayout,
+  MasterPane,
   RequestState,
   ScrollablePane,
   Select,
-  SplitLayout,
+  SelectionList,
+  SelectionListContent,
+  SelectionListDescription,
+  SelectionListItem,
+  SelectionListLeading,
+  SelectionListTitle,
   StickyRouteFrame,
   StickyStackItem,
   Tab,
@@ -902,8 +911,8 @@ export default function SettingsPanel({
         )}
 
         {section === "villages" && (
-          <SplitLayout className="settings-village-layout">
-            <article className="settings-surface settings-village-list-card ui-sticky-surface">
+          <MasterDetailLayout className="settings-village-layout">
+            <MasterPane className="settings-surface settings-village-list-card ui-sticky-surface">
               <h2>{t("registeredVillages")}</h2>
               <p>{t("registeredVillagesHelp")}</p>
               <Field className="village-search">
@@ -916,35 +925,38 @@ export default function SettingsPanel({
                 />
               </Field>
               <ScrollablePane className="settings-village-picker" boundary="contain" activation="sticky-frame">
-                {visibleAccounts.map((item) => (
-                  <button
-                    key={item.id}
-                    className={editing?.id === item.id ? "selected" : ""}
-                    onClick={() => chooseAccount(item)}
-                  >
-                    <i style={{ background: item.color }} />
-                    <span>
-                      <b>{item.label}</b>
-                      <small>
-                        {item.playerTag}
-                        {item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}
-                      </small>
-                    </span>
-                  </button>
-                ))}
-                {!visibleAccounts.length && <p>{accounts.length ? t("noVillageMatches") : t("noVillages")}</p>}
+                <SelectionList>
+                  {visibleAccounts.map((item) => (
+                    <SelectionListItem
+                      key={item.id}
+                      selected={editing?.id === item.id}
+                      onClick={() => chooseAccount(item)}
+                    >
+                      <SelectionListLeading>
+                        <i style={{ background: item.color }} />
+                      </SelectionListLeading>
+                      <SelectionListContent>
+                        <SelectionListTitle>{item.label}</SelectionListTitle>
+                        <SelectionListDescription>
+                          {item.playerTag}
+                          {item.tags?.length ? ` · ${item.tags.map((tag) => `#${tag}`).join(" ")}` : ""}
+                        </SelectionListDescription>
+                      </SelectionListContent>
+                    </SelectionListItem>
+                  ))}
+                  {!visibleAccounts.length && <p>{accounts.length ? t("noVillageMatches") : t("noVillages")}</p>}
+                </SelectionList>
               </ScrollablePane>
-            </article>
-            {editing && (
-              <button
-                type="button"
-                className="settings-sheet-backdrop"
-                aria-label={t("chooseVillage")}
-                onClick={() => setEditing(null)}
-              />
-            )}
-            <article
-              className={`settings-surface settings-village-editor-card ${editing ? "is-open" : ""}`}
+            </MasterPane>
+            <DetailPaneBackdrop
+              open={Boolean(editing)}
+              className="settings-sheet-backdrop"
+              label={t("chooseVillage")}
+              onClick={() => setEditing(null)}
+            />
+            <DetailPane
+              open={Boolean(editing)}
+              className="settings-surface settings-village-editor-card"
               id="village-settings-card"
             >
               {editing ? (
@@ -1071,8 +1083,8 @@ export default function SettingsPanel({
               ) : (
                 <div className="settings-no-selection">{t("chooseVillage")}</div>
               )}
-            </article>
-          </SplitLayout>
+            </DetailPane>
+          </MasterDetailLayout>
         )}
 
         {section === "groups" && (

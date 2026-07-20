@@ -1,6 +1,21 @@
 "use client";
 
-import { Badge, Button, Card, EmptyState, Field, Label, Select, StaleNotice } from "@multi-coc/ui";
+import {
+  Badge,
+  Button,
+  DataList,
+  DataListItem,
+  EmptyState,
+  Field,
+  Label,
+  SectionHeader,
+  SectionHeaderContent,
+  SectionHeaderDescription,
+  SectionHeaderTitle,
+  Select,
+  StaleNotice,
+  Toolbar,
+} from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -63,12 +78,14 @@ export default function HistoryPanel({
 
   return (
     <section className="history-section">
-      <header className="history-section-header">
-        <p className="eyebrow">UPGRADE HISTORY</p>
-        <h2>{t("title")}</h2>
-        <p>{t("description")}</p>
-      </header>
-      <div className="history-filters">
+      <SectionHeader className="history-section-header">
+        <SectionHeaderContent>
+          <p className="eyebrow">UPGRADE HISTORY</p>
+          <SectionHeaderTitle>{t("title")}</SectionHeaderTitle>
+          <SectionHeaderDescription>{t("description")}</SectionHeaderDescription>
+        </SectionHeaderContent>
+      </SectionHeader>
+      <Toolbar className="history-filters">
         <Field>
           <Label>{t("village")}</Label>
           <Select value={filters.village} onChange={(event) => setFilter("village", event.target.value)}>
@@ -106,19 +123,18 @@ export default function HistoryPanel({
             <option value="research">{t("research")}</option>
           </Select>
         </Field>
-      </div>
+      </Toolbar>
       {error && upgrades.length > 0 && (
         <StaleNotice onRetry={() => void historyQuery.refetch()} retryLabel={t("retry")}>
           {error}
         </StaleNotice>
       )}
       {error && !upgrades.length && <ErrorState compact message={error} retry={() => void historyQuery.refetch()} />}
-      <div className="history-list">
+      <DataList className="history-list">
         {upgrades.map((upgrade) => {
           const village = villageById.get(upgrade.accountId);
           return (
-            <Card
-              role="listitem"
+            <DataListItem
               className="history-card"
               key={upgrade.id}
               style={{ "--accent": village?.color || "var(--ui-color-accent)" } as React.CSSProperties}
@@ -138,11 +154,11 @@ export default function HistoryPanel({
                 <Badge tone={upgrade.active ? "accent" : "neutral"}>{t(upgrade.active ? "active" : "inactive")}</Badge>
                 <time>{formatDateTime(upgrade.finishAt)}</time>
               </div>
-            </Card>
+            </DataListItem>
           );
         })}
         {!loading && !upgrades.length && <EmptyState title={t("empty")} />}
-      </div>
+      </DataList>
       {historyQuery.hasNextPage && (
         <Button className="history-more" pending={loading} onClick={() => void historyQuery.fetchNextPage()}>
           {loading ? t("loading") : t("loadMore")}

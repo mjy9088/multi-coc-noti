@@ -63,7 +63,7 @@
   border: 0;
 }
 
-.history-card.ui-card {
+.history-card.ui-data-list-item {
   --ui-surface-context: var(--ui-color-surface);
   position: relative;
   display: grid;
@@ -73,10 +73,6 @@
   overflow: hidden;
   padding: var(--ui-space-4);
   border-inline-start: 3px solid var(--accent, var(--ui-color-accent));
-}
-
-.history-card.ui-card::before {
-  content: none;
 }
 
 .history-result {
@@ -102,7 +98,7 @@
     grid-template-columns: 1fr;
   }
 
-  .history-card.ui-card {
+  .history-card.ui-data-list-item {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
