@@ -1,3 +1,5 @@
+import ScrollPatterns from "./scroll-patterns";
+
 export default function PatternsPage() {
   return (
     <>
@@ -24,6 +26,14 @@ export default function PatternsPage() {
             <li>Keyboard focus remains visible and navigation remains reachable.</li>
             <li>Narrow viewports scroll navigation horizontally without page overflow.</li>
           </ul>
+        </section>
+        <section className="lab-section wide">
+          <h2>Nested scroll ownership</h2>
+          <p>
+            Compare ordinary nested content, which hands scroll to its parent at an edge, with a deliberately contained
+            modal-style pane. The live positions make the active scroll owner visible.
+          </p>
+          <ScrollPatterns />
         </section>
       </div>
     </>

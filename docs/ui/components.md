@@ -9,6 +9,75 @@
   package boundary.
 - A component is not complete until its important states are visible in UI Lab and its interaction behavior is testable.
 
+## Component hierarchy
+
+Keep the ownership layers explicit instead of moving every repeated product shape into one flat component catalogue:
+
+1. **Primitives** provide one interaction or surface contract: Button, form controls, Card, Badge, Tabs, Dialog, and Toast.
+2. **Layout compositions** arrange arbitrary content without knowing product data: PageHeader, SectionHeader, Toolbar,
+   ResponsiveGrid, ScrollablePane, SplitLayout, ActionBar, and the sticky-stack components. They live under
+   `packages/ui/src/components/layout` when they are not an established flat primitive.
+3. **Data-display patterns** provide semantic repeated structures without knowing routes or domain models: StatGrid,
+   KeyValueGrid, DataList, StatusIndicator, EntityHeader, Timeline, and ChartCard. They live under
+   `packages/ui/src/components/data-display`.
+4. **Product feature components** know villages, upgrades, exports, translations, queries, or mutations and remain in the
+   consuming app.
+
+Higher layers may import lower layers; primitives and generic layouts must not import data-display or product features.
+CSS follows the same ownership. A pattern owns its internal spacing and states, while a screen owns only section placement,
+domain-specific color mapping, and exceptional responsive composition.
+
+## Public component responsibility reference
+
+### Primitives and interaction
+
+| Components | Own | Do not own |
+| --- | --- | --- |
+| `Button`, `IconButton` | Action priority, sizing, focus, disabled and pending presentation | Mutation, navigation, permission, or confirmation policy |
+| `Field`, `Label`, `Description`, `FieldError` | Accessible form relationships and validation presentation | Form state or server validation |
+| `Input`, `Textarea`, `Select` | Consistent native-control sizing and states | Parsing, debounce, options, or persistence |
+| `Checkbox`, `RadioGroup`, `ToggleGroup` | Accessible boolean and single-choice interaction | Filter meaning or storage |
+| `Card` and its structural parts | Generic surface and header/body/footer alignment | Product record mapping |
+| `Badge`, `Separator`, `StatusIndicator` | Compact semantic metadata and visual separation | Critical information without visible text |
+| `NavLink`, `Tabs`, `Tab`, `TabContent` | Navigation/section semantics and keyboard interaction | Router state or URL construction |
+| `Disclosure` | Native expandable content with focus and motion treatment | Floating positioning or modal behavior |
+| `Tooltip` | Supplemental hover/focus explanation | Mobile-required instructions or accessible names |
+| `Dialog` composition | Modal focus, backdrop, Escape, mobile sheet geometry | Feature state, validation, or mutation timing |
+| `ToastProvider`, `useToast` | Global announced transient feedback | Inline validation or the initiating control's pending state |
+| `Progress` | Accessible determinate/indeterminate progress and semantic tone | Domain time calculation or chart series |
+
+### Layout compositions
+
+| Components | Own | Do not own |
+| --- | --- | --- |
+| `PageContainer` | Content width, viewport gutter, safe-area and page block spacing | Section order or route loading |
+| `Stack`, `Cluster` | Repeated vertical or wrapping horizontal rhythm | Product-specific responsive priority |
+| `ContentGrid`, `ResponsiveGrid` | Common sidebar and auto-fit grid behavior | Domain card minimums not expressible as component input |
+| `PageHeader`, `SectionHeader` families | Title, description and action wrapping | Product copy or breadcrumb policy |
+| `Toolbar` | Bounded wrapping control surface | Filter state or query behavior |
+| `SplitLayout` | Equal-height adjacent panes and intrinsic-size reset | Column proportions and mobile product meaning |
+| `MasterDetailLayout`, `MasterPane`, `DetailPane`, `DetailPaneBackdrop` | Desktop paired panes and compact bottom-sheet transition | Selected entity state, close decision, or editor contents |
+| `ScrollablePane` | Overflow safety, boundary handoff/containment and sticky-frame activation | Choosing whether product content should be independently scrollable |
+| `ActionBar` | Final-action grouping, sticky surface, safe-area and bleed behavior | Which action is primary or whether data is dirty |
+| `StickyStackProvider`, `StickyStackItem`, `StickyStackViewport`, `StickyRouteFrame` | Measured chrome offsets and viewport ownership | Route definitions or feature layout |
+
+### Data-display patterns and request states
+
+| Components | Own | Do not own |
+| --- | --- | --- |
+| `StatGrid`, `Stat` | Compact labelled metrics with wrapping values | Metric calculation or priority |
+| `KeyValueGrid`, `KeyValueItem` | Label/value facts | Product field selection |
+| `DataList`, `DataListItem` | Read-only repeated record surfaces | Selection or navigation interaction |
+| `SelectionList` family | Interactive selected rows, focus, leading/content/trailing structure | Search, routing, or selected-record state |
+| `EntityHeader` family | Repeated identity, metadata and action alignment | Entity model or status derivation |
+| `Timeline` family | Chronological marker/content/time layout | Event ordering or timestamp formatting |
+| `ChartCard`, `ChartLegend` | Chart surface, title, clipping safety and semantic legend | SVG/canvas rendering, axes, series calculation, or domain colors |
+| `Spinner`, `Skeleton` | Pending and layout-preserving visual state | Fetch lifecycle |
+| `RequestState`, `EmptyState`, `StaleNotice` | Accessible loading/error/empty/stale presentation | Retry implementation or cache policy |
+
+`cn` is the package class-name utility, and `useStickyStack` exposes the measured sticky height for behavior that cannot be
+expressed with CSS alone. Neither is a visual component.
+
 ## Implemented owned components
 
 ### Button
@@ -116,6 +185,23 @@ Buttons because it scrolls to content regions rather than switching tab panels.
 Dashboard, village detail, History, and Settings now compose owned Card, Badge, form, status, Button, Tabs, Dialog, and
 ActionBar primitives. Product-specific metrics, charts, availability blocks, and result rows remain feature components;
 their layout CSS uses shared semantic tokens rather than becoming generic component APIs.
+
+### Layout compositions and data-display patterns
+
+The generic middle layer now includes PageContainer, Stack, Cluster, PageHeader and SectionHeader compositions, Toolbar,
+ContentGrid, ResponsiveGrid, SplitLayout, responsive MasterDetail panes, ScrollablePane, StatGrid, KeyValueGrid, DataList,
+SelectionList, StatusIndicator, EntityHeader, Timeline, Progress, Disclosure, and ChartCard with ChartLegend. These
+components own common semantics, wrapping, spacing, narrow-screen behavior, and overflow safety. They deliberately accept
+rendered content instead of product records: mapping a village, upgrade, sync, or chart series remains a Dashboard feature
+concern.
+
+`ScrollablePane` defaults to `boundary="handoff"`, allowing wheel and touch scroll to continue in the nearest outer owner
+when the pane reaches an edge. Use `boundary="contain"` only for deliberately independent panes such as a modal sheet or a
+viewport-filling master/detail pane. A pane inside `StickyRouteFrame` that should not capture wheel input while the outer
+page is still approaching its sticky position uses `activation="sticky-frame"`; the shared frame enables its overflow only
+after it becomes fixed. A responsive pane that becomes a self-contained sheet on compact viewports uses
+`activation="sticky-frame-or-compact"`, which activates immediately at the design-system compact breakpoint. Feature CSS
+must not reproduce these state-dependent overflow switches.
 
 ## Implemented primitive scope
 

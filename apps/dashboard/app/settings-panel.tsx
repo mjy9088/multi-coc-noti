@@ -15,6 +15,7 @@ import {
   Input,
   Label,
   RequestState,
+  ScrollablePane,
   Select,
   SplitLayout,
   StickyRouteFrame,
@@ -914,7 +915,7 @@ export default function SettingsPanel({
                   placeholder={t("searchVillages")}
                 />
               </Field>
-              <div className="settings-village-picker">
+              <ScrollablePane className="settings-village-picker" boundary="contain" activation="sticky-frame">
                 {visibleAccounts.map((item) => (
                   <button
                     key={item.id}
@@ -932,7 +933,7 @@ export default function SettingsPanel({
                   </button>
                 ))}
                 {!visibleAccounts.length && <p>{accounts.length ? t("noVillageMatches") : t("noVillages")}</p>}
-              </div>
+              </ScrollablePane>
             </article>
             {editing && (
               <button
@@ -963,7 +964,11 @@ export default function SettingsPanel({
                       {t("chooseVillage")}
                     </Button>
                   </div>
-                  <div className="village-editor-scroll">
+                  <ScrollablePane
+                    className="village-editor-scroll"
+                    boundary="contain"
+                    activation="sticky-frame-or-compact"
+                  >
                     <form
                       id="village-settings-form"
                       className="settings-form"
@@ -1061,7 +1066,7 @@ export default function SettingsPanel({
                         {mutationPending ? t("saving") : t("saveSettings")}
                       </Button>
                     </ActionBar>
-                  </div>
+                  </ScrollablePane>
                 </>
               ) : (
                 <div className="settings-no-selection">{t("chooseVillage")}</div>

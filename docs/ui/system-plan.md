@@ -196,11 +196,12 @@ Implement and catalogue these in order:
 
 1. [Done] `Button` and `IconButton`;
 2. [Done] `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox`;
-3. [Done] `Card`, `Badge`, and `Separator`; layout `Stack`/`Cluster` helpers remain intentionally deferred until repetition
-   proves useful;
+3. [Done] `Card`, `Badge`, and `Separator`;
 4. [Done] `Spinner`, `RequestState`, `EmptyState`, and `StaleNotice`;
 5. [Done] `Toast` and its viewport/provider;
 6. [Done] `Tabs` and `Dialog` using headless accessible primitives.
+7. [Done] Add the proven middle layer: PageContainer, Stack/Cluster, responsive grids and master/detail panes,
+   SelectionList, Progress, Disclosure, and generic data-display patterns.
 
 Each component needs:
 

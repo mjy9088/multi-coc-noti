@@ -383,10 +383,7 @@
 }
 
 .settings-village-picker {
-  min-height: 0;
   flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   border-top: 1px solid var(--ui-color-border);
 }
 
@@ -462,10 +459,7 @@
 }
 
 .village-editor-scroll {
-  min-height: 0;
   flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: var(--ui-space-1) var(--ui-space-1) 0;
 }
 
@@ -659,10 +653,7 @@
   }
 
   .village-editor-scroll {
-    min-height: 0;
     flex: 1;
-    overflow-y: auto;
-    overscroll-behavior: contain;
     padding-bottom: 0;
   }
 

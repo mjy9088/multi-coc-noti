@@ -56,6 +56,12 @@ test("[UI-SETTINGS-001] measured sticky chrome keeps the desktop settings viewpo
   await page.locator(".settings-village-picker > button").first().click();
   await expect(page).toHaveURL(new RegExp(`/settings/villages/${villageId(1)}$`));
   await expect(page.locator(".settings-village-editor-card")).toBeVisible();
+  await expect(page.locator(".village-editor-scroll")).toHaveCSS("overflow-y", "hidden");
+  await page.locator(".village-editor-scroll").hover();
+  await page.mouse.wheel(0, 10_000);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
+  await expect(page.locator(".settings-route-frame")).toHaveAttribute("data-fixed", "true");
   await expect(page.locator(".village-editor-scroll")).toHaveCSS("overflow-y", "auto");
   await expect(page.locator("#village-settings-form input").first()).toBeInViewport();
   expect(

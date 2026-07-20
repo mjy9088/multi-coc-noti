@@ -9,8 +9,19 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  ChartCard,
+  ChartCardBody,
+  ChartCardHeader,
+  ChartCardTitle,
+  ChartLegend,
+  ChartLegendItem,
   Checkbox,
+  Cluster,
+  DataList,
+  DataListItem,
   Description,
+  DetailPane,
+  DetailPaneBackdrop,
   Dialog,
   DialogBody,
   DialogClose,
@@ -19,28 +30,72 @@ import {
   DialogFooter,
   DialogTitle,
   DialogTrigger,
+  Disclosure,
+  DisclosureContent,
+  DisclosureSummary,
   EmptyState,
+  EntityHeader,
+  EntityHeaderActions,
+  EntityHeaderIdentity,
+  EntityHeaderMeta,
+  EntityHeaderTitle,
   Field,
   FieldError,
   IconButton,
   Input,
+  KeyValueGrid,
+  KeyValueItem,
   Label,
+  MasterDetailLayout,
+  MasterPane,
   NavLink,
+  PageContainer,
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderContent,
+  PageHeaderDescription,
+  PageHeaderEyebrow,
+  PageHeaderTitle,
+  Progress,
   RadioGroup,
   RadioGroupItem,
   RequestState,
+  ResponsiveGrid,
+  ScrollablePane,
+  SectionHeader,
+  SectionHeaderActions,
+  SectionHeaderContent,
+  SectionHeaderDescription,
+  SectionHeaderTitle,
   Select,
+  SelectionList,
+  SelectionListContent,
+  SelectionListDescription,
+  SelectionListItem,
+  SelectionListLeading,
+  SelectionListTitle,
+  SelectionListTrailing,
   Separator,
   Skeleton,
   Spinner,
   SplitLayout,
+  Stack,
   StaleNotice,
+  Stat,
+  StatGrid,
+  StatusIndicator,
   Tab,
   Tabs,
   Textarea,
+  Timeline,
+  TimelineContent,
+  TimelineItem,
+  TimelineMarker,
+  TimelineMeta,
   ToastProvider,
   ToggleGroup,
   ToggleGroupItem,
+  Toolbar,
   useToast,
 } from "@multi-coc/ui";
 import { useState } from "react";
@@ -93,6 +148,8 @@ export default function ComponentsShowcase() {
   const [tab, setTab] = useState("upgrades");
   const [radio, setRadio] = useState("all");
   const [toggle, setToggle] = useState("all");
+  const [selectedVillage, setSelectedVillage] = useState("main");
+  const [detailOpen, setDetailOpen] = useState(false);
   return (
     <ToastProvider>
       <div className="lab-grid">
@@ -179,6 +236,219 @@ export default function ComponentsShowcase() {
               <strong>Secondary pane</strong>
             </Card>
           </SplitLayout>
+        </section>
+        <section className="lab-section wide">
+          <h2>Layout compositions</h2>
+          <p>
+            Headers, actions, toolbars, and responsive grids arrange arbitrary feature content without owning its data.
+          </p>
+          <Stack>
+            <PageHeader>
+              <PageHeaderContent>
+                <PageHeaderEyebrow>Dashboard</PageHeaderEyebrow>
+                <PageHeaderTitle>Manage every village at a glance</PageHeaderTitle>
+                <PageHeaderDescription>
+                  Long descriptions wrap while actions keep a predictable alignment at narrow widths.
+                </PageHeaderDescription>
+              </PageHeaderContent>
+              <PageHeaderActions>
+                <Button tone="secondary">Display options</Button>
+                <Button>Quick Paste</Button>
+              </PageHeaderActions>
+            </PageHeader>
+            <Toolbar aria-label="Village filters">
+              <StatusIndicator tone="success">36 villages synced</StatusIndicator>
+              <Button size="small" tone="secondary">
+                Filters
+              </Button>
+            </Toolbar>
+            <SectionHeader>
+              <SectionHeaderContent>
+                <SectionHeaderTitle>Available villages</SectionHeaderTitle>
+                <SectionHeaderDescription>
+                  Reusable section context stays separate from page identity.
+                </SectionHeaderDescription>
+              </SectionHeaderContent>
+              <SectionHeaderActions>
+                <Button size="small" tone="quiet">
+                  View all
+                </Button>
+              </SectionHeaderActions>
+            </SectionHeader>
+            <ResponsiveGrid minItemWidth="12rem">
+              <Card>Main village</Card>
+              <Card>Builder focus</Card>
+              <Card>War mini</Card>
+            </ResponsiveGrid>
+          </Stack>
+        </section>
+        <section className="lab-section wide">
+          <h2>Data-display patterns</h2>
+          <p>Semantic collections provide the middle layer between primitives and product-owned village components.</p>
+          <div className="lab-stack">
+            <StatGrid>
+              <Stat label="Villages" value="36" description="Across 5 groups" />
+              <Stat label="Builders free" value="12" description="Home and Builder Base" />
+              <Stat label="Update needed" value="3" description="Older than the observed finish" />
+            </StatGrid>
+            <KeyValueGrid>
+              <KeyValueItem label="Player tag" value="#2ABCDEF" />
+              <KeyValueItem label="Town Hall" value="17" />
+              <KeyValueItem label="Last export" value="2026-07-21 18:42" />
+            </KeyValueGrid>
+            <DataList>
+              <DataListItem selected>
+                <EntityHeader>
+                  <EntityHeaderIdentity>
+                    <EntityHeaderTitle>Main village</EntityHeaderTitle>
+                    <EntityHeaderMeta>
+                      <span>#2ABCDEF</span>
+                      <span>Town Hall 17</span>
+                    </EntityHeaderMeta>
+                  </EntityHeaderIdentity>
+                  <EntityHeaderActions>
+                    <StatusIndicator tone="success">2 builders free</StatusIndicator>
+                    <Button size="small" tone="secondary">
+                      Open
+                    </Button>
+                  </EntityHeaderActions>
+                </EntityHeader>
+              </DataListItem>
+              <DataListItem disabled>
+                <EntityHeader>
+                  <EntityHeaderIdentity>
+                    <EntityHeaderTitle>Stale village</EntityHeaderTitle>
+                    <EntityHeaderMeta>Needs a fresh export before planning</EntityHeaderMeta>
+                  </EntityHeaderIdentity>
+                  <StatusIndicator tone="warning">Update needed</StatusIndicator>
+                </EntityHeader>
+              </DataListItem>
+            </DataList>
+            <SelectionList aria-label="Villages">
+              {[
+                { id: "main", name: "Main village", tag: "#2ABCDEF", tone: "success" as const },
+                { id: "builder", name: "Builder focus", tag: "#8XYZ123", tone: "warning" as const },
+              ].map((village) => (
+                <SelectionListItem
+                  key={village.id}
+                  selected={selectedVillage === village.id}
+                  onClick={() => setSelectedVillage(village.id)}
+                >
+                  <SelectionListLeading>
+                    <StatusIndicator tone={village.tone} aria-label={`${village.name} status`} />
+                  </SelectionListLeading>
+                  <SelectionListContent>
+                    <SelectionListTitle>{village.name}</SelectionListTitle>
+                    <SelectionListDescription>{village.tag} · War group</SelectionListDescription>
+                  </SelectionListContent>
+                  <SelectionListTrailing>
+                    <Badge>{village.id === "main" ? "TH 17" : "BH 10"}</Badge>
+                  </SelectionListTrailing>
+                </SelectionListItem>
+              ))}
+            </SelectionList>
+          </div>
+        </section>
+        <section className="lab-section">
+          <h2>Timeline</h2>
+          <Timeline>
+            <TimelineItem>
+              <TimelineMarker tone="success" />
+              <TimelineContent>
+                <strong>Export imported</strong>
+                <span className="lab-muted">4 active upgrades detected</span>
+              </TimelineContent>
+              <TimelineMeta>18:42</TimelineMeta>
+            </TimelineItem>
+            <TimelineItem>
+              <TimelineMarker tone="info" />
+              <TimelineContent>
+                <strong>Profile synchronized</strong>
+                <span className="lab-muted">League and donations refreshed</span>
+              </TimelineContent>
+              <TimelineMeta>18:44</TimelineMeta>
+            </TimelineItem>
+          </Timeline>
+        </section>
+        <section className="lab-section">
+          <h2>Chart frame and scroll pane</h2>
+          <ChartCard>
+            <ChartCardHeader>
+              <ChartCardTitle>Active upgrades</ChartCardTitle>
+              <ChartLegend>
+                <ChartLegendItem tone="accent">Home</ChartLegendItem>
+                <ChartLegendItem tone="info">All bases</ChartLegendItem>
+              </ChartLegend>
+            </ChartCardHeader>
+            <ChartCardBody>
+              <ScrollablePane className="lab-chart-scroll">
+                <div className="lab-chart-placeholder" aria-label="Example chart">
+                  <i style={{ height: "38%" }} />
+                  <i style={{ height: "74%" }} />
+                  <i style={{ height: "52%" }} />
+                  <i style={{ height: "88%" }} />
+                  <i style={{ height: "64%" }} />
+                  <i style={{ height: "46%" }} />
+                </div>
+              </ScrollablePane>
+            </ChartCardBody>
+          </ChartCard>
+        </section>
+        <section className="lab-section wide">
+          <h2>Responsive master/detail</h2>
+          <p>Desktop keeps both panes aligned; compact viewports open the detail as a bottom sheet.</p>
+          <PageContainer className="lab-contained-page">
+            <MasterDetailLayout className="lab-master-detail-demo">
+              <MasterPane>
+                <Stack>
+                  <strong>Villages</strong>
+                  <SelectionList aria-label="Master detail villages">
+                    <SelectionListItem selected onClick={() => setDetailOpen(true)}>
+                      <SelectionListContent>
+                        <SelectionListTitle>Main village</SelectionListTitle>
+                        <SelectionListDescription>#2ABCDEF</SelectionListDescription>
+                      </SelectionListContent>
+                    </SelectionListItem>
+                  </SelectionList>
+                </Stack>
+              </MasterPane>
+              <DetailPaneBackdrop open={detailOpen} label="Close village detail" onClick={() => setDetailOpen(false)} />
+              <DetailPane open={detailOpen}>
+                <Stack>
+                  <Cluster justify="between">
+                    <strong>Main village settings</strong>
+                    <Button size="small" tone="secondary" onClick={() => setDetailOpen(false)}>
+                      Close
+                    </Button>
+                  </Cluster>
+                  <Field>
+                    <Label>Display name</Label>
+                    <Input defaultValue="Main village" />
+                  </Field>
+                  <Progress label="Builder workload" value={4} max={6} valueLabel="4 / 6 active" />
+                </Stack>
+              </DetailPane>
+            </MasterDetailLayout>
+          </PageContainer>
+        </section>
+        <section className="lab-section wide">
+          <h2>Progress and disclosure</h2>
+          <ResponsiveGrid minItemWidth="15rem">
+            <Stack>
+              <Progress label="Archer Queen" value={72} valueLabel="4h 18m remaining" />
+              <Progress tone="warning" label="Laboratory" value={35} valueLabel="35%" />
+              <Progress tone="info" label="Waiting for export" valueLabel="Indeterminate" />
+            </Stack>
+            <Disclosure>
+              <DisclosureSummary>Display options</DisclosureSummary>
+              <DisclosureContent>
+                <Stack gap="small">
+                  <Checkbox label="Infer idle Goblin Researcher" defaultChecked />
+                  <Checkbox label="Show upgrade-ready villages first" />
+                </Stack>
+              </DisclosureContent>
+            </Disclosure>
+          </ResponsiveGrid>
         </section>
         <section className="lab-section">
           <h2>Badges</h2>

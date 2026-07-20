@@ -169,6 +169,9 @@ The list supports searching dozens of villages by Display Name, player tag, or g
 
 On desktop, the village list and editor share one viewport-bounded pane height. Each pane owns its content scrolling so a
 long list or form cannot make the two surfaces diverge in height, and the editor ActionBar remains available at its bottom.
+Before the Settings route frame reaches its sticky position, pointer input over either pane continues scrolling the outer
+page. Once fixed, the shared scroll-pane activation gives the list and editor independent scrolling without page-specific
+wheel handlers.
 
 Deletion is destructive and requires a confirmation Dialog. Saving uses immediate pending feedback followed by Toast
 success or error feedback.

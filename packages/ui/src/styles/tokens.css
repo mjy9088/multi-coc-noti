@@ -48,6 +48,7 @@
   --ui-shadow-selected: 0 0 0 2px var(--ui-color-accent-soft);
   --ui-shadow-selected-edge: inset 3px 0 var(--ui-color-accent);
   --ui-shadow-marker: 0 0 0 1px var(--ui-color-accent);
+  --ui-shadow-timeline-marker: 0 0 0 3px var(--ui-color-surface);
   --ui-shadow-status-success: 0 0 0 4px var(--ui-color-accent-soft);
   --ui-layer-behind: -1;
   --ui-layer-local-base: 1;

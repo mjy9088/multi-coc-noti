@@ -163,7 +163,7 @@ export function StickyRouteFrame({ className, contained = false, scrollKey, ...p
     if (!anchor) return;
     const update = () => {
       const anchorBounds = anchor.getBoundingClientRect();
-      const next = anchorBounds.top <= totalHeight ? { left: anchorBounds.left, width: anchorBounds.width } : null;
+      const next = anchorBounds.top <= totalHeight + 1 ? { left: anchorBounds.left, width: anchorBounds.width } : null;
       setFixedBox((current) => (current?.left === next?.left && current?.width === next?.width ? current : next));
     };
     update();

@@ -186,6 +186,95 @@ input {
   gap: var(--ui-space-3);
 }
 
+.lab-chart-scroll {
+  padding-block-end: var(--ui-space-2);
+}
+
+.lab-chart-placeholder {
+  min-width: 26rem;
+  height: 10rem;
+  display: flex;
+  align-items: end;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-color-border);
+  background: var(--ui-color-surface-inset);
+}
+
+.lab-chart-placeholder > i {
+  min-width: 2.5rem;
+  flex: 1;
+  border-radius: var(--ui-radius-small) var(--ui-radius-small) 0 0;
+  background: var(--ui-color-info);
+}
+
+.lab-scroll-pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--ui-space-4);
+}
+
+.lab-scroll-demo-card {
+  min-width: 0;
+  display: grid;
+  gap: var(--ui-space-3);
+}
+
+.lab-scroll-outer {
+  --ui-surface-context: var(--ui-color-surface-inset);
+
+  height: 18rem;
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface-inset);
+}
+
+.lab-scroll-inner {
+  --ui-surface-context: var(--ui-color-surface);
+
+  height: 9rem;
+  margin-block: var(--ui-space-3);
+  border: 1px solid var(--ui-color-border-strong);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-color-surface);
+}
+
+.lab-scroll-inner > div {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-color-border-subtle);
+}
+
+.lab-scroll-after {
+  min-height: 15rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: var(--ui-space-2);
+  color: var(--ui-color-text-secondary);
+}
+
+.lab-contained-page {
+  width: 100%;
+  padding: 0;
+}
+
+.lab-master-detail-demo {
+  height: 24rem;
+}
+
+.lab-master-detail-demo .ui-master-pane,
+.lab-master-detail-demo .ui-detail-pane {
+  --ui-surface-context: var(--ui-color-surface);
+
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-medium);
+  background: var(--ui-color-surface);
+  padding: var(--ui-space-4);
+}
+
 .lab-form-grid,
 .lab-state-grid {
   display: grid;
