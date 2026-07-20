@@ -1,47 +1,52 @@
 "use client";
 
-import { Button, NavLink, StickyStackItem, StickyStackProvider } from "@multi-coc/ui";
-import { useQuery } from "@tanstack/react-query";
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  NavLink,
+  RequestState,
+  StickyStackItem,
+  StickyStackProvider,
+} from "@multi-coc/ui";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
 import { dashboardQueryKey } from "./query-provider";
+import SettingsPanel from "./settings-panel";
 import { useDashboardFormat } from "./use-dashboard-format";
 
-export type QuickPasteRequest = {
+type QuickPasteRequest = {
   id: number;
   text: string;
   clipboardError: boolean;
 };
-
-type QuickPasteContextValue = {
-  request: QuickPasteRequest | null;
-  consume: (id: number) => void;
-};
-
-const QuickPasteContext = createContext<QuickPasteContextValue>({ request: null, consume: () => {} });
 
 const browserApiBase = () =>
   process.env.NEXT_PUBLIC_API_BASE === "same-origin"
     ? ""
     : process.env.NEXT_PUBLIC_API_BASE || `${window.location.protocol}//${window.location.hostname}:8787`;
 
-export function useQuickPasteRequest(): QuickPasteContextValue {
-  return useContext(QuickPasteContext);
-}
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const t = useTranslations("Dashboard");
+  const settingsT = useTranslations("Settings");
   const { formatRelative } = useDashboardFormat();
   const [clockNow, setClockNow] = useState(0);
   const [quickPasteRequest, setQuickPasteRequest] = useState<QuickPasteRequest | null>(null);
   const [quickPasteLoading, setQuickPasteLoading] = useState(false);
+  const [quickPasteOpen, setQuickPasteOpen] = useState(false);
+  const [quickPasteMutationPending, setQuickPasteMutationPending] = useState(false);
+  const quickPasteSequence = useRef(0);
   const apiBase = typeof window === "undefined" ? "" : browserApiBase();
   const dashboardQuery = useQuery({
     queryKey: dashboardQueryKey(apiBase),
@@ -68,16 +73,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     : pathname.startsWith("/history")
       ? "history"
       : "dashboard";
-  const consumeQuickPaste = useCallback(
-    (id: number) => setQuickPasteRequest((current) => (current?.id === id ? null : current)),
-    [],
-  );
-  const quickPasteContext = useMemo(
-    () => ({ request: quickPasteRequest, consume: consumeQuickPaste }),
-    [consumeQuickPaste, quickPasteRequest],
-  );
-
   const quickPaste = async () => {
+    const id = ++quickPasteSequence.current;
+    setQuickPasteOpen(true);
+    setQuickPasteRequest(null);
     setQuickPasteLoading(true);
     let text = "";
     let clipboardError = false;
@@ -87,14 +86,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     } catch {
       clipboardError = true;
     }
-    setQuickPasteRequest((current) => ({ id: (current?.id || 0) + 1, text, clipboardError }));
-    router.push("/settings/paste");
+    if (id !== quickPasteSequence.current) return;
+    setQuickPasteRequest({ id, text, clipboardError });
     setQuickPasteLoading(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <QuickPasteContext value={quickPasteContext}>
+    <>
       <StickyStackProvider>
         <StickyStackItem as="header" order={0} className="app-shell-header">
           <Link className="app-brand" href="/" aria-label={t("dashboard")}>
@@ -136,6 +134,44 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </StickyStackItem>
         {children}
       </StickyStackProvider>
-    </QuickPasteContext>
+      <Dialog
+        open={quickPasteOpen}
+        onOpenChange={(open) => {
+          if (!open && quickPasteMutationPending) return;
+          setQuickPasteOpen(open);
+          if (!open) {
+            quickPasteSequence.current += 1;
+            setQuickPasteLoading(false);
+            setQuickPasteRequest(null);
+          }
+        }}
+      >
+        <DialogContent
+          className="quick-paste-dialog"
+          closeLabel={settingsT("cancel")}
+          onEscapeKeyDown={(event) => quickPasteMutationPending && event.preventDefault()}
+          onPointerDownOutside={(event) => quickPasteMutationPending && event.preventDefault()}
+        >
+          <DialogTitle>{t("quickPaste")}</DialogTitle>
+          <DialogDescription>{settingsT("pasteJsonHelp")}</DialogDescription>
+          <DialogBody className="quick-paste-dialog-body">
+            {quickPasteLoading && <RequestState title={t("quickPasteReading")} />}
+            <SettingsPanel
+              apiBase={apiBase}
+              embedded
+              quickPasteRequest={quickPasteRequest}
+              onQuickPasteApplied={(id) => setQuickPasteRequest((current) => (current?.id === id ? null : current))}
+              onChanged={() => {
+                void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+                void queryClient.invalidateQueries({ queryKey: ["upgrade-history"] });
+                void queryClient.invalidateQueries({ queryKey: ["sync-history"] });
+              }}
+              onImportComplete={() => setQuickPasteOpen(false)}
+              onImportPendingChange={setQuickPasteMutationPending}
+            />
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

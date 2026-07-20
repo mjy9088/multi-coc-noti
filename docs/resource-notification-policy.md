@@ -132,6 +132,9 @@ The English locale conveys the same meaning.
 Scheduling policy remains independent from delivery-channel presentation. `upgrade_notifications` records what should be
 delivered and when; it does not store Bark sounds, interruption levels, device keys, or navigation URLs.
 
+Users manage recipients under `/settings/notification-channels`. Per-upgrade timing remains under `/settings/upgrades`, so
+delivery destination changes do not appear as if they alter notification content or scheduling policy.
+
 <!-- contract: ALERT-BARK-001 -->
 
 A Bark channel has channel-wide connection defaults, while each notification kind can have a delivery rule. A resolved

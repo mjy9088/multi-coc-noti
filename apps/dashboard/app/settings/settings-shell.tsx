@@ -2,21 +2,22 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuickPasteRequest } from "../app-shell";
 import SettingsPanel from "../settings-panel";
 
-type SettingsSection = "import" | "alerts" | "villages" | "groups";
+type SettingsSection = "import" | "upgrades" | "channels" | "villages" | "groups";
 
 const sectionByPath = {
   paste: "import",
-  upgrades: "alerts",
+  upgrades: "upgrades",
+  "notification-channels": "channels",
   villages: "villages",
   groups: "groups",
 } as const;
 
 const pathBySection: Record<SettingsSection, string> = {
   import: "/settings/paste",
-  alerts: "/settings/upgrades",
+  upgrades: "/settings/upgrades",
+  channels: "/settings/notification-channels",
   villages: "/settings/villages",
   groups: "/settings/groups",
 };
@@ -30,7 +31,6 @@ export default function SettingsShell() {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const quickPaste = useQuickPasteRequest();
   const segments = pathname.split("/").filter(Boolean);
   const section = sectionByPath[segments[1] as keyof typeof sectionByPath] || "import";
   const villageId = segments[1] === "villages" && segments[2] ? decodeURIComponent(segments[2]) : null;
@@ -43,6 +43,7 @@ export default function SettingsShell() {
         onChanged={() => {
           void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           void queryClient.invalidateQueries({ queryKey: ["upgrade-history"] });
+          void queryClient.invalidateQueries({ queryKey: ["sync-history"] });
         }}
         onSectionChange={(next) => router.push(pathBySection[next], { scroll: false })}
         onVillageChange={(accountId) =>
@@ -50,8 +51,6 @@ export default function SettingsShell() {
         }
         initialSection={section}
         initialAccountId={villageId}
-        quickPasteRequest={quickPaste.request}
-        onQuickPasteApplied={quickPaste.consume}
       />
     </main>
   );

@@ -4,6 +4,32 @@
   padding: var(--ui-space-7) 0 0;
 }
 
+.quick-paste-dialog.ui-dialog-content {
+  width: min(64rem, calc(100vw - 2rem));
+  height: min(80dvh, 52rem);
+  max-height: calc(100dvh - 2rem);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.quick-paste-dialog-body {
+  min-height: 0;
+  padding-inline-end: var(--ui-space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.resource-inline-step {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--ui-space-3);
+}
+
+.settings-import-error {
+  grid-column: 1 / -1;
+}
+
 .settings-page-header {
   display: flex;
   gap: var(--ui-space-4);
@@ -650,6 +676,11 @@
 }
 
 @media (max-width: 480px) {
+  .quick-paste-dialog.ui-dialog-content {
+    height: calc(100dvh - env(safe-area-inset-top) - var(--ui-space-4));
+    max-height: none;
+  }
+
   .settings-page-header {
     align-items: start;
   }
@@ -667,4 +698,21 @@
   .settings-change-group > b {
     grid-row: auto;
   }
+}
+
+.settings-page-embedded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-page-embedded .settings-route-frame {
+  height: auto;
+  overflow: visible;
+  background: transparent;
+  padding: 0;
+}
+
+.settings-page-embedded .settings-import-flow {
+  max-width: none;
 }

@@ -14,7 +14,8 @@ inventory live alongside this plan under `docs/ui/`.
 ## Current state
 
 - `packages/ui/src/styles` now contains the initial shared semantic colors, browser foundations, and Button styles.
-- `app/styles/legacy.css` is approximately 36 KB and owns about 168 distinct selectors across every screen.
+- `app/styles/legacy.css` is approximately 27 KB and remains compatibility debt while its final feature selectors are
+  retired.
 - `settings-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
 - Tailwind CSS 4, the local `cn()` helper, typed variants, and the owned actions, forms, containers, request states, Tabs,
   Dialog, and Toast primitives are available and catalogued in UI Lab.
@@ -31,16 +32,16 @@ inventory live alongside this plan under `docs/ui/`.
   stacking-layer, surface-context, intrinsic-scroll-size, and visual-token solutions. Local ESLint rules enforce semantic
   click targets, accessible symbol buttons, and the shared feedback path; diagnostics direct authors to the owned primitive
   or semantic token.
-- Dashboard mounts the shared Toast provider at its persistent layout boundary. Settings mutation feedback uses it, and its
-  resource-status prompt uses the owned Dialog primitive.
+- Dashboard mounts the shared Toast and Tooltip providers at its persistent layout boundary. Settings mutation feedback
+  uses Toast; resource status and the context-preserving Quick Paste flow use the owned Dialog primitive.
 - The production App Shell and all Dashboard routes use owned tokens and primitives. Dashboard, village detail, History,
   and Settings keep product-specific composition styles in separate token-based stylesheets and must not add new
   dependencies on legacy selectors.
 - Settings and History use persistent nested App Router layouts. Their URL-backed tab pages validate route parameters but do
   not recreate the client feature shell, preventing authentication/data loading flashes and navigation movement.
 - Settings markup uses Settings-owned class names plus the shared form/action/layout primitives. Its standalone retired
-selector blocks have been removed from `legacy.css`; the remaining legacy file is compatibility debt for incremental
-selector removal rather than the target API. Product browser E2E covers 36-village
+  selector blocks have been removed from `legacy.css`; the remaining legacy file is compatibility debt for incremental
+  selector removal rather than the target API. Product browser E2E covers 36-village
   desktop/mobile scroll ownership and persistent tab navigation.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
@@ -215,11 +216,11 @@ Exit criteria:
   primitives.
 - Existing Toast and request-state components have migrated or become thin compatibility adapters.
 
-### Phase 3: shared application chrome — in progress
+### Phase 3: shared application chrome — done
 
 Migrate the persistent App Shell, top-level navigation, locale switcher, install action, synchronization indicator, section
 tabs, page container, and common headers. Preserve route persistence, sticky behavior, horizontal mobile scrolling, Quick
-Paste handoff, and focus visibility.
+Paste Dialog context, and focus visibility.
 
 Exit criteria:
 
@@ -227,24 +228,24 @@ Exit criteria:
 - Route transitions do not remount the App Shell or reintroduce the previous tab flicker.
 - Corresponding legacy selectors are deleted in the same change that removes their final consumer.
 
-The persistent top-level shell plus Settings and History section navigation are migrated. Dashboard section navigation and
-common page headers remain in this phase, so the legacy chrome selectors cannot all be removed yet.
+The persistent top-level shell, context-preserving Quick Paste Dialog, Settings and History section navigation, Dashboard
+section navigation, and common page headers are migrated.
 
-### Phase 4: feature migration
+### Phase 4: feature migration — done
 
 Migrate one independently verifiable slice at a time in this order:
 
-1. mutation Toast, loading/error/empty/stale states;
-2. common form controls and action rows;
-3. History filters, cards, pagination, and section navigation;
-4. village detail cards, metrics, cooldowns, equipment, and actions;
+1. [Done] mutation Toast, loading/error/empty/stale states;
+2. [Done] common form controls and action rows;
+3. [Done] History filters, cards, pagination, and section navigation;
+4. [Done] village detail cards, metrics, cooldowns, equipment, and actions;
 5. [Done] Settings shell and authentication;
 6. [Done] Settings Update Data visual composition;
 7. [Done] upgrade-alert, village, and group-order visual composition;
-8. Dashboard filters, village cards, queue, availability panel, and charts.
+8. [Done] Dashboard filters, village cards, queue, availability panel, and charts.
 
-Dashboard is last because it has the greatest amount of screen-specific visualization and responsive behavior. Do not
-block primitive or Settings migration on a final Dashboard visual direction.
+Dashboard remains the largest product-specific composition, but its routes now consume owned primitives and semantic
+tokens. Further visual refinement does not require reopening the primitive migration phase.
 
 For every slice:
 

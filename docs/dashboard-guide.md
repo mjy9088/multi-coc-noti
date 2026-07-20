@@ -18,10 +18,10 @@ sign-in before those screens mount.
 
 The root layout owns one TanStack Query client and a persistent App Shell. Dashboard and History reads use the shared cache,
 so revisiting a route can render recent data while refreshing instead of rebuilding an empty client-side state. The App
-Shell keeps the top-level navigation, install action, synchronization status, locale switcher, and Quick Paste handoff
-mounted while route content and its loading or error boundary change. The Quick Paste handoff is consumed once after the
-Paste screen applies it, so later Settings navigation cannot replay an old clipboard request. Settings mutations invalidate Dashboard and
-upgrade-history queries after a successful write.
+Shell keeps the top-level navigation, install action, synchronization status, locale switcher, and Quick Paste Dialog
+mounted while route content and its loading or error boundary change. The transient clipboard request is consumed once
+inside that Dialog, so closing and reopening cannot replay stale clipboard content. Settings mutations invalidate Dashboard
+and upgrade-history queries after a successful write.
 
 Keyboard and programmatically focused buttons use a distinct high-contrast focus color and outline throughout the application. In the Update Data flow, the current Paste or Review card is emphasized; after review begins, the completed Paste card is dimmed as a whole and focus moves to the next required input or enabled Import action. Returning to Paste restores its active treatment.
 
@@ -82,7 +82,8 @@ Village navigation uses stable UUID resource paths:
 - `/villages/<uuid>`: village detail, including direct navigation and reload
 - `/settings`: redirects to `/settings/paste`
 - `/settings/paste`: Update Data
-- `/settings/upgrades`: Upgrades & alerts
+- `/settings/upgrades`: Upgrade alerts
+- `/settings/notification-channels`: Notification channels
 - `/settings/villages`: Manage villages without a selected village
 - `/settings/villages/<uuid>`: settings with that village selected
 - `/settings/groups`: Group order
@@ -121,7 +122,9 @@ In the game, use `Settings → More Settings → Data Export → Copy`, then pas
 
 ### Quick Paste
 
-Quick Paste reads the clipboard from any screen, navigates to `/settings/paste`, and starts review. Clipboard access requires HTTPS or localhost and browser permission; manual paste remains available.
+Quick Paste reads the clipboard from any screen and opens the shared review/import flow in a Dialog without changing the
+URL or scroll context. On mobile the Dialog becomes a near-full-height sheet. Clipboard access requires HTTPS or localhost
+and browser permission; when it fails or contains no text, the same Dialog keeps a manual paste field available.
 
 ### Update Data
 
@@ -137,7 +140,8 @@ Preview shows export time, builder and slot status, exact completion timestamps,
 | Section | Route | Purpose |
 | --- | --- | --- |
 | `Update Data` | `/settings/paste` | Review and import game-export JSON |
-| `Upgrades & alerts` | `/settings/upgrades` | Inspect active upgrades, override preparation alerts, or open the corresponding village settings |
+| `Upgrade alerts` | `/settings/upgrades` | Inspect active upgrades, override preparation alerts, or open the corresponding village settings |
+| `Notification channels` | `/settings/notification-channels` | Add or remove Bark recipients and choose each channel's notification language |
 | `Manage villages` | `/settings/villages` or `/settings/villages/<uuid>` | Edit name, color, tags, resource policy, or delete |
 | `Group order` | `/settings/groups` | Configure dashboard tag-group order |
 
@@ -151,7 +155,7 @@ An import containing active upgrades is saved immediately with resource status `
 - Sufficient: notify one minute before completion.
 - Insufficient or unanswered: notify at the configured preparation time and again at completion.
 
-Preparation time is a per-village minute value and can be disabled. Each active upgrade can inherit that value, disable only its own preparation alert, or use a custom time under `Upgrades & alerts`. Preparation times that have already passed are not newly scheduled. The same village does not receive duplicate preparation alerts within its preparation window. Sent alerts survive policy changes; failed Bark requests record an error and retry time. See the [notification policy](resource-notification-policy.md).
+Preparation time is a per-village minute value and can be disabled. Each active upgrade can inherit that value, disable only its own preparation alert, or use a custom time under `Upgrade alerts`. Preparation times that have already passed are not newly scheduled. The same village does not receive duplicate preparation alerts within its preparation window. Sent alerts survive policy changes; failed Bark requests record an error and retry time. See the [notification policy](resource-notification-policy.md).
 
 ## Storage locations
 

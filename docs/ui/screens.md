@@ -118,8 +118,7 @@ Purpose: answer when each village export was recorded and what broad state that 
 Critical information: Display Name, player tag, game export time, server import time, Town Hall, builders, Home/Builder Base
 upgrade counts, and unknown data count.
 
-Main controls: village filter and Load more. The screen does not claim which person synchronized because admin access has no
-individual user identity.
+Main controls: village filter and Load more. The screen does not repeat the signed-in user's identity on every record.
 
 ## Update Data — `/settings/paste`
 
@@ -135,12 +134,13 @@ Primary flow:
 6. answer the resource-status follow-up when active work requires it.
 
 The full page remains useful for direct links, troubleshooting, large reviews, and repeated administration. Global Quick
-Paste reuses the same parsing, preview, and mutation behavior inside a Dialog instead of navigating here.
+Paste reuses the same parsing, preview, mutation, and resource-policy follow-up behavior inside a Dialog instead of
+navigating here. Closing it preserves the originating route and scroll context.
 
 Critical information: matched/new village, exported time, detected changes, slots, upgrades, unknown identifiers, validation
 errors, and current/next step. Completed steps are visually secondary and focus moves to the next required control.
 
-## Upgrades & alerts — `/settings/upgrades`
+## Upgrade alerts — `/settings/upgrades`
 
 Purpose: tune resource-preparation reminders for active upgrades without changing unrelated alert kinds.
 
@@ -148,6 +148,15 @@ Critical information: village, upgrade, finish time, inherited village policy, a
 
 Main actions: inherit village time, disable preparation for one upgrade, set custom minutes, save, and open corresponding
 village settings.
+
+## Notification channels — `/settings/notification-channels`
+
+Purpose: manage where notifications are delivered, independently from the content and timing policy applied to upgrades.
+
+Critical information: channel name, masked Bark device identity, endpoint, and notification language.
+
+Main actions: add a Bark channel and remove an existing channel. Delivery-channel settings must not be mixed into the
+upgrade-alert list because changing a recipient and changing an upgrade policy have different scope and consequences.
 
 ## Village settings — `/settings/villages` and `/settings/villages/<uuid>`
 

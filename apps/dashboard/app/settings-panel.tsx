@@ -14,6 +14,7 @@ import {
   Field,
   Input,
   Label,
+  RequestState,
   Select,
   SplitLayout,
   StickyRouteFrame,
@@ -94,7 +95,7 @@ type ExportPreview = {
   };
 };
 const settingsLoadedAt = Date.now();
-type SettingsSection = "import" | "alerts" | "villages" | "groups";
+type SettingsSection = "import" | "upgrades" | "channels" | "villages" | "groups";
 type QuickPasteRequest = { id: number; text: string; clipboardError: boolean } | null;
 
 export default function SettingsPanel({
@@ -106,6 +107,9 @@ export default function SettingsPanel({
   initialAccountId = null,
   quickPasteRequest = null,
   onQuickPasteApplied,
+  embedded = false,
+  onImportComplete,
+  onImportPendingChange,
 }: {
   apiBase: string;
   onChanged: () => void;
@@ -115,6 +119,9 @@ export default function SettingsPanel({
   initialAccountId?: string | null;
   quickPasteRequest?: QuickPasteRequest;
   onQuickPasteApplied?: (id: number) => void;
+  embedded?: boolean;
+  onImportComplete?: () => void;
+  onImportPendingChange?: (pending: boolean) => void;
 }) {
   const t = useTranslations("Settings");
   const { dismiss, toast } = useToast();
@@ -160,43 +167,56 @@ export default function SettingsPanel({
   const appliedQuickPaste = useRef<number | null>(null);
   const confirmImportButton = useRef<HTMLButtonElement | null>(null);
 
+  useEffect(() => {
+    onImportPendingChange?.(importing || resourceResponding);
+    return () => onImportPendingChange?.(false);
+  }, [importing, onImportPendingChange, resourceResponding]);
+
   const request = useApiRequest(apiBase);
 
   const load = useCallback(async () => {
     setInitialLoading(true);
     try {
-      const [accountResult, upgradeResult, dashboardSettings, channelResult] = await Promise.all([
-        request("/api/villages"),
-        request("/api/settings/upgrades"),
-        request("/api/settings/dashboard"),
-        request("/api/notification-channels"),
-      ]);
-      setAccounts(accountResult.accounts);
-      setUpgrades(upgradeResult.upgrades);
-      setUpgradeAlertDrafts(
-        Object.fromEntries(
-          upgradeResult.upgrades.map((upgrade: Upgrade) => [
-            upgrade.id,
-            {
-              mode:
-                upgrade.resourcePreparationOverrideMinutes === null
-                  ? "inherit"
-                  : upgrade.resourcePreparationOverrideMinutes === 0
-                    ? "disabled"
-                    : "custom",
-              minutes:
-                upgrade.resourcePreparationOverrideMinutes && upgrade.resourcePreparationOverrideMinutes > 0
-                  ? upgrade.resourcePreparationOverrideMinutes
-                  : 60,
-            },
-          ]),
-        ),
-      );
-      setEditing((current) =>
-        current ? accountResult.accounts.find((item: Account) => item.id === current.id) || null : null,
-      );
-      setGroupOrder(dashboardSettings.groupOrder || []);
-      setNotificationChannels(channelResult.channels || []);
+      if (section === "channels") {
+        const channelResult = await request("/api/notification-channels");
+        setNotificationChannels(channelResult.channels || []);
+      } else {
+        const [accountResult, sectionResult] = await Promise.all([
+          request("/api/villages"),
+          section === "upgrades"
+            ? request("/api/settings/upgrades")
+            : section === "groups"
+              ? request("/api/settings/dashboard")
+              : Promise.resolve(null),
+        ]);
+        setAccounts(accountResult.accounts);
+        setEditing((current) =>
+          current ? accountResult.accounts.find((item: Account) => item.id === current.id) || null : null,
+        );
+        if (section === "upgrades" && sectionResult) {
+          setUpgrades(sectionResult.upgrades);
+          setUpgradeAlertDrafts(
+            Object.fromEntries(
+              sectionResult.upgrades.map((upgrade: Upgrade) => [
+                upgrade.id,
+                {
+                  mode:
+                    upgrade.resourcePreparationOverrideMinutes === null
+                      ? "inherit"
+                      : upgrade.resourcePreparationOverrideMinutes === 0
+                        ? "disabled"
+                        : "custom",
+                  minutes:
+                    upgrade.resourcePreparationOverrideMinutes && upgrade.resourcePreparationOverrideMinutes > 0
+                      ? upgrade.resourcePreparationOverrideMinutes
+                      : 60,
+                },
+              ]),
+            ),
+          );
+        }
+        if (section === "groups" && sectionResult) setGroupOrder(sectionResult.groupOrder || []);
+      }
       setError("");
       setInitialLoadFailed(false);
     } catch (reason) {
@@ -205,7 +225,7 @@ export default function SettingsPanel({
     } finally {
       setInitialLoading(false);
     }
-  }, [request]);
+  }, [request, section]);
   useEffect(() => {
     const timer = window.setTimeout(load, 0);
     return () => window.clearTimeout(timer);
@@ -410,6 +430,7 @@ export default function SettingsPanel({
       setPreview(null);
       setNewLabel("");
       if (askForResources) setResourcePrompt({ accountId: (result as { account: { id: string } }).account.id });
+      else onImportComplete?.();
     }
   };
 
@@ -425,7 +446,10 @@ export default function SettingsPanel({
       t("resourceStatusSaved"),
     );
     setResourceResponding(false);
-    if (result) setResourcePrompt(null);
+    if (result) {
+      setResourcePrompt(null);
+      onImportComplete?.();
+    }
   };
 
   const saveUpgradeAlert = async (upgrade: Upgrade) => {
@@ -479,72 +503,82 @@ export default function SettingsPanel({
     );
 
   return (
-    <section className="settings-page">
-      <div className="settings-page-header">
-        <div>
-          <p className="settings-eyebrow">VILLAGE DATA</p>
-          <h1>{t("title")}</h1>
+    <section className={`settings-page${embedded ? " settings-page-embedded" : ""}`}>
+      {!embedded && (
+        <div className="settings-page-header">
+          <div>
+            <p className="settings-eyebrow">VILLAGE DATA</p>
+            <h1>{t("title")}</h1>
+          </div>
         </div>
-      </div>
-      <StickyStackItem order={10} className="settings-tabs-sticky ui-sticky-surface">
-        <Tabs
-          className="settings-tabs"
-          label={t("settingsSections")}
-          value={section}
-          onValueChange={(value) => {
-            const next = value as SettingsSection;
-            onSectionChange?.(next);
-          }}
-        >
-          <Tab value="import">{t("updateData")}</Tab>
-          <Tab value="alerts">{t("upgradeAlerts")}</Tab>
-          <Tab value="villages">{t("manageVillages")}</Tab>
-          <Tab value="groups">{t("manageGroups")}</Tab>
-        </Tabs>
-      </StickyStackItem>
-      <StickyRouteFrame className="settings-route-frame" scrollKey={section}>
+      )}
+      {!embedded && (
+        <StickyStackItem order={10} className="settings-tabs-sticky ui-sticky-surface">
+          <Tabs
+            className="settings-tabs"
+            label={t("settingsSections")}
+            value={section}
+            onValueChange={(value) => {
+              const next = value as SettingsSection;
+              onSectionChange?.(next);
+            }}
+          >
+            <Tab value="import">{t("updateData")}</Tab>
+            <Tab value="upgrades">{t("upgradeAlerts")}</Tab>
+            <Tab value="channels">{t("notificationChannels")}</Tab>
+            <Tab value="villages">{t("manageVillages")}</Tab>
+            <Tab value="groups">{t("manageGroups")}</Tab>
+          </Tabs>
+        </StickyStackItem>
+      )}
+      <StickyRouteFrame className="settings-route-frame" contained={embedded} scrollKey={section}>
         {section === "import" && (
           <div className="settings-import-flow">
-            <article
-              className={`settings-surface settings-export settings-step ${preview ? "step-complete" : "step-current"}`}
-              aria-current={!preview ? "step" : undefined}
-            >
-              <p className="settings-step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
-                01 · PASTE
-              </p>
-              <h2>{t("pasteJson")}</h2>
-              <p>{t("pasteJsonHelp")}</p>
-              <Field>
-                <Label className="ui-visually-hidden">{t("pasteJson")}</Label>
-                <Textarea
-                  value={exportText}
-                  onChange={(event) => replaceExportText(event.target.value)}
-                  placeholder='{"tag":"#...","timestamp":...}'
-                  autoFocus
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  aria-busy={previewLoading}
-                />
-              </Field>
-              <div className="settings-review-action" aria-live="polite">
-                <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
-                <span>
-                  <Button type="button" tone="secondary" onClick={pasteFromClipboard}>
-                    {t("pasteClipboard")}
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={!exportText.trim() || previewLoading}
-                    pending={previewLoading}
-                    onClick={() => reviewExport(exportText)}
-                  >
-                    {previewLoading ? t("reviewingData") : t("reviewData")}
-                  </Button>
-                </span>
-              </div>
-            </article>
+            {error && !initialLoadFailed && (
+              <RequestState className="settings-import-error" tone="error" title={error} />
+            )}
+            {(!embedded || !resourcePrompt) && (
+              <article
+                className={`settings-surface settings-export settings-step ${preview ? "step-complete" : "step-current"}`}
+                aria-current={!preview ? "step" : undefined}
+              >
+                <p className="settings-step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
+                  01 · PASTE
+                </p>
+                <h2>{t("pasteJson")}</h2>
+                <p>{t("pasteJsonHelp")}</p>
+                <Field>
+                  <Label className="ui-visually-hidden">{t("pasteJson")}</Label>
+                  <Textarea
+                    value={exportText}
+                    onChange={(event) => replaceExportText(event.target.value)}
+                    placeholder='{"tag":"#...","timestamp":...}'
+                    autoFocus
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    aria-busy={previewLoading}
+                  />
+                </Field>
+                <div className="settings-review-action" aria-live="polite">
+                  <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
+                  <span>
+                    <Button type="button" tone="secondary" onClick={pasteFromClipboard}>
+                      {t("pasteClipboard")}
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={!exportText.trim() || previewLoading}
+                      pending={previewLoading}
+                      onClick={() => reviewExport(exportText)}
+                    >
+                      {previewLoading ? t("reviewingData") : t("reviewData")}
+                    </Button>
+                  </span>
+                </div>
+              </article>
+            )}
 
-            {preview && (
+            {preview && (!embedded || !resourcePrompt) && (
               <article className="settings-surface settings-preview settings-step step-current" aria-current="step">
                 <p className="settings-step-label" data-step-state={t("stepNow")}>
                   02 · REVIEW
@@ -677,11 +711,38 @@ export default function SettingsPanel({
                 </div>
               </article>
             )}
+            {embedded && resourcePrompt && (
+              <article className="settings-surface resource-inline-step" aria-live="polite">
+                <h2>{t("resourcePromptTitle")}</h2>
+                <p>{t("resourcePromptHelp")}</p>
+                <div className="resource-dialog-options">
+                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
+                    {t("resourceAbundant")}
+                  </Button>
+                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
+                    {t("resourceSufficient")}
+                  </Button>
+                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
+                    {t("resourceInsufficient")}
+                  </Button>
+                </div>
+                <Button
+                  tone="secondary"
+                  disabled={resourceResponding}
+                  onClick={() => {
+                    setResourcePrompt(null);
+                    onImportComplete?.();
+                  }}
+                >
+                  {t("resourceAnswerLater")}
+                </Button>
+              </article>
+            )}
           </div>
         )}
 
-        {section === "alerts" && (
-          <article className="settings-surface settings-wide">
+        {section === "channels" && (
+          <article className="settings-surface settings-wide settings-notification-channels">
             <h2>{t("barkChannels")}</h2>
             <p>{t("barkChannelsHelp")}</p>
             <div className="settings-upgrade-list">
@@ -741,7 +802,11 @@ export default function SettingsPanel({
               </Field>
               <Button type="submit">{t("addNotificationChannel")}</Button>
             </form>
-            <hr />
+          </article>
+        )}
+
+        {section === "upgrades" && (
+          <article className="settings-surface settings-wide settings-upgrade-alerts">
             <h2>{t("upgradeAlertsTitle")}</h2>
             <p>{t("upgradeAlertsHelp")}</p>
             <div className="settings-upgrade-list">
@@ -1042,72 +1107,76 @@ export default function SettingsPanel({
           </article>
         )}
       </StickyRouteFrame>
-      <Dialog
-        open={deletePromptOpen}
-        onOpenChange={(open) => {
-          if (!mutationPending) setDeletePromptOpen(open);
-        }}
-      >
-        <DialogContent
-          closeLabel={t("cancel")}
-          onEscapeKeyDown={(event) => mutationPending && event.preventDefault()}
-          onPointerDownOutside={(event) => mutationPending && event.preventDefault()}
+      {!embedded && (
+        <Dialog
+          open={deletePromptOpen}
+          onOpenChange={(open) => {
+            if (!mutationPending) setDeletePromptOpen(open);
+          }}
         >
-          <DialogTitle>{t("deleteVillage")}</DialogTitle>
-          <DialogDescription>{t("deleteConfirm")}</DialogDescription>
-          <DialogFooter>
-            <Button tone="secondary" disabled={mutationPending} onClick={() => setDeletePromptOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              tone="danger"
-              pending={mutationPending}
-              onClick={() => {
-                if (!editing) return;
-                void run(async () => {
-                  await request(`/api/villages/${editing.id}`, { method: "DELETE" });
-                  setDeletePromptOpen(false);
-                  setEditing(null);
-                }, t("deleted"));
-              }}
-            >
-              {t("deleteVillage")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={Boolean(resourcePrompt)}
-        onOpenChange={(open) => {
-          if (!open && !resourceResponding) setResourcePrompt(null);
-        }}
-      >
-        <DialogContent
-          className="resource-dialog"
-          closeLabel={t("resourceAnswerLater")}
-          onEscapeKeyDown={(event) => resourceResponding && event.preventDefault()}
-          onPointerDownOutside={(event) => resourceResponding && event.preventDefault()}
+          <DialogContent
+            closeLabel={t("cancel")}
+            onEscapeKeyDown={(event) => mutationPending && event.preventDefault()}
+            onPointerDownOutside={(event) => mutationPending && event.preventDefault()}
+          >
+            <DialogTitle>{t("deleteVillage")}</DialogTitle>
+            <DialogDescription>{t("deleteConfirm")}</DialogDescription>
+            <DialogFooter>
+              <Button tone="secondary" disabled={mutationPending} onClick={() => setDeletePromptOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button
+                tone="danger"
+                pending={mutationPending}
+                onClick={() => {
+                  if (!editing) return;
+                  void run(async () => {
+                    await request(`/api/villages/${editing.id}`, { method: "DELETE" });
+                    setDeletePromptOpen(false);
+                    setEditing(null);
+                  }, t("deleted"));
+                }}
+              >
+                {t("deleteVillage")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {!embedded && (
+        <Dialog
+          open={Boolean(resourcePrompt)}
+          onOpenChange={(open) => {
+            if (!open && !resourceResponding) setResourcePrompt(null);
+          }}
         >
-          <DialogTitle>{t("resourcePromptTitle")}</DialogTitle>
-          <DialogDescription>{t("resourcePromptHelp")}</DialogDescription>
-          <DialogBody className="resource-dialog-body">
-            <div className="resource-dialog-options">
-              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
-                {t("resourceAbundant")}
+          <DialogContent
+            className="resource-dialog"
+            closeLabel={t("resourceAnswerLater")}
+            onEscapeKeyDown={(event) => resourceResponding && event.preventDefault()}
+            onPointerDownOutside={(event) => resourceResponding && event.preventDefault()}
+          >
+            <DialogTitle>{t("resourcePromptTitle")}</DialogTitle>
+            <DialogDescription>{t("resourcePromptHelp")}</DialogDescription>
+            <DialogBody className="resource-dialog-body">
+              <div className="resource-dialog-options">
+                <Button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
+                  {t("resourceAbundant")}
+                </Button>
+                <Button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
+                  {t("resourceSufficient")}
+                </Button>
+                <Button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
+                  {t("resourceInsufficient")}
+                </Button>
+              </div>
+              <Button tone="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>
+                {t("resourceAnswerLater")}
               </Button>
-              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
-                {t("resourceSufficient")}
-              </Button>
-              <Button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
-                {t("resourceInsufficient")}
-              </Button>
-            </div>
-            <Button tone="secondary" disabled={resourceResponding} onClick={() => setResourcePrompt(null)}>
-              {t("resourceAnswerLater")}
-            </Button>
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
+            </DialogBody>
+          </DialogContent>
+        </Dialog>
+      )}
     </section>
   );
 }

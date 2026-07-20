@@ -81,9 +81,22 @@ test("[UI-SETTINGS-001] measured sticky chrome keeps the desktop settings viewpo
       );
     })
     .toBe(true);
-  await page.locator(".settings-tabs .ui-tab").nth(3).click();
+  await page.locator(".settings-tabs .ui-tab").nth(4).click();
   await expect(page).toHaveURL(/\/settings\/groups$/);
   await expect(settingsPage).toHaveAttribute("data-persistence-probe", "mounted");
+});
+
+test("[UI-SETTINGS-001] notification policy and delivery channels use separate URL-backed sections", async ({
+  page,
+}) => {
+  await page.goto("/settings/upgrades");
+  await expect(page.locator(".settings-upgrade-alerts")).toBeVisible();
+  await expect(page.locator(".settings-notification-channels")).toHaveCount(0);
+
+  await page.locator(".settings-tabs .ui-tab").nth(2).click();
+  await expect(page).toHaveURL(/\/settings\/notification-channels$/);
+  await expect(page.locator(".settings-notification-channels")).toBeVisible();
+  await expect(page.locator(".settings-upgrade-alerts")).toHaveCount(0);
 });
 
 test("[UI-SETTINGS-001] mobile village settings keep list and editor scroll ownership separate", async ({

@@ -12,7 +12,7 @@ Save results are Toasts. Destructive confirmation and the resource-status questi
 primarily a workflow requirement, not a predetermined component: a Dialog is the leading candidate only while it makes the
 common import path faster and keeps review information usable.
 
-## Dialog primitive — implemented, Dashboard migration pending
+## Dialog primitive — implemented
 
 Implement the owned API using an accessible headless primitive rather than custom document-level event handling.
 
@@ -35,11 +35,11 @@ Required behavior:
 The primitive owns accessibility and overlay mechanics. Feature compositions own copy, form state, mutations, and whether
 closing is safe.
 
-## Fast import workflow — planned product composition
+## Fast import workflow — implemented product composition
 
-Current Quick Paste behavior reads the clipboard and navigates to `/settings/paste`. The target is a low-friction path from
-clipboard to review and import. Keeping the current route visible in an App Shell-owned Dialog is the first design to test,
-not a permanent product constraint.
+Quick Paste reads the clipboard and opens the shared import workflow in an App Shell-owned Dialog without changing the
+current URL. On narrow screens the owned Dialog becomes a near-full-height bottom sheet. The full `/settings/paste` route
+uses the same feature state and rendering for deliberate or larger imports.
 
 The workflow is globally available because:
 
@@ -62,19 +62,20 @@ Flow:
    and show a success Toast.
 10. On failure, retain entered/review data and show actionable error feedback in the active composition.
 
-Candidate Dialog behavior:
+Dialog behavior:
 
 - opening Quick Paste does not change the URL;
 - closing it returns to the exact route and scroll context;
+- the title stays outside the scrolling region while a long Review scrolls inside the Dialog, keeping the final action
+  reachable with pointer, touch, and keyboard input;
 - `/settings/paste` remains the full-page import workflow for direct access, troubleshooting, and larger review work;
 - transient state is ephemeral and is not restored by reload or browser history.
 
-Choose a route or responsive sheet instead when the preview becomes too dense, browser history/reload recovery matters, or
-the software keyboard leaves insufficient room. A narrow-screen Dialog may become a full-height sheet without changing the
-workflow contract. Test the common case with realistic exports in UI Lab before deciding.
+Use the full route when the preview is too dense, browser history/reload recovery matters, or troubleshooting needs more
+space. The transient Dialog remains optimized for the common clipboard path and intentionally does not survive reload.
 
-Regardless of presentation, do not duplicate parsing or mutation logic between the fast path and Settings screen. Extract
-a feature hook/state machine and render it in multiple compositions if their layouts diverge.
+The fast path and Settings screen share the production import state and rendering; parsing and mutation behavior must not
+diverge between the two presentations.
 
 ## Other Dialog compositions
 

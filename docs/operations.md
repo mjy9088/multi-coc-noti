@@ -205,7 +205,11 @@ Public and collection endpoints:
 All application `/api/*` endpoints require an Auth.js database session. There is no administrator API or shared bearer
 token. Village CRUD, settings, history, export preview/import, and notification channels are scoped to the signed-in user.
 
-Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` response. Settings use `/settings/paste`, `/settings/upgrades`, `/settings/villages`, `/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. History uses `/history/upgrades` and `/history/syncs`, while the UUID upgrade resource path above supports village-scoped reads. A village-detail endpoint can be introduced separately if the aggregate response becomes unsuitable.
+Dashboard route `/villages/<uuid>` currently resolves its village from the aggregate `/api/dashboard` response. Settings
+use `/settings/paste`, `/settings/upgrades`, `/settings/notification-channels`, `/settings/villages`,
+`/settings/villages/<uuid>`, and `/settings/groups`; `/settings` redirects to `/settings/paste`. History uses
+`/history/upgrades` and `/history/syncs`, while the UUID upgrade resource path above supports village-scoped reads. A
+village-detail endpoint can be introduced separately if the aggregate response becomes unsuitable.
 
 Use a TLS reverse proxy and restrict `CORS_ORIGIN` in production. Clipboard-based Quick Paste requires HTTPS outside localhost.
 

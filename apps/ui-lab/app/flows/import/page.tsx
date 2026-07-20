@@ -204,7 +204,7 @@ export default function ImportFlowPage() {
   return (
     <FlowWorkbench
       title="Import without losing context"
-      description="Compare the fast clipboard path, review density, validation recovery, and notification follow-up before choosing Dialog, sheet, or route presentation."
+      description="Exercise the shared Dialog/sheet fast path across review density, validation recovery, and notification follow-up states."
       scenarios={scenarios}
       controls={controls}
       onChange={setControls}

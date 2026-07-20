@@ -14,14 +14,14 @@ const variants: CompositionVariant[] = [
   {
     value: "dialog",
     label: "B · Centered dialog",
-    status: "exploring",
-    rationale: "Preserves context on desktop; review density and software keyboard remain concerns.",
+    status: "preferred",
+    rationale: "Production default: preserves desktop context and becomes a near-full-height sheet on narrow screens.",
   },
   {
     value: "sheet",
     label: "C · Responsive sheet",
-    status: "preferred",
-    rationale: "Promising compromise: contextual on desktop and task-sized on mobile. Validate with real exports.",
+    status: "rejected",
+    rationale: "A separate presentation is unnecessary because the owned Dialog already adapts to a mobile sheet.",
   },
 ];
 
@@ -84,12 +84,12 @@ function ImportFixture({ many, stickyActions }: { many: boolean; stickyActions: 
 }
 
 export default function ImportCompositionPage() {
-  const [variant, setVariant] = useState("sheet");
+  const [variant, setVariant] = useState("dialog");
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   const [scale, setScale] = useState<"representative" | "many">("representative");
   return (
     <CompositionWorkbench
-      title="Where should fast import live?"
+      title="How should fast import preserve context?"
       question="Can users review meaningful changes quickly without losing their previous task?"
       criteria={[
         "Changes and final action remain visible at realistic content length.",

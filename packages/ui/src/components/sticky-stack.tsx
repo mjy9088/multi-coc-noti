@@ -143,11 +143,12 @@ export function StickyStackViewport({ className, ...props }: HTMLAttributes<HTML
   );
 }
 
-type StickyRouteFrameProps = HTMLAttributes<HTMLDivElement> & { scrollKey: string };
+type StickyRouteFrameProps = HTMLAttributes<HTMLDivElement> & { scrollKey: string; contained?: boolean };
 
-export function StickyRouteFrame({ className, scrollKey, ...props }: StickyRouteFrameProps) {
+export function StickyRouteFrame({ className, contained = false, scrollKey, ...props }: StickyRouteFrameProps) {
   const context = useContext(StickyStackContext);
-  if (!context) throw new Error("StickyRouteFrame must be rendered inside StickyStackProvider");
+  if (!context && !contained) throw new Error("StickyRouteFrame must be rendered inside StickyStackProvider");
+  const totalHeight = context?.totalHeight ?? 0;
   const anchorRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const [fixedBox, setFixedBox] = useState<{ left: number; width: number } | null>(null);
@@ -162,8 +163,7 @@ export function StickyRouteFrame({ className, scrollKey, ...props }: StickyRoute
     if (!anchor) return;
     const update = () => {
       const anchorBounds = anchor.getBoundingClientRect();
-      const next =
-        anchorBounds.top <= context.totalHeight ? { left: anchorBounds.left, width: anchorBounds.width } : null;
+      const next = anchorBounds.top <= totalHeight ? { left: anchorBounds.left, width: anchorBounds.width } : null;
       setFixedBox((current) => (current?.left === next?.left && current?.width === next?.width ? current : next));
     };
     update();
@@ -176,7 +176,9 @@ export function StickyRouteFrame({ className, scrollKey, ...props }: StickyRoute
       window.removeEventListener("resize", update);
       observer.disconnect();
     };
-  }, [context.totalHeight]);
+  }, [totalHeight]);
+
+  if (contained) return <div {...props} className={cn("ui-sticky-route-frame-contained", className)} />;
 
   return (
     <div ref={anchorRef} className="ui-sticky-route-frame-anchor">

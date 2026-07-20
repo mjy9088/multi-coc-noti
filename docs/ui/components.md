@@ -23,7 +23,7 @@ Current variants:
 - sizes: small, medium, large;
 - states: default, hover, pressed, focus-visible, disabled, pending.
 
-Before broad Dashboard migration, add icon composition, pending accessible copy guidance, and component-level accessibility
+Further hardening should add richer icon composition, pending accessible-copy guidance, and component-level accessibility
 coverage.
 
 ### Actions, forms, and containers
@@ -150,8 +150,8 @@ their layout CSS uses shared semantic tokens rather than becoming generic compon
 
 - `Dialog`, `DialogContent`, `DialogTitle`, `DialogDescription`, and action/footer composition;
 - `Toast`, `ToastViewport`, and a provider/hook for global mutation feedback;
-- a fast import composition remains product-level work; Settings destructive confirmation uses Dialog, and other workflows
-  should do so only when their validation supports it.
+- the implemented fast import composition remains product-owned while reusing the shared Dialog and Settings import flow;
+  Settings destructive confirmation uses Dialog, and other workflows should do so only when their validation supports it.
 
 ### Tooltip
 
