@@ -1,7 +1,7 @@
 import { EmptyState } from "@multi-coc/ui";
 import type { CompletionBin, UpgradeTimelinePoint } from "@multi-coc/upgrade-availability";
 import { UpgradeChartBody, UpgradeChartPanel } from "../components/charts/upgrade-chart-layout";
-import { DashboardSection } from "../components/layout/product-compositions";
+import { DashboardSection } from "../components/dashboard/dashboard-layout";
 
 const WIDTH = 720;
 const HEIGHT = 150;

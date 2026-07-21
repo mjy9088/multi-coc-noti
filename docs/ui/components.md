@@ -90,14 +90,20 @@ expressed with CSS alone. Neither is a visual component.
 Feature screens should express meaning rather than CSS selectors. Repeated product layout rules therefore belong in
 `apps/dashboard/components`, whose props use narrow literal unions and booleans. For example, use
 `<DashboardSection kind="queue" ...>` or `<VillagePanel kind="cooldown">` instead of attaching queue or cooldown classes
-to `ContentSection` or `Card`. Settings uses the same boundary for surface kinds, steps, route frames, and village
-master/detail panes.
+to `ContentSection` or `Card`. Settings uses the same boundary for surface kinds, steps, and field placement. A one-off
+master/detail assembly stays in the Village Settings feature itself; wrapping `MasterDetailLayout` only to inject one fixed
+class does not create a useful application-composition API.
 
 `className` remains available on generic package APIs as an implementation escape hatch. Direct use is expected in the UI
 package, UI Lab experiments, application-composition implementations, and genuinely unique visualization internals. The
 Dashboard ESLint rule `no-shared-composition-classname` rejects it on shared compositions in route and feature screens and
-points authors to a typed shared variant or app wrapper. Do not create a wrapper that only renames an element: it must
+points authors to a typed shared variant or feature implementation. Do not create a wrapper that only renames an element or
+forwards one fixed class: it must
 centralize a repeated layout rule, semantic variant, accessibility behavior, or product composition.
+
+Product CSS follows the same ownership boundary. Dashboard, Settings, History, Village Detail, and App Shell styles live
+beside their owning components and are imported by those feature or shell entry points. `app/globals.css` is reserved for
+the shared UI foundation and genuinely application-global compatibility rules; it is not an index of route styles.
 
 Use the composed field components for the common `Field + Label + control + Description/FieldError` shape. Use the lower
 level Field family only when a control group or unusual label relationship needs custom composition. Dashboard's fixed
@@ -293,6 +299,12 @@ These do not belong in the generic UI package even when they use primitives:
 - Upgrade and Sync History filters and result cards.
 
 They may live under `apps/dashboard/features/<feature>` and import product types, translations, query hooks, and routes.
+
+The current Dashboard implementation keeps route orchestration in `app/page.tsx` and moves the overview/filter surface,
+village grid, and upgrade queue into `components/dashboard`. Settings keeps loading, mutation, import orchestration, and
+route selection in `settings-panel.tsx`; notification channels, upgrade-alert policy, village editing, group order, and
+dialogs live under `components/settings`. Shared product models are declared beside those components rather than repeated
+inside route files. This boundary is intentionally established before introducing form contexts or feature stores.
 
 ## Component acceptance checklist
 

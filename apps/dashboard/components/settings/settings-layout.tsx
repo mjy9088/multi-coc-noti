@@ -1,17 +1,4 @@
-import {
-  ActionBar,
-  DetailPane,
-  DetailPaneBackdrop,
-  FormGrid,
-  InputField,
-  MasterDetailLayout,
-  MasterPane,
-  PageIntro,
-  ScrollablePane,
-  SelectField,
-  StickyRouteFrame,
-  TextareaField,
-} from "@multi-coc/ui";
+import { FormGrid, InputField, SelectField, TextareaField } from "@multi-coc/ui";
 import type { ComponentProps, FormHTMLAttributes, HTMLAttributes } from "react";
 
 type WithoutClassName<T> = Omit<T, "className">;
@@ -33,14 +20,6 @@ export function SettingsPage({
   return <section {...props} className={`settings-page${embedded ? " settings-page-embedded" : ""}`} />;
 }
 
-export function SettingsIntro(props: WithoutClassName<ComponentProps<typeof PageIntro>>) {
-  return <PageIntro {...props} spacing="none" className="settings-page-header" />;
-}
-
-export function SettingsRouteFrame(props: WithoutClassName<ComponentProps<typeof StickyRouteFrame>>) {
-  return <StickyRouteFrame {...props} className="settings-route-frame" />;
-}
-
 export function SettingsSurface({
   kind,
   step = "none",
@@ -51,41 +30,6 @@ export function SettingsSurface({
 }) {
   const stepClass = step === "none" ? "" : ` step-${step}`;
   return <article {...props} className={`${surfaceRules[kind]}${stepClass}`} />;
-}
-
-export function SettingsVillageLayout(props: WithoutClassName<ComponentProps<typeof MasterDetailLayout>>) {
-  return <MasterDetailLayout {...props} className="settings-village-layout" />;
-}
-
-export function SettingsVillageListPane(props: WithoutClassName<ComponentProps<typeof MasterPane>>) {
-  return <MasterPane {...props} className="settings-surface settings-village-list-card ui-sticky-surface" />;
-}
-
-export function SettingsVillagePicker(props: WithoutClassName<ComponentProps<typeof ScrollablePane>>) {
-  return <ScrollablePane {...props} className="settings-village-picker" boundary="contain" activation="sticky-frame" />;
-}
-
-export function SettingsVillageBackdrop(props: WithoutClassName<ComponentProps<typeof DetailPaneBackdrop>>) {
-  return <DetailPaneBackdrop {...props} className="settings-sheet-backdrop" />;
-}
-
-export function SettingsVillageEditor(props: WithoutClassName<ComponentProps<typeof DetailPane>>) {
-  return <DetailPane {...props} className="settings-surface settings-village-editor-card" />;
-}
-
-export function SettingsVillageEditorScroll(props: WithoutClassName<ComponentProps<typeof ScrollablePane>>) {
-  return (
-    <ScrollablePane
-      {...props}
-      className="village-editor-scroll"
-      boundary="contain"
-      activation="sticky-frame-or-compact"
-    />
-  );
-}
-
-export function SettingsActions(props: WithoutClassName<ComponentProps<typeof ActionBar>>) {
-  return <ActionBar {...props} className="settings-action-bar" sticky />;
 }
 
 type SettingsFieldPlacement = "default" | "wide" | "search" | "new-village";

@@ -1,19 +1,8 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Checkbox,
-  Disclosure,
-  DisclosureContent,
-  DisclosureSummary,
-  EmptyState,
-  StaleNotice,
-  StickyStackItem,
-  ToggleGroup,
-  ToggleGroupItem,
-  useStickyStack,
-} from "@multi-coc/ui";
+import "../components/dashboard/dashboard.css";
+
+import { Button, StaleNotice, StickyStackItem, useStickyStack } from "@multi-coc/ui";
 import type { AvailabilityFilter, DisplayOptions } from "@multi-coc/upgrade-availability";
 import {
   applyDisplayOptions,
@@ -24,87 +13,21 @@ import {
   summarizeAvailability,
 } from "@multi-coc/upgrade-availability";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import {
-  DashboardAvailabilityFilter,
-  DashboardCard,
-  DashboardFilterToolbar,
-  DashboardIntro,
-  DashboardSearchField,
-  DashboardSection,
-  DashboardStat,
-  DashboardSummary,
-} from "../components/layout/product-compositions";
+import type { DashboardData, Village } from "../components/dashboard/dashboard-model";
+import { DashboardOverview, UpgradeQueue, VillageGrid } from "../components/dashboard/dashboard-sections";
 import { dashboardQueryKey } from "./query-provider";
 import { ErrorState, LoadingState } from "./request-state";
-import UpgradeAvailabilityPanel from "./upgrade-availability-panel";
 import UpgradeCharts from "./upgrade-charts";
 import { useDashboardFormat } from "./use-dashboard-format";
 import VillageDetail from "./village-detail";
 
-type Upgrade = {
-  id: string;
-  name: string;
-  level: number;
-  nextLevel?: number;
-  type: "building" | "hero" | "pet" | "research";
-  base?: string;
-  finishAt: string;
-};
-
-type Village = {
-  id: string;
-  name: string;
-  tag: string;
-  townHall: number;
-  level: number;
-  color: string;
-  tags?: string[];
-  online: boolean;
-  refreshRequired?: boolean;
-  refreshCompletedAt?: string | null;
-  lastSeen: string;
-  builders: { free: number; total: number; regularTotal?: number };
-  upgradeSlots?: {
-    laboratory: { available: boolean; active?: number; total?: number } | null;
-    petHouse: { available: boolean } | null;
-    builderBase: {
-      builders: { free: number; total: number };
-      laboratory: { available: boolean; active?: number; total?: number } | null;
-    } | null;
-  };
-  cooldowns?: { clockTower: string | null; helpers: Array<{ dataId: number; availableAt: string }> };
-  helpers?: Array<{ dataId: number; name: string; level: number; availableAt: string | null }>;
-  heroEquipment?: Array<{ dataId: number; name: string; level: number }>;
-  officialStats?: {
-    trophies: number;
-    bestTrophies: number;
-    league: string | null;
-    warStars: number;
-    donations: number;
-    donationsReceived: number;
-    capitalContributions: number;
-  };
-  upgrades: Upgrade[];
-};
-
-type DashboardData = { generatedAt: string; accounts: Village[]; groupOrder?: string[] };
 const emptyData: DashboardData = { generatedAt: new Date(0).toISOString(), accounts: [] };
 const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE;
 const browserApiBase = () =>
   configuredApiBase === "same-origin" ? "" : configuredApiBase || `${location.protocol}//${location.hostname}:8787`;
-
-function Shield({ level, color }: { level: number; color: string }) {
-  return (
-    <div className="shield" style={{ "--shield": color } as React.CSSProperties}>
-      <span>TH</span>
-      {level}
-    </div>
-  );
-}
 
 export default function Home({ initialVillageId = null }: { initialVillageId?: string | null } = {}) {
   const t = useTranslations("Dashboard");
@@ -320,101 +243,30 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
             : "shell hidden-view"
         }
       >
-        <section className="dashboard-hero">
-          <DashboardIntro eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")} />
-          <div className="account-controls dashboard-filters">
-            <DashboardFilterToolbar>
-              <DashboardSearchField
-                label={t("search")}
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setActiveTag(null);
-                }}
-                placeholder={t("search")}
-              />
-              <DashboardAvailabilityFilter
-                label={t("availabilityFilter")}
-                value={availabilityFilter}
-                onValueChange={(value) => {
-                  setAvailabilityFilter(value);
-                  setActiveTag(null);
-                }}
-                options={{ all: t("statusAll"), home: t("homeSlotAvailable"), any: t("anySlotAvailable") }}
-              />
-              <Checkbox
-                className="refresh-filter"
-                label={t("refreshRequired")}
-                checked={refreshOnly}
-                onChange={(event) => {
-                  setRefreshOnly(event.target.checked);
-                  setActiveTag(null);
-                }}
-              />
-              <Disclosure className="display-options">
-                <DisclosureSummary>{t("displayOptions")}</DisclosureSummary>
-                <DisclosureContent>
-                  <Checkbox
-                    label={t("inferGoblinResearcher")}
-                    checked={displayOptions.goblinResearcher}
-                    onChange={(event) => changeDisplayOption("goblinResearcher", event.target.checked)}
-                  />
-                  <Checkbox
-                    label={t("inferGoblinBuilder")}
-                    checked={displayOptions.goblinBuilder}
-                    onChange={(event) => changeDisplayOption("goblinBuilder", event.target.checked)}
-                  />
-                  <Checkbox
-                    label={t("prioritizeAvailable")}
-                    checked={prioritizeAvailable}
-                    onChange={(event) => {
-                      setPrioritizeAvailable(event.target.checked);
-                      localStorage.setItem("multi-village-prioritize-available", String(event.target.checked));
-                    }}
-                  />
-                </DisclosureContent>
-              </Disclosure>
-            </DashboardFilterToolbar>
-            <ToggleGroup
-              className="account-tabs"
-              type="single"
-              aria-label={t("all")}
-              value={selectedTag ?? "all"}
-              onValueChange={(value) => setActiveTag(value && value !== "all" ? value : null)}
-            >
-              <ToggleGroupItem value="all">
-                {t("all")} <b>{visibleAccounts.length}</b>
-              </ToggleGroupItem>
-              {tagOptions.map((tag) => (
-                <ToggleGroupItem key={tag.key} value={tag.key}>
-                  <span className="tag-hash">#</span>
-                  {tag.label} <b>{tag.count}</b>
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-          <DashboardSummary>
-            <DashboardStat kind="accounts" label={t("accounts")} value={accounts.length} />
-            <DashboardStat
-              kind="home-available"
-              label={t("homeVillageIdle")}
-              value={availabilitySummary.homeVillage}
-              emphasized={availabilitySummary.homeVillage > 0}
-            />
-            <DashboardStat
-              kind="builder-available"
-              label={t("builderBaseIdle")}
-              value={availabilitySummary.builderBase}
-              emphasized={availabilitySummary.builderBase > 0}
-            />
-            <DashboardStat
-              kind="earliest"
-              label={t("earliest")}
-              value={next ? formatDuration(next.finishAt, clockNow) : t("none")}
-            />
-          </DashboardSummary>
-        </section>
+        <DashboardOverview
+          query={query}
+          setQuery={setQuery}
+          availabilityFilter={availabilityFilter}
+          setAvailabilityFilter={setAvailabilityFilter}
+          refreshOnly={refreshOnly}
+          setRefreshOnly={setRefreshOnly}
+          displayOptions={displayOptions}
+          onDisplayOptionChange={changeDisplayOption}
+          prioritizeAvailable={prioritizeAvailable}
+          setPrioritizeAvailable={(value) => {
+            setPrioritizeAvailable(value);
+            localStorage.setItem("multi-village-prioritize-available", String(value));
+          }}
+          selectedTag={selectedTag}
+          setSelectedTag={setActiveTag}
+          visibleCount={visibleAccounts.length}
+          tagOptions={tagOptions}
+          accountCount={accounts.length}
+          availabilitySummary={availabilitySummary}
+          next={next}
+          clockNow={clockNow}
+          formatDuration={formatDuration}
+        />
 
         <UpgradeCharts
           bins={upgradeChartData.bins}
@@ -452,106 +304,20 @@ export default function Home({ initialVillageId = null }: { initialVillageId?: s
           </Button>
         </StickyStackItem>
 
-        <DashboardSection kind="villages" header="hidden" id="village-list">
-          <div className="village-grid">
-            {accounts.map((account) => {
-              const { builders: displayedBuilders, laboratory: displayedLaboratory } = applyDisplayOptions(
-                account,
-                availabilityObservations,
-                displayOptions,
-              );
-              const displayedUpgradeSlots = account.upgradeSlots
-                ? { ...account.upgradeSlots, laboratory: displayedLaboratory }
-                : undefined;
-              return (
-                <Link
-                  className="village-card-link"
-                  key={account.id}
-                  href={`/villages/${encodeURIComponent(account.id)}`}
-                  style={{ "--accent": account.color } as React.CSSProperties}
-                  aria-label={t("openVillage", { name: account.name })}
-                >
-                  <DashboardCard kind="village">
-                    <div className="card-head">
-                      <Shield level={account.townHall} color={account.color} />
-                      <div>
-                        <h2>{account.name}</h2>
-                        <p>
-                          {account.tag} · {t("level")} {account.level}
-                        </p>
-                      </div>
-                      {account.refreshRequired && <Badge tone="warning">{t("refreshRequired")}</Badge>}
-                    </div>
-                    {!!account.tags?.length && (
-                      <div className="account-tag-list">
-                        {account.tags.map((tag) => (
-                          <span key={tag}>#{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    <UpgradeAvailabilityPanel builders={displayedBuilders} upgradeSlots={displayedUpgradeSlots} />
-                    <div className="card-foot">
-                      <span>
-                        {t("inProgress")} <b>{account.upgrades.length}</b>
-                      </span>
-                      <span>
-                        {t("updated")} {formatRelative(account.lastSeen, clockNow)}
-                      </span>
-                    </div>
-                  </DashboardCard>
-                </Link>
-              );
-            })}
-            {!accounts.length && <EmptyState title={t("noMatches")} />}
-          </div>
-        </DashboardSection>
+        <VillageGrid
+          accounts={accounts}
+          availabilityObservations={availabilityObservations}
+          displayOptions={displayOptions}
+          clockNow={clockNow}
+          formatRelative={formatRelative}
+        />
 
-        <DashboardSection
-          kind="queue"
-          id="upgrade-queue"
-          eyebrow="UPGRADE QUEUE"
-          title={t("queue")}
-          actions={t("soonest")}
-        >
-          <div className="queue">
-            {allUpgrades.map(({ account, upgrade }, index) => {
-              const duration = Math.max(1, new Date(upgrade.finishAt).getTime() - clockNow);
-              const urgency = duration < 6 * 3600_000;
-              const labels = { building: t("building"), hero: t("hero"), pet: t("pet"), research: t("research") };
-              return (
-                <DashboardCard
-                  kind="upgrade"
-                  priority={urgency ? "urgent" : "normal"}
-                  key={`${account.id}-${upgrade.id}`}
-                >
-                  <div className={`upgrade-icon ${upgrade.type}`}>
-                    {upgrade.type === "research" ? "⌁" : upgrade.type === "hero" ? "♛" : "◆"}
-                  </div>
-                  <div className="upgrade-info">
-                    <span>
-                      {account.name} · {labels[upgrade.type]}
-                    </span>
-                    <h3>{upgrade.name}</h3>
-                    <p>
-                      {t("level")} {upgrade.level} → <b>{upgrade.nextLevel || upgrade.level + 1}</b>
-                    </p>
-                  </div>
-                  <div className="timeline">
-                    <div>
-                      <span>{urgency ? t("soon") : t("remaining")}</span>
-                      <strong>{formatDuration(upgrade.finishAt, clockNow)}</strong>
-                    </div>
-                    <em>
-                      <i style={{ width: `${Math.max(12, 88 - index * 13)}%` }} />
-                    </em>
-                  </div>
-                  <time>{formatQueueDate(upgrade.finishAt)}</time>
-                </DashboardCard>
-              );
-            })}
-            {!allUpgrades.length && <EmptyState title={t("empty")} />}
-          </div>
-        </DashboardSection>
+        <UpgradeQueue
+          upgrades={allUpgrades}
+          clockNow={clockNow}
+          formatDuration={formatDuration}
+          formatQueueDate={formatQueueDate}
+        />
       </div>
     </main>
   );

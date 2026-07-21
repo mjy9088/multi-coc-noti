@@ -16,7 +16,8 @@ inventory live alongside this plan under `docs/ui/`.
 - `packages/ui/src/styles` now contains the initial shared semantic colors, browser foundations, and Button styles.
 - `app/styles/legacy.css` is approximately 27 KB and remains compatibility debt while its final feature selectors are
   retired.
-- `settings-panel.tsx` and `page.tsx` combine large feature surfaces with repeated presentation markup.
+- Route entry files are now thin where a complete feature implementation has a natural owner. Dashboard sections live in
+  `components/dashboard`, Settings in `components/settings`, and History in `components/history`.
 - Tailwind CSS 4, the local `cn()` helper, typed variants, and the owned actions, forms, containers, request states, Tabs,
   Dialog, and Toast primitives are available and catalogued in UI Lab.
 - `apps/ui-lab` is a Next.js App Router catalogue with a persistent layout and multiple routes, but there is not yet an
@@ -35,17 +36,19 @@ inventory live alongside this plan under `docs/ui/`.
 - Dashboard mounts the shared Toast and Tooltip providers at its persistent layout boundary. Settings mutation feedback
   uses Toast; resource status and the context-preserving Quick Paste flow use the owned Dialog primitive.
 - The production App Shell and all Dashboard routes use owned tokens and primitives. Dashboard, village detail, History,
-  and Settings keep product-specific composition styles in separate token-based stylesheets and must not add new
-  dependencies on legacy selectors.
+  and Settings keep product-specific composition styles beside their owning components. Those feature entry points import
+  the styles directly; `app/globals.css` no longer acts as a route-style registry. They must not add new dependencies on
+  legacy selectors.
 - Settings and History use persistent nested App Router layouts. Their URL-backed tab pages validate route parameters but do
   not recreate the client feature shell, preventing authentication/data loading flashes and navigation movement.
 - Settings markup uses Settings-owned class names plus the shared form/action/layout primitives. Its standalone retired
   selector blocks have been removed from `legacy.css`; the remaining legacy file is compatibility debt for incremental
   selector removal rather than the target API. Product browser E2E covers 36-village
   desktop/mobile scroll ownership and persistent tab navigation.
-- Route and feature screens now use typed Dashboard application compositions for repeated section, history, settings,
-  village-detail, summary, and chart layouts. Shared component `className` customization is confined to those implementation
-  layers by ESLint, so product variants remain discoverable literal unions rather than scattered selector strings.
+- Feature implementations use typed Dashboard application compositions where the caller makes a meaningful semantic
+  choice, such as section kind, history result kind, settings surface kind, or field placement. Fixed-class pass-through
+  wrappers were removed; unique assemblies own their shared primitives and styles directly. Shared component `className`
+  customization remains confined to those implementation layers by ESLint.
 
 The existing request hooks, TanStack Query state, route boundaries, focus movement, pending feedback, and translated copy are
 behavior contracts. Component migration must reuse them rather than rebuild network or workflow behavior inside visual
@@ -87,8 +90,11 @@ apps/
   dashboard/
     app/styles/
       legacy.css          only UI that has not migrated yet
-    components/           app composition and compatibility adapters
-    features/             product components, hooks, and feature composition
+    components/
+      dashboard/          Dashboard feature components and owned CSS
+      history/            History feature components and owned CSS
+      layout/             persistent shell composition and owned CSS
+      settings/           Settings feature components and owned CSS
   ui-lab/
     app/                  catalogue routes and persistent layout checks
 packages/
@@ -279,6 +285,11 @@ Exit criteria:
 - New feature work has one documented path for tokens, primitives, feature components, and async feedback.
 
 ## Feature decomposition targets
+
+The first decomposition pass is complete for Dashboard overview/filters, village grid, upgrade queue, Settings notification
+channels, upgrade-alert policy, village editing, group order, and Settings dialogs. Route files retain queries, derived
+data, navigation, mutation orchestration, and the tightly coupled paste/review workflow. Split those remaining concerns only
+when the extracted component can own a coherent workflow rather than forwarding every local state setter.
 
 `settings-panel.tsx` should be divided into feature components without moving all state into a global store:
 

@@ -1,5 +1,7 @@
 "use client";
 
+import "../../components/layout/history.css";
+
 import { usePathname, useSearchParams } from "next/navigation";
 import HistoryNav from "../history-nav";
 import HistoryPanel from "../history-panel";

@@ -1,5 +1,7 @@
 "use client";
 
+import "../components/layout/shell.css";
+
 import {
   Button,
   Dialog,
