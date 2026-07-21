@@ -44,8 +44,12 @@ Run the separate Next.js component and route-layout catalogue with `just dev-ui`
 - [Authentication and user data isolation](docs/authentication.md): open social sign-in, ownership boundaries, and legacy-data claiming
 - [Operations guide](docs/operations.md): environment, commands, retention, backup, deployment, and API
 - [Test contracts and documentation links](docs/testing.md): regression-test rationale, source requirements, automation gaps, and change rules
+- [Overview maintenance](docs/overview-maintenance.md): local ownership-map format, coverage rules, and validation
 
 ## Repository layout
+
+Start with the [repository overview](overview.md) for a navigable ownership map, then follow the local `overview.md` in
+`apps/`, `apps/dashboard`, `apps/ui-lab`, `packages/`, or `packages/database` when working in those areas.
 
 | Path | Responsibility |
 | --- | --- |

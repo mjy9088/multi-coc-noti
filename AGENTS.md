@@ -4,6 +4,10 @@
 
 Before changing user-visible behavior, API/storage semantics, or regression tests, read [`docs/testing.md`](docs/testing.md). Feature details live in the documents linked from the README; update those documents together with behavior changes.
 
+Before adding or moving a meaningful directory under `apps/` or `packages/`, read
+[`docs/overview-maintenance.md`](docs/overview-maintenance.md) and update the nearest `overview.md`. Run
+`pnpm check:overviews` to verify coverage and structure.
+
 ## Test contracts
 
 Every automated regression contract has one stable ID such as `ALERT-PLAN-001`. The same ID must exist in all three places:
