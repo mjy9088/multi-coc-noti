@@ -10,10 +10,9 @@ component responsibility and styling role.
 ## Subfolders
 
 - `components/` — accessible primitives and reusable compositions.
-- `lib/` — class-name and component utilities.
+- `lib/` — class-name, component, and framework-neutral operation-state utilities.
 - `styles/` — tokens, foundations, and component presentation.
 
 ## Key files
 
 - `index.ts` — explicitly exported public API.
-

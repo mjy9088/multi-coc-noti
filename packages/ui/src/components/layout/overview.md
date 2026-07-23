@@ -11,6 +11,6 @@ inventing viewport calculations, or implementing inconsistent master/detail beha
 
 - page intros, section headers, content sections, and toolbars;
 - master/detail and split layouts;
+- sticky or ordinary action bars;
 - scrollable panes and sticky route frames;
 - measured sticky stacks and viewport-available-height propagation.
-

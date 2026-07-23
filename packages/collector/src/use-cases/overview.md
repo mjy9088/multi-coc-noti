@@ -9,6 +9,5 @@ transport-independent enough for focused tests but remain Collector-owned rather
 
 ## Key files
 
-- `import-village-export.ts` — preview/import workflow and post-import scheduling.
-- `refresh-official-profiles.ts` — official profile enrichment orchestration.
-
+- `village-export.ts` — preview/import workflow, account input validation, and post-import scheduling.
+- `get-dashboard.ts` — dashboard projection assembled from stored exports, tracked upgrades, and cached official data.

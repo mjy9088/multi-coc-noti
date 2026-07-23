@@ -1,28 +1,17 @@
 "use client";
 
-import { Badge, Button, DataListItem, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
+import { Button, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { historyQueryKey } from "../../app/query-provider";
-import { ErrorState, LoadingState } from "../../app/request-state";
-import { useDashboardFormat } from "../../app/use-dashboard-format";
+import { historyQueryKey } from "../query-provider";
+import { ErrorState, LoadingState } from "../request-state";
+import { useDashboardFormat } from "../use-dashboard-format";
 import { HistoryFilters, HistoryResults, HistorySection } from "./history-layout";
+import type { HistoryUpgrade, HistoryVillage } from "./history-model";
+import { UpgradeHistoryItem } from "./upgrade-history-item";
 
-type Village = { id: string; name: string; playerTag: string; color: string };
-type HistoryUpgrade = {
-  id: string;
-  accountId: string;
-  name: string;
-  type: "building" | "hero" | "pet" | "research";
-  base: "home" | "builder";
-  level: number;
-  nextLevel: number;
-  startedAt: string;
-  finishAt: string;
-  active: boolean;
-};
-type HistoryResponse = { villages: Village[]; upgrades: HistoryUpgrade[]; nextBefore: string | null };
+type HistoryResponse = { villages: HistoryVillage[]; upgrades: HistoryUpgrade[]; nextBefore: string | null };
 type Filters = { village: string; base: string; active: string; type: string };
 
 export default function HistoryPanel({
@@ -55,12 +44,6 @@ export default function HistoryPanel({
   const error = historyQuery.error instanceof Error ? historyQuery.error.message : "";
   const setFilter = (key: keyof Filters, value: string) => setFilters((current) => ({ ...current, [key]: value }));
   const villageById = new Map(villages.map((village) => [village.id, village]));
-  const labels = {
-    building: t("building"),
-    hero: t("hero"),
-    pet: t("pet"),
-    research: t("research"),
-  };
 
   return (
     <HistorySection eyebrow="UPGRADE HISTORY" title={t("title")} description={t("description")}>
@@ -106,32 +89,14 @@ export default function HistoryPanel({
       )}
       {error && !upgrades.length && <ErrorState compact message={error} retry={() => void historyQuery.refetch()} />}
       <HistoryResults>
-        {upgrades.map((upgrade) => {
-          const village = villageById.get(upgrade.accountId);
-          return (
-            <DataListItem
-              className="history-card"
-              key={upgrade.id}
-              style={{ "--accent": village?.color || "var(--ui-color-accent)" } as React.CSSProperties}
-            >
-              <i className={`history-type ${upgrade.type}`} />
-              <div>
-                <span>
-                  {village?.name || upgrade.accountId} · {labels[upgrade.type]}
-                </span>
-                <h2>{upgrade.name}</h2>
-                <p>
-                  {upgrade.base === "builder" ? t("builderBase") : t("home")} ·{" "}
-                  {t("level", { from: upgrade.level, to: upgrade.nextLevel })}
-                </p>
-              </div>
-              <div className="history-result">
-                <Badge tone={upgrade.active ? "accent" : "neutral"}>{t(upgrade.active ? "active" : "inactive")}</Badge>
-                <time>{formatDateTime(upgrade.finishAt)}</time>
-              </div>
-            </DataListItem>
-          );
-        })}
+        {upgrades.map((upgrade) => (
+          <UpgradeHistoryItem
+            key={upgrade.id}
+            upgrade={upgrade}
+            village={villageById.get(upgrade.accountId)}
+            formatDateTime={formatDateTime}
+          />
+        ))}
         {!loading && !upgrades.length && <EmptyState title={t("empty")} />}
       </HistoryResults>
       {historyQuery.hasNextPage && (

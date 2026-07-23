@@ -1,29 +1,17 @@
 "use client";
 
-import { Badge, Button, DataListItem, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
+import { Button, EmptyState, SelectField, StaleNotice } from "@multi-coc/ui";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { syncHistoryQueryKey } from "../../app/query-provider";
-import { ErrorState, LoadingState } from "../../app/request-state";
-import { useDashboardFormat } from "../../app/use-dashboard-format";
+import { syncHistoryQueryKey } from "../query-provider";
+import { ErrorState, LoadingState } from "../request-state";
+import { useDashboardFormat } from "../use-dashboard-format";
 import { HistoryFilters, HistoryResults, HistorySection } from "./history-layout";
+import type { HistoryVillage, SyncEntry } from "./history-model";
+import { SyncHistoryItem } from "./sync-history-item";
 
-type Village = { id: string; name: string; playerTag: string; color: string };
-type SyncEntry = {
-  id: string;
-  accountId: string;
-  playerTag: string;
-  exportedAt: string;
-  importedAt: string;
-  townHall: number;
-  upgrades: number;
-  homeUpgrades: number;
-  builderUpgrades: number;
-  builders: { free: number; total: number };
-  unknownDataIds: number;
-};
-type SyncResponse = { villages: Village[]; syncs: SyncEntry[]; nextBefore: string | null };
+type SyncResponse = { villages: HistoryVillage[]; syncs: SyncEntry[]; nextBefore: string | null };
 
 export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
   const t = useTranslations("History");
@@ -68,36 +56,14 @@ export default function SyncHistoryPanel({ apiBase }: { apiBase: string }) {
       )}
       {error && !syncs.length && <ErrorState compact message={error} retry={() => void syncQuery.refetch()} />}
       <HistoryResults kind="syncs">
-        {syncs.map((sync) => {
-          const account = villageById.get(sync.accountId);
-          return (
-            <DataListItem
-              className="history-card"
-              key={sync.id}
-              style={{ "--accent": account?.color || "var(--ui-color-accent)" } as React.CSSProperties}
-            >
-              <i className="history-type sync" />
-              <div>
-                <span>{account?.name || sync.playerTag}</span>
-                <h2>{t("syncSummary", { townHall: sync.townHall, upgrades: sync.upgrades })}</h2>
-                <p>
-                  {t("syncDetails", {
-                    home: sync.homeUpgrades,
-                    builder: sync.builderUpgrades,
-                    free: sync.builders.free,
-                    total: sync.builders.total,
-                  })}
-                </p>
-                {sync.unknownDataIds > 0 && <small>{t("unknownData", { count: sync.unknownDataIds })}</small>}
-              </div>
-              <div className="history-result">
-                <Badge tone="success">{t("synced")}</Badge>
-                <time>{formatDateTime(sync.importedAt)}</time>
-                <small>{t("exportedAt", { date: formatDateTime(sync.exportedAt) })}</small>
-              </div>
-            </DataListItem>
-          );
-        })}
+        {syncs.map((sync) => (
+          <SyncHistoryItem
+            key={sync.id}
+            sync={sync}
+            village={villageById.get(sync.accountId)}
+            formatDateTime={formatDateTime}
+          />
+        ))}
         {!loading && !syncs.length && <EmptyState title={t("syncEmpty")} />}
       </HistoryResults>
       {syncQuery.hasNextPage && (

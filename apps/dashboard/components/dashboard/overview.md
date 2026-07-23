@@ -11,6 +11,7 @@ feature-local styles.
 
 - `dashboard-layout.tsx` — semantic variants for repeated Dashboard compositions.
 - `dashboard-model.ts` — browser-facing Dashboard and village types.
-- `dashboard-sections.tsx` — overview filters, availability summary, village grid, and queue.
+- `dashboard-overview.tsx` — overview filters and availability summary.
+- `village-grid.tsx` — village card collection and availability presentation.
+- `upgrade-queue.tsx` — chronological active-upgrade queue.
 - `village-detail.tsx` — village statistics, cooldowns, helpers, equipment, and active upgrades.
-

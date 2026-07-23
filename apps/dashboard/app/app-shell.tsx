@@ -20,11 +20,11 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { dashboardQueryKey } from "../components/query-provider";
+import { useDashboardFormat } from "../components/use-dashboard-format";
 import LocaleSwitcher from "./locale-switcher";
 import PwaInstall from "./pwa-install";
-import { dashboardQueryKey } from "./query-provider";
 import SettingsPanel from "./settings-panel";
-import { useDashboardFormat } from "./use-dashboard-format";
 
 type QuickPasteRequest = {
   id: number;

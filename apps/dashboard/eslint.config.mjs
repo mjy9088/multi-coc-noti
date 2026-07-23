@@ -22,6 +22,18 @@ const eslintConfig = defineConfig([
     files: ["components/**/*.{ts,tsx}"],
     rules: {
       "ui-contracts/no-shared-composition-classname": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../app/**", "../../app/**", "../../../app/**"],
+              message:
+                "Dashboard components must not import from the App Router assembly layer. Move shared product code under components, or pass route-owned state through props.",
+            },
+          ],
+        },
+      ],
     },
   },
   {

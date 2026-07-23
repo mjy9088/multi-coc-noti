@@ -2,16 +2,27 @@
 
 import "./settings.css";
 
-import { Button, PageIntro, RequestState, StickyRouteFrame, StickyStackItem, Tab, Tabs, useToast } from "@multi-coc/ui";
+import {
+  type OperationState,
+  operationFailed,
+  operationPending,
+  operationSucceeded,
+  PageIntro,
+  StickyRouteFrame,
+  StickyStackItem,
+  Tab,
+  Tabs,
+  useToast,
+} from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ErrorState, LoadingState } from "../../app/request-state";
-import UpgradeAvailabilityPanel from "../../app/upgrade-availability-panel";
-import { useApiRequest } from "../../app/use-api-request";
-import { useDashboardFormat } from "../../app/use-dashboard-format";
-import { useMutationFeedback } from "../../app/use-mutation-feedback";
+import { ErrorState, LoadingState } from "../request-state";
+import { useDashboardFormat } from "../use-dashboard-format";
+import { GroupOrderTab } from "./group-order-tab";
+import { ImportDataTab } from "./import-data/import-data-tab";
+import { NotificationChannelsTab } from "./notification-channels/notification-channels-tab";
 import { DeleteVillageDialog, ResourceStatusDialog } from "./settings-dialogs";
-import { SettingsInputField, SettingsPage, SettingsSurface, SettingsTextareaField } from "./settings-layout";
+import { SettingsPage } from "./settings-layout";
 import type {
   Account,
   ExportPreview,
@@ -22,8 +33,10 @@ import type {
   Upgrade,
   UpgradeAlertDraft,
 } from "./settings-model";
-import { GroupOrderSettings, NotificationChannelsSettings, UpgradeAlertSettings } from "./settings-sections";
-import { VillageSettings } from "./village-settings";
+import { UpgradeAlertsTab } from "./upgrade-alerts/upgrade-alerts-tab";
+import { useApiRequest } from "./use-api-request";
+import { useMutationFeedback } from "./use-mutation-feedback";
+import { VillageSettingsTab } from "./village-settings/village-settings-tab";
 
 const settingsLoadedAt = Date.now();
 
@@ -66,10 +79,7 @@ export default function SettingsPanel({
   });
   const [upgradeAlertDrafts, setUpgradeAlertDrafts] = useState<Record<string, UpgradeAlertDraft>>({});
   const [savingUpgradeId, setSavingUpgradeId] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [initialLoading, setInitialLoading] = useState(false);
-  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
-  const [message, setMessage] = useState("");
+  const [loadState, setLoadState] = useState<OperationState<null, string>>({ status: "idle" });
   const section = initialSection;
   const [exportText, setExportText] = useState("");
   const [preview, setPreview] = useState<ExportPreview | null>(null);
@@ -104,7 +114,7 @@ export default function SettingsPanel({
   const request = useApiRequest(apiBase);
 
   const load = useCallback(async () => {
-    setInitialLoading(true);
+    setLoadState(operationPending());
     try {
       if (section === "channels") {
         const channelResult = await request("/api/notification-channels");
@@ -146,15 +156,19 @@ export default function SettingsPanel({
         }
         if (section === "groups" && sectionResult) setGroupOrder(sectionResult.groupOrder || []);
       }
-      setError("");
-      setInitialLoadFailed(false);
+      setLoadState(operationSucceeded(null));
     } catch (reason) {
-      setError((reason as Error).message);
-      setInitialLoadFailed(true);
-    } finally {
-      setInitialLoading(false);
+      setLoadState(operationFailed((reason as Error).message));
     }
   }, [request, section]);
+  const { feedback, mutationPending, run, clearFeedback, showError } = useMutationFeedback({
+    refresh: load,
+    onChanged,
+  });
+  const initialLoading = loadState.status === "pending";
+  const initialLoadFailed = loadState.status === "error";
+  const loadError = loadState.status === "error" ? loadState.error : undefined;
+  const feedbackError = feedback.status === "error" ? feedback.error : null;
   useEffect(() => {
     const timer = window.setTimeout(load, 0);
     return () => window.clearTimeout(timer);
@@ -163,11 +177,6 @@ export default function SettingsPanel({
     const timer = window.setInterval(() => setClockNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 4_500);
-    return () => window.clearTimeout(timer);
-  }, [message]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!initialAccountId) {
@@ -194,16 +203,16 @@ export default function SettingsPanel({
       dismiss(id);
       return;
     }
-    if (error) {
-      toast({ id, intent: "error", title: error, duration: null });
+    if (feedback.status === "error") {
+      toast({ id, intent: "error", title: feedback.error, duration: null });
       return;
     }
-    if (message) {
-      toast({ id, intent: "success", title: message });
+    if (feedback.status === "success") {
+      toast({ id, intent: "success", title: feedback.value });
       return;
     }
     dismiss(id);
-  }, [dismiss, error, initialLoadFailed, message, toast]);
+  }, [dismiss, feedback, initialLoadFailed, toast]);
 
   const reviewExport = useCallback(
     async (text: string) => {
@@ -212,8 +221,7 @@ export default function SettingsPanel({
       const sequence = ++reviewSequence.current;
       reviewingText.current = candidate;
       setPreviewLoading(true);
-      setError("");
-      setMessage("");
+      clearFeedback();
       try {
         const result = await request("/api/village-exports/preview", {
           method: "POST",
@@ -225,27 +233,29 @@ export default function SettingsPanel({
       } catch (reason) {
         if (sequence === reviewSequence.current) {
           setPreview(null);
-          setError((reason as Error).message);
+          showError((reason as Error).message);
         }
       } finally {
         if (sequence === reviewSequence.current) setPreviewLoading(false);
         if (reviewingText.current === candidate) reviewingText.current = "";
       }
     },
-    [request],
+    [clearFeedback, request, showError],
   );
 
-  const replaceExportText = useCallback((text: string) => {
-    reviewSequence.current += 1;
-    reviewingText.current = "";
-    lastReviewedText.current = "";
-    setPreviewLoading(false);
-    setExportText(text);
-    setPreview(null);
-    setNewLabel("");
-    setMessage("");
-    setError("");
-  }, []);
+  const replaceExportText = useCallback(
+    (text: string) => {
+      reviewSequence.current += 1;
+      reviewingText.current = "";
+      lastReviewedText.current = "";
+      setPreviewLoading(false);
+      setExportText(text);
+      setPreview(null);
+      setNewLabel("");
+      clearFeedback();
+    },
+    [clearFeedback],
+  );
 
   useEffect(() => {
     const candidate = exportText.trim();
@@ -267,10 +277,10 @@ export default function SettingsPanel({
       onQuickPasteApplied?.(quickPasteRequest.id);
       onSectionChange?.("import");
       if (quickPasteRequest.text) replaceExportText(quickPasteRequest.text);
-      else if (quickPasteRequest.clipboardError) setError(t("clipboardUnavailable"));
+      else if (quickPasteRequest.clipboardError) showError(t("clipboardUnavailable"));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [onQuickPasteApplied, onSectionChange, quickPasteRequest, replaceExportText, t]);
+  }, [onQuickPasteApplied, onSectionChange, quickPasteRequest, replaceExportText, showError, t]);
 
   useEffect(() => {
     if (!preview || preview.isNew) return;
@@ -287,11 +297,9 @@ export default function SettingsPanel({
       if (!text.trim()) throw new Error("empty clipboard");
       replaceExportText(text);
     } catch {
-      setError(t("clipboardUnavailable"));
+      showError(t("clipboardUnavailable"));
     }
   };
-
-  const { mutationPending, run } = useMutationFeedback({ refresh: load, onChanged, setError, setMessage });
 
   const chooseAccount = (item: Account) => {
     setEditing(item);
@@ -427,7 +435,7 @@ export default function SettingsPanel({
   if (initialLoadFailed && !accounts.length)
     return (
       <SettingsPage>
-        <ErrorState compact message={error} retry={() => void load()} />
+        <ErrorState compact message={loadError} retry={() => void load()} />
       </SettingsPage>
     );
 
@@ -457,215 +465,36 @@ export default function SettingsPanel({
       )}
       <StickyRouteFrame className="settings-route-frame" contained={embedded} scrollKey={section}>
         {section === "import" && (
-          <div className="settings-import-flow">
-            {error && !initialLoadFailed && (
-              <RequestState className="settings-import-error" tone="error" title={error} />
-            )}
-            {(!embedded || !resourcePrompt) && (
-              <SettingsSurface
-                kind="import"
-                step={preview ? "complete" : "current"}
-                aria-current={!preview ? "step" : undefined}
-              >
-                <p className="settings-step-label" data-step-state={preview ? t("stepDone") : t("stepNow")}>
-                  01 · PASTE
-                </p>
-                <h2>{t("pasteJson")}</h2>
-                <p>{t("pasteJsonHelp")}</p>
-                <SettingsTextareaField
-                  label={t("pasteJson")}
-                  labelVisibility="hidden"
-                  value={exportText}
-                  onChange={(event) => replaceExportText(event.target.value)}
-                  placeholder='{"tag":"#...","timestamp":...}'
-                  autoFocus
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  aria-busy={previewLoading}
-                />
-                <div className="settings-review-action" aria-live="polite">
-                  <small>{previewLoading ? t("reviewingData") : t("autoReviewHelp")}</small>
-                  <span>
-                    <Button type="button" tone="secondary" onClick={pasteFromClipboard}>
-                      {t("pasteClipboard")}
-                    </Button>
-                    <Button
-                      type="button"
-                      disabled={!exportText.trim() || previewLoading}
-                      pending={previewLoading}
-                      onClick={() => reviewExport(exportText)}
-                    >
-                      {previewLoading ? t("reviewingData") : t("reviewData")}
-                    </Button>
-                  </span>
-                </div>
-              </SettingsSurface>
-            )}
-
-            {preview && (!embedded || !resourcePrompt) && (
-              <SettingsSurface kind="preview" step="current" aria-current="step">
-                <p className="settings-step-label" data-step-state={t("stepNow")}>
-                  02 · REVIEW
-                </p>
-                <div className="settings-preview-heading">
-                  <div>
-                    <h2>{preview.account?.label || t("newVillage")}</h2>
-                    <p>
-                      {preview.tag} · TH {preview.townHall} · {formatDateTime(preview.exportedAt)}
-                    </p>
-                  </div>
-                  <span className={preview.isNew ? "settings-new-badge" : "settings-match-badge"}>
-                    {preview.isNew ? t("newBadge") : t("matchedBadge")}
-                  </span>
-                </div>
-                <section className="settings-preview-changes" aria-live="polite">
-                  <h3>{t("changesTitle")}</h3>
-                  {!preview.changes.hasPrevious ? (
-                    <p>{t("changesFirstExport")}</p>
-                  ) : !preview.changes.started.length &&
-                    !preview.changes.ended.length &&
-                    !preview.changes.slots.length ? (
-                    <p>{t("changesNone")}</p>
-                  ) : (
-                    <>
-                      {!!preview.changes.started.length && (
-                        <div className="settings-change-group started">
-                          <b>{t("changesStarted")}</b>
-                          {preview.changes.started.map((item) => (
-                            <span key={item.id}>
-                              + {item.name}{" "}
-                              <small>
-                                Lv. {item.level} → {item.nextLevel}
-                              </small>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {!!preview.changes.ended.length && (
-                        <div className="settings-change-group ended">
-                          <b>{t("changesEnded")}</b>
-                          {preview.changes.ended.map((item) => (
-                            <span key={item.id}>
-                              − {item.name}{" "}
-                              <small>
-                                Lv. {item.level} → {item.nextLevel}
-                              </small>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {!!preview.changes.slots.length && (
-                        <div className="settings-change-group slots">
-                          <b>{t("changesSlots")}</b>
-                          {preview.changes.slots.map((item) => (
-                            <span key={item.slot}>
-                              {t(`changeSlot_${item.slot}`)}{" "}
-                              <small>
-                                {t("changeValue", {
-                                  before:
-                                    typeof item.before === "boolean"
-                                      ? t(item.before ? "available" : "busy")
-                                      : (item.before ?? "—"),
-                                  after:
-                                    typeof item.after === "boolean"
-                                      ? t(item.after ? "available" : "busy")
-                                      : (item.after ?? "—"),
-                                })}
-                              </small>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </section>
-                <div className="settings-preview-stats">
-                  <div>
-                    <span>{t("inProgress")}</span>
-                    <b>{preview.upgrades.length}</b>
-                  </div>
-                  <div>
-                    <span>{t("unknownItems")}</span>
-                    <b>{preview.unknownDataIds.length}</b>
-                  </div>
-                </div>
-                <UpgradeAvailabilityPanel builders={preview.builders} upgradeSlots={preview.upgradeSlots} />
-                {preview.isNew && (
-                  <SettingsInputField
-                    placement="new-village"
-                    label={t("displayName")}
-                    description={t("newVillageHelp")}
-                    required
-                    autoFocus
-                    value={newLabel}
-                    onChange={(event) => setNewLabel(event.target.value)}
-                    placeholder={t("displayNamePlaceholder")}
-                  />
-                )}
-                <div className="settings-preview-upgrades">
-                  {preview.upgrades.slice(0, 8).map((item) => (
-                    <div key={item.id}>
-                      <span>
-                        <b>{item.name}</b>
-                        <small>
-                          Lv. {item.level} → {item.nextLevel}
-                        </small>
-                      </span>
-                      <time>
-                        {formatDateTime(item.finishAt)}
-                        <small>{t("remainingTime", { time: formatDuration(item.finishAt, clockNow) })}</small>
-                      </time>
-                    </div>
-                  ))}
-                  {preview.upgrades.length > 8 && <p>+ {preview.upgrades.length - 8}</p>}
-                </div>
-                <div className="settings-confirm-row">
-                  <Button tone="secondary" onClick={() => setPreview(null)}>
-                    {t("pasteAgain")}
-                  </Button>
-                  <Button
-                    ref={confirmImportButton}
-                    disabled={importing || (preview.isNew && !newLabel.trim())}
-                    pending={importing}
-                    onClick={submitImport}
-                  >
-                    {preview.isNew ? t("addAndImport") : t("importVillage")}
-                  </Button>
-                </div>
-              </SettingsSurface>
-            )}
-            {embedded && resourcePrompt && (
-              <SettingsSurface kind="resource-prompt" aria-live="polite">
-                <h2>{t("resourcePromptTitle")}</h2>
-                <p>{t("resourcePromptHelp")}</p>
-                <div className="resource-dialog-options">
-                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("abundant")}>
-                    {t("resourceAbundant")}
-                  </Button>
-                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("sufficient")}>
-                    {t("resourceSufficient")}
-                  </Button>
-                  <Button disabled={resourceResponding} onClick={() => saveResourceResponse("insufficient")}>
-                    {t("resourceInsufficient")}
-                  </Button>
-                </div>
-                <Button
-                  tone="secondary"
-                  disabled={resourceResponding}
-                  onClick={() => {
-                    setResourcePrompt(null);
-                    onImportComplete?.();
-                  }}
-                >
-                  {t("resourceAnswerLater")}
-                </Button>
-              </SettingsSurface>
-            )}
-          </div>
+          <ImportDataTab
+            error={feedbackError}
+            initialLoadFailed={initialLoadFailed}
+            embedded={embedded}
+            resourcePromptOpen={Boolean(resourcePrompt)}
+            preview={preview}
+            exportText={exportText}
+            previewLoading={previewLoading}
+            newLabel={newLabel}
+            importing={importing}
+            resourceResponding={resourceResponding}
+            clockNow={clockNow}
+            confirmImportButton={confirmImportButton}
+            formatDateTime={formatDateTime}
+            formatDuration={formatDuration}
+            onExportTextChange={replaceExportText}
+            onPasteClipboard={pasteFromClipboard}
+            onReview={() => reviewExport(exportText)}
+            onNewLabelChange={setNewLabel}
+            onClearPreview={() => setPreview(null)}
+            onSubmitImport={submitImport}
+            onResourceResponse={(status) => void saveResourceResponse(status)}
+            onResourceAnswerLater={() => {
+              setResourcePrompt(null);
+              onImportComplete?.();
+            }}
+          />
         )}
-
         {section === "channels" && (
-          <NotificationChannelsSettings
+          <NotificationChannelsTab
             channels={notificationChannels}
             form={barkChannelForm}
             setForm={setBarkChannelForm}
@@ -680,7 +509,7 @@ export default function SettingsPanel({
         )}
 
         {section === "upgrades" && (
-          <UpgradeAlertSettings
+          <UpgradeAlertsTab
             accounts={accounts}
             upgrades={upgrades}
             drafts={upgradeAlertDrafts}
@@ -693,7 +522,7 @@ export default function SettingsPanel({
         )}
 
         {section === "villages" && (
-          <VillageSettings
+          <VillageSettingsTab
             accounts={accounts}
             visibleAccounts={visibleAccounts}
             editing={editing}
@@ -725,7 +554,7 @@ export default function SettingsPanel({
           />
         )}
 
-        {section === "groups" && <GroupOrderSettings groups={availableGroups} onMove={moveGroup} />}
+        {section === "groups" && <GroupOrderTab groups={availableGroups} onMove={moveGroup} />}
       </StickyRouteFrame>
       {!embedded && (
         <DeleteVillageDialog

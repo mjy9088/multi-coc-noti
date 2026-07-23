@@ -17,11 +17,13 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { DashboardData, Village } from "../components/dashboard/dashboard-model";
-import { DashboardOverview, UpgradeQueue, VillageGrid } from "../components/dashboard/dashboard-sections";
-import { dashboardQueryKey } from "./query-provider";
-import { ErrorState, LoadingState } from "./request-state";
+import { DashboardOverview } from "../components/dashboard/dashboard-overview";
+import { UpgradeQueue } from "../components/dashboard/upgrade-queue";
+import { VillageGrid } from "../components/dashboard/village-grid";
+import { dashboardQueryKey } from "../components/query-provider";
+import { ErrorState, LoadingState } from "../components/request-state";
+import { useDashboardFormat } from "../components/use-dashboard-format";
 import UpgradeCharts from "./upgrade-charts";
-import { useDashboardFormat } from "./use-dashboard-format";
 import VillageDetail from "./village-detail";
 
 const emptyData: DashboardData = { generatedAt: new Date(0).toISOString(), accounts: [] };

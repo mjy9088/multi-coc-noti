@@ -286,19 +286,20 @@ Exit criteria:
 
 ## Feature decomposition targets
 
-The first decomposition pass is complete for Dashboard overview/filters, village grid, upgrade queue, Settings notification
-channels, upgrade-alert policy, village editing, group order, and Settings dialogs. Route files retain queries, derived
-data, navigation, mutation orchestration, and the tightly coupled paste/review workflow. Split those remaining concerns only
-when the extracted component can own a coherent workflow rather than forwarding every local state setter.
+The first decomposition pass is complete for Dashboard overview/filters, village grid, upgrade queue, and every Settings
+tab. `settings-panel.tsx` coordinates shared loading, mutation commands, Quick Paste, and route selection; Import Data,
+notification channels, upgrade-alert policy, village editing, and group order each own a separate tab component. Split
+remaining state into tab hooks only when that creates a real state/command boundary rather than forwarding the same local
+setters through another layer.
 
-`settings-panel.tsx` should be divided into feature components without moving all state into a global store:
+The Settings feature is divided without moving state into a global store:
 
-- `SettingsShell` and `AdminSignIn`;
-- `PasteExportFlow` and `ExportReview`;
-- `UpgradeAlertSettings`;
-- `VillageSettings`;
-- `GroupOrderSettings`;
-- `ResourceStatusDialog`.
+- `ImportDataTab`, including paste, review, and the inline resource response;
+- `NotificationChannelsTab`;
+- `UpgradeAlertsTab`;
+- `VillageSettingsTab`;
+- `GroupOrderTab`;
+- shared deletion and resource-status dialogs.
 
 `page.tsx` should be divided into:
 

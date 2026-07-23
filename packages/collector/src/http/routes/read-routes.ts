@@ -4,7 +4,7 @@ import type { CollectorState } from "../../services/collector-state.ts";
 import { getDashboard } from "../../use-cases/get-dashboard.ts";
 import { requestUserId } from "../auth.ts";
 
-export function registerPublicRoutes(app: Hono, state: CollectorState): void {
+export function registerReadRoutes(app: Hono, state: CollectorState): void {
   app.get("/health", (c) => c.json({ ok: true, database: true }));
   app.get("/api/sources", (c) =>
     c.json({

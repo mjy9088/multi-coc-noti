@@ -4,8 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { TooltipProvider } from "@multi-coc/ui";
+import QueryProvider from "../components/query-provider";
 import AppShell from "./app-shell";
-import QueryProvider from "./query-provider";
 import ToastProvider from "./toast-provider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });

@@ -10,5 +10,4 @@ routes or persistence code.
 ## Key files
 
 - `clash-api.ts` — official Player API request and response mapping.
-- `export-input.ts` — pasted export parsing and validation integration.
-
+- `collector-state.ts` — user-scoped account cache and official-profile refresh state.

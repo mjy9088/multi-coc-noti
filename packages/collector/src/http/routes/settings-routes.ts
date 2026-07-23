@@ -25,7 +25,7 @@ import { requestUserId } from "../auth.ts";
 
 type RequestValue = VillageExportInput;
 
-export function registerUserRoutes(app: Hono, state: CollectorState): void {
+export function registerSettingsRoutes(app: Hono, state: CollectorState): void {
   app.get("/api/notification-channels", async (c) =>
     c.json({ channels: await listNotificationChannels(requestUserId(c)) }),
   );

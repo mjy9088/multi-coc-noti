@@ -3,8 +3,8 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import type { CollectorState } from "../services/collector-state.ts";
 import { authenticatedUser } from "./auth.ts";
-import { registerPublicRoutes } from "./routes/public.ts";
-import { registerUserRoutes } from "./routes/user.ts";
+import { registerReadRoutes } from "./routes/read-routes.ts";
+import { registerSettingsRoutes } from "./routes/settings-routes.ts";
 
 export type CollectorAppOptions = {
   state: CollectorState;
@@ -37,7 +37,7 @@ export function createCollectorApp({ state, corsOrigin, authenticate = authentic
   app.onError((error, c) => c.json({ error: error.message }, 400));
   app.notFound((c) => c.json({ error: "not found" }, 404));
 
-  registerPublicRoutes(app, state);
-  registerUserRoutes(app, state);
+  registerReadRoutes(app, state);
+  registerSettingsRoutes(app, state);
   return app;
 }

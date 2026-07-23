@@ -104,6 +104,23 @@ function validateOverview(file) {
     }
   }
 
+  const keyFilesSection = [...sections.entries()].find(([name]) => name.toLowerCase() === "key files")?.[1] ?? [];
+  for (const line of keyFilesSection) {
+    if (!line.trim().startsWith("- ")) continue;
+    const match = /^- `([^`]+)`\s+[—-]\s+\S/.exec(line.trim());
+    if (!match) {
+      issues.push(`Key files entry must use '- \`name\` — description': ${line.trim()}`);
+      continue;
+    }
+    const entry = match[1];
+    if (entry.includes("*") || entry.endsWith("/")) {
+      issues.push(`Key files entry must name one concrete file: ${entry}`);
+      continue;
+    }
+    const target = path.join(path.dirname(absolute), entry);
+    if (!existsSync(target) || !statSync(target).isFile()) issues.push(`declared key file does not exist: ${entry}`);
+  }
+
   const linkPattern = /\[[^\]]+\]\(([^)]+\.md(?:#[^)]+)?)\)/g;
   for (const match of markdown.matchAll(linkPattern)) {
     const link = match[1].split("#", 1)[0];

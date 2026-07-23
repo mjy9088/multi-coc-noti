@@ -10,5 +10,7 @@ completion, and stale-data notification plans without accessing PostgreSQL or Ba
 ## Key files
 
 - `index.ts` — public policy types and planning functions.
-- `test/` — documented scheduling and override contracts.
 
+## Subfolders
+
+- `test/` — documented scheduling and override contracts.

@@ -1,7 +1,11 @@
-FROM node:24-alpine AS base
+FROM node:24-slim AS base
 WORKDIR /app
-RUN corepack enable
-RUN corepack prepare pnpm@11.13.0 --activate
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates curl libatomic1 \
+    && curl https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh \
+    && rm -rf /var/lib/apt/lists/*
+COPY mise.toml ./
+RUN mise trust && mise install pnpm
 
 FROM base AS build-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -11,7 +15,7 @@ COPY packages/notification-policy/package.json packages/notification-policy/pack
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/upgrade-availability/package.json packages/upgrade-availability/package.json
-RUN pnpm install --frozen-lockfile --filter @multi-coc/dashboard...
+RUN mise exec pnpm -- pnpm install --frozen-lockfile --filter @multi-coc/dashboard...
 
 FROM build-deps AS build
 COPY apps/dashboard apps/dashboard
@@ -24,7 +28,7 @@ ARG NEXT_PUBLIC_API_BASE
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-RUN pnpm --filter @multi-coc/dashboard build
+RUN mise exec pnpm -- pnpm --filter @multi-coc/dashboard build
 
 FROM node:24-alpine AS web
 WORKDIR /app
@@ -45,7 +49,7 @@ COPY packages/notifier/package.json packages/notifier/package.json
 COPY packages/notification-policy/package.json packages/notification-policy/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/village-export/package.json packages/village-export/package.json
-RUN pnpm install --prod --frozen-lockfile --filter @multi-coc/collector... --filter @multi-coc/notifier...
+RUN mise exec pnpm -- pnpm install --prod --frozen-lockfile --filter @multi-coc/collector... --filter @multi-coc/notifier...
 
 FROM node:24-alpine AS services
 WORKDIR /app

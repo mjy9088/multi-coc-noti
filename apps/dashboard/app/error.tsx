@@ -1,6 +1,6 @@
 "use client";
 
-import { ErrorState } from "./request-state";
+import { ErrorState } from "../components/request-state";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (

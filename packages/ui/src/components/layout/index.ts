@@ -1,3 +1,4 @@
+export { ActionBar } from "./action-bar";
 export { Cluster, ContentGrid, PageContainer, Stack } from "./content-layout";
 export { DetailPane, DetailPaneBackdrop, MasterDetailLayout, MasterPane } from "./master-detail";
 export {
@@ -17,3 +18,11 @@ export {
   Toolbar,
 } from "./page-layout";
 export { ContentSection, type ContentSectionProps, PageIntro, type PageIntroProps } from "./section";
+export { SplitLayout } from "./split-layout";
+export {
+  StickyRouteFrame,
+  StickyStackItem,
+  StickyStackProvider,
+  StickyStackViewport,
+  useStickyStack,
+} from "./sticky-stack";

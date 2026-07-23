@@ -17,7 +17,7 @@ A responsive dashboard for tracking builders, research slots, active upgrades, a
 
 ## Quick start
 
-Requires Node.js 24, pnpm, Docker, and just. mise can install the toolchain.
+Requires mise and Docker. The repository's `mise.toml` installs the pinned Node.js, pnpm, and just toolchain.
 
 ```bash
 cp docker/.env.example docker/.env

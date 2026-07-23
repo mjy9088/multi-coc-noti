@@ -18,7 +18,7 @@ import {
 } from "@multi-coc/ui";
 import { useTranslations } from "next-intl";
 import type { ComponentProps } from "react";
-import UpgradeAvailabilityPanel from "../../app/upgrade-availability-panel";
+import UpgradeAvailabilityPanel from "../upgrade-availability-panel";
 
 type VillagePanelKind = "availability" | "metrics" | "cooldown" | "helpers" | "equipment" | "upgrades";
 

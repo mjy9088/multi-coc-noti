@@ -4,7 +4,7 @@
 
 ## Purpose
 
-HTTP boundary for Collector. Owns Hono application assembly, authenticated request context, validation-to-response mapping,
+HTTP boundary for Collector. Owns Hono application assembly, authentication middleware, validation-to-response mapping,
 and route registration; business persistence remains in use cases and Database.
 
 ## Subfolders
@@ -14,5 +14,4 @@ and route registration; business persistence remains in use cases and Database.
 ## Key files
 
 - `app.ts` — Hono app factory and cross-route middleware.
-- `context.ts` — request context and dependency types.
-
+- `auth.ts` — Auth.js session-token authentication and request user lookup.

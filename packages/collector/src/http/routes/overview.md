@@ -9,6 +9,5 @@ responses without embedding SQL.
 
 ## Key files
 
-- `dashboard-routes.ts` — dashboard, villages, history, and related reads.
-- `settings-routes.ts` — import and user-owned settings mutations.
-
+- `read-routes.ts` — authenticated dashboard, source, upgrade-history, and sync-history reads plus health.
+- `settings-routes.ts` — import and user-owned village, dashboard, channel, and alert-setting mutations.

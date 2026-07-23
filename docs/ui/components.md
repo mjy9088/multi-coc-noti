@@ -301,10 +301,15 @@ These do not belong in the generic UI package even when they use primitives:
 They may live under `apps/dashboard/features/<feature>` and import product types, translations, query hooks, and routes.
 
 The current Dashboard implementation keeps route orchestration in `app/page.tsx` and moves the overview/filter surface,
-village grid, and upgrade queue into `components/dashboard`. Settings keeps loading, mutation, import orchestration, and
-route selection in `settings-panel.tsx`; notification channels, upgrade-alert policy, village editing, group order, and
-dialogs live under `components/settings`. Shared product models are declared beside those components rather than repeated
-inside route files. This boundary is intentionally established before introducing form contexts or feature stores.
+village grid, and upgrade queue into `components/dashboard`. Settings keeps shared loading, mutation commands, Quick Paste,
+and route selection in `settings-panel.tsx`; each Settings tab and the shared dialogs live in separate files under
+`components/settings`. Shared product models are declared beside those components rather than repeated inside route files.
+This boundary is intentionally established before introducing form contexts or feature stores.
+
+Async operation state uses the shared `OperationState<Success, Failure>` discriminated union and its constructors. Do not
+model one operation with independent `pending`, success-message, and error-message state: combinations such as pending plus
+success or simultaneous success and error must be unrepresentable. TanStack Query remains the source of truth for query
+loading/error state; `OperationState` is for local commands and workflows, not a replacement query cache.
 
 ## Component acceptance checklist
 
